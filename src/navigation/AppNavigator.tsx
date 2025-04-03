@@ -3,13 +3,15 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useAuth} from '../context/AuthContext';
 import {LoginScreen} from '../screens/LoginScreen';
+import {RegisterScreen} from '../screens/RegisterScreen';
 import {HomeScreen} from '../screens/HomeScreen';
 import {AddCategoryScreen} from '../screens/AddCategoryScreen';
 import {RouteDetailScreen} from '../screens/RouteDetailScreen';
-import {TouchableOpacity, StyleSheet, Text, Alert} from 'react-native';
+import {TouchableOpacity, StyleSheet, Text, Alert, View} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {cities, City} from '../data/cities';
+import {Logo} from '../components/Logo';
 
 const Stack = createNativeStackNavigator();
 
@@ -74,28 +76,43 @@ const LogoutButton = () => {
 };
 
 export const AppNavigator = () => {
-  const {isAuthenticated, isLoading} = useAuth();
+  const {isAuthenticated, isLoading, user} = useAuth();
 
   if (isLoading) {
-    return null;
+    return (
+      <View style={styles.loadingContainer}>
+        <Logo size="large" color="#1DA1F2" />
+        <Text style={styles.loadingText}>Yükleniyor...</Text>
+      </View>
+    );
   }
 
   return (
     <NavigationContainer>
       <Stack.Navigator>
-        {!isAuthenticated ? (
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{headerShown: false}}
-          />
+        {!isAuthenticated || !user ? (
+          <>
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              options={{headerShown: false}}
+            />
+            <Stack.Screen
+              name="Register"
+              component={RegisterScreen}
+              options={{
+                title: 'Kayıt Ol',
+                headerBackTitle: 'Geri',
+              }}
+            />
+          </>
         ) : (
           <>
             <Stack.Screen
               name="Home"
               component={HomeScreen}
               options={{
-                title: 'Yolista',
+                headerTitle: () => <Logo size="small" color="#1DA1F2" />,
                 headerLeft: () => <LogoutButton />,
                 headerRight: () => <LocationHeader />,
               }}
@@ -138,5 +155,15 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     padding: 5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
   },
 });
