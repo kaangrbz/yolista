@@ -1,60 +1,128 @@
-import React, {createContext, useState, useContext, useEffect} from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, {createContext, useContext, useState, useEffect} from 'react';
+import {supabase} from '../lib/supabase';
+import {Session} from '@supabase/supabase-js';
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: any | null;
-  login: (userData: any) => Promise<void>;
-  logout: () => Promise<void>;
   isLoading: boolean;
+  user: any | null;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    full_name: string,
+    username: string,
+  ) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
   children,
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<any | null>(null);
 
   useEffect(() => {
-    // Check for stored authentication state when the app starts
-    checkAuthState();
+    // Check active session
+    supabase.auth.getSession().then(({data: {session}}) => {
+      setIsAuthenticated(!!session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: {subscription},
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setIsAuthenticated(!!session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Check if profile exists
+        const {data: existingProfile} = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!existingProfile) {
+          // Create profile if it doesn't exist
+          const {error: profileError} = await supabase.from('profiles').insert([
+            {
+              id: session.user.id,
+              username: session.user.email?.split('@')[0],
+              full_name: session.user.user_metadata?.full_name,
+              avatar_url: session.user.user_metadata?.avatar_url,
+            },
+          ]);
+
+          if (profileError) {
+            console.error('Profile creation error:', profileError);
+          }
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const checkAuthState = async () => {
+  const signIn = async (email: string, password: string) => {
     try {
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) {
-        setUser(JSON.parse(userData));
-        setIsAuthenticated(true);
-      }
+      const {error} = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
     } catch (error) {
-      console.error('Error checking auth state:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('Sign in error:', error);
+      throw error;
     }
   };
 
-  const login = async (userData: any) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    full_name: string,
+    username: string,
+  ) => {
     try {
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-      setIsAuthenticated(true);
+      const {error: signUpError} = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+            full_name,
+          },
+        },
+      });
+      if (signUpError) throw signUpError;
     } catch (error) {
-      console.error('Error during login:', error);
+      console.error('Sign up error:', error);
       throw error;
     }
   };
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('user');
-      setUser(null);
-      setIsAuthenticated(false);
+      const {error} = await supabase.auth.signOut();
+      if (error) throw error;
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('Logout error:', error);
       throw error;
     }
   };
@@ -63,20 +131,13 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
     <AuthContext.Provider
       value={{
         isAuthenticated,
-        user,
-        login,
-        logout,
         isLoading,
+        user,
+        signIn,
+        signUp,
+        logout,
       }}>
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };

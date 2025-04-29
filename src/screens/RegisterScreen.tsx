@@ -10,27 +10,36 @@ import {
   Platform,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
-import {Link, useNavigation} from '@react-navigation/native';
 import {Logo} from '../components/Logo';
 
-export const LoginScreen = () => {
-  const navigation = useNavigation();
+export const RegisterScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const {signIn} = useAuth();
+  const {signUp} = useAuth();
 
-  const handleLogin = async () => {
-    if (!email || !password) {
+  const handleRegister = async () => {
+    if (!email || !password || !name || !username) {
       Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Hata', 'Şifre en az 6 karakter olmalıdır');
       return;
     }
 
     try {
       setIsLoading(true);
-      await signIn(email, password);
+      await signUp(email, password, name, username);
+      Alert.alert(
+        'Başarılı',
+        'Hesabınız oluşturuldu. Lütfen e-posta adresinizi doğrulayın.',
+      );
     } catch (error: any) {
-      Alert.alert('Hata', error.message || 'Giriş yaparken bir hata oluştu');
+      Alert.alert('Hata', error.message || 'Kayıt olurken bir hata oluştu');
     } finally {
       setIsLoading(false);
     }
@@ -40,14 +49,35 @@ export const LoginScreen = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Logo size="large" color="#1DA1F2" />
-        <Text style={styles.subtitle}>
-          🌍 Seyahat rotalarını keşfetmek için giriş yapın! ✈️ Kişisel seyahat
-          deneyimlerinizi yönetmek ve yeni maceralara atılmak için hesabınıza
-          giriş yapın. Hadi başlayalım! 🚀
-        </Text>
+        <Text style={styles.subtitle}>Seyahat rotalarını keşfet</Text>
       </View>
 
       <View style={styles.form}>
+        <TextInput
+          style={styles.input}
+          placeholder="Ad Soyad"
+          value={name}
+          onChangeText={setName}
+          autoCapitalize="words"
+          autoCorrect={false}
+          autoComplete="name"
+          textContentType="name"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          enablesReturnKeyAutomatically
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Kullanıcı Adı"
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+          autoComplete="username"
+          textContentType="username"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          enablesReturnKeyAutomatically
+        />
         <TextInput
           style={styles.input}
           placeholder="E-posta"
@@ -79,20 +109,13 @@ export const LoginScreen = () => {
 
         <TouchableOpacity
           style={[styles.button, isLoading && styles.buttonDisabled]}
-          onPress={handleLogin}
+          onPress={handleRegister}
           disabled={isLoading}>
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>Giriş Yap</Text>
+            <Text style={styles.buttonText}>Kayıt Ol</Text>
           )}
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Register')}
-          style={styles.registerText}>
-          <Text style={styles.registerText}>
-            Hesabınız yoksa buraya tıklayın
-          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -114,8 +137,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginTop: 8,
-    paddingHorizontal: 20,
-    lineHeight: 24,
   },
   form: {
     flex: 1,
@@ -146,10 +167,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  registerText: {
-    color: '#1DA1F2',
-    textAlign: 'center',
-    marginTop: 16,
   },
 });
