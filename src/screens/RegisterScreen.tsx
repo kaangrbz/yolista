@@ -16,11 +16,12 @@ export const RegisterScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const {signUp} = useAuth();
 
   const handleRegister = async () => {
-    if (!email || !password || !name) {
+    if (!email || !password || !name || !username) {
       Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
       return;
     }
@@ -32,7 +33,7 @@ export const RegisterScreen = () => {
 
     try {
       setIsLoading(true);
-      await signUp(email, password, name);
+      await signUp(email, password, name, username);
       Alert.alert(
         'Başarılı',
         'Hesabınız oluşturuldu. Lütfen e-posta adresinizi doğrulayın.',
@@ -61,6 +62,18 @@ export const RegisterScreen = () => {
           autoCorrect={false}
           autoComplete="name"
           textContentType="name"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          enablesReturnKeyAutomatically
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Kullanıcı Adı"
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+          autoComplete="username"
+          textContentType="username"
           returnKeyType="next"
           blurOnSubmit={false}
           enablesReturnKeyAutomatically

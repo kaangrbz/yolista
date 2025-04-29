@@ -17,114 +17,22 @@ import Icon2 from 'react-native-vector-icons/MaterialIcons';
 import {Colors} from 'react-native/Libraries/NewAppScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useNavigation} from '@react-navigation/native';
+import FloatingActionButton from '../components/FloatingActionButton';
+import {supabase} from '../lib/supabase';
+import CategoryList from '../components/CategoryList';
+import {Database} from '../types/database.types';
+import RouteModel, {RouteWithProfile} from '../model/routes.model';
 
-const {width} = Dimensions.get('window');
-
-const categories = [
-  {id: 1, name: 'Şehir İçi', icon: 'city', color: '#2C3E50'},
-  {id: 2, name: 'Doğa Rotaları', icon: 'tree', color: '#27AE60'},
-  {id: 3, name: 'Tarihi Yerler', icon: 'castle', color: '#8B4513'},
-];
-
-const allRoutes = [
-  {
-    id: 1,
-    title: 'Kemeraltı Turu',
-    image: 'https://picsum.photos/400/200',
-    distance: '2.5 km',
-    location: 'Konak, İzmir',
-    rating: 4.8,
-    categoryId: 1,
-    pinCount: 8,
-    author: {
-      name: 'Kaan',
-      username: '@kaangrbz',
-      isVerified: true,
-    },
-  },
-  {
-    id: 2,
-    title: 'Kordon Yürüyüşü',
-    image: 'https://picsum.photos/400/201',
-    distance: '3.1 km',
-    location: 'Alsancak, İzmir',
-    rating: 4.6,
-    categoryId: 1,
-    pinCount: 5,
-    author: {
-      name: 'Ayşe',
-      username: '@aysegezgin',
-      isVerified: true,
-    },
-  },
-  {
-    id: 3,
-    title: 'Efes Antik Kenti',
-    image: 'https://picsum.photos/400/202',
-    distance: '1.8 km',
-    location: 'Selçuk, İzmir',
-    rating: 4.9,
-    categoryId: 3,
-    pinCount: 12,
-    author: {
-      name: 'Mehmet',
-      username: '@mehmetkultur',
-      isVerified: false,
-    },
-  },
-  {
-    id: 4,
-    title: 'Sapanca Gölü Turu',
-    image: 'https://picsum.photos/400/203',
-    distance: '4.2 km',
-    location: 'Sapanca, İzmir',
-    rating: 4.7,
-    categoryId: 2,
-    pinCount: 6,
-    author: {
-      name: 'Zeynep',
-      username: '@zeynepdoga',
-      isVerified: true,
-    },
-  },
-  {
-    id: 5,
-    title: 'Asansör Turu',
-    image: 'https://picsum.photos/400/204',
-    distance: '1.5 km',
-    location: 'Karataş, İzmir',
-    rating: 4.5,
-    categoryId: 3,
-    pinCount: 3,
-    author: {
-      name: 'Can',
-      username: '@canizmir',
-      isVerified: false,
-    },
-  },
-  {
-    id: 6,
-    title: 'Çeşme Kalesi',
-    image: 'https://picsum.photos/400/205',
-    distance: '2.8 km',
-    location: 'Çeşme, İzmir',
-    rating: 4.4,
-    categoryId: 3,
-    pinCount: 4,
-    author: {
-      name: 'Elif',
-      username: '@elifgezgin',
-      isVerified: true,
-    },
-  },
-];
+type Category = Database['public']['Tables']['categories']['Row'];
 
 export const HomeScreen = () => {
   const isDarkMode = useColorScheme() === 'dark';
   const [isLoading, setIsLoading] = useState(true);
+  const [isReloading, setIsReloading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [routes, setRoutes] = useState(allRoutes);
+  const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -151,6 +59,8 @@ export const HomeScreen = () => {
     };
 
     checkFirstTime();
+    fetchCategories();
+    fetchRoutes();
   }, []);
 
   useEffect(() => {
@@ -162,81 +72,75 @@ export const HomeScreen = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const onRefresh = React.useCallback(() => {
+  const fetchCategories = async () => {
+    try {
+      const {data, error} = await supabase
+        .from('categories')
+        .select('*')
+        .limit(7)
+        .order('index', {ascending: true}); // 'index' sütununa göre sıralama
+
+      if (error) throw error;
+      setCategories(data);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      Alert.alert('Hata', 'Kategoriler yüklenirken bir hata oluştu');
+    }
+  };
+
+  const fetchRoutes = async () => {
+    try {
+      // const data = await RouteModel.getAllRoutes();
+
+      // const {data, error} = await supabase.rpc(
+      //   'get_active_routes_with_profiles',
+      // );
+
+      // if (error) throw error;
+
+      let {data, error} = await supabase.rpc('get_active_routes_with_profiles');
+      if (error) console.error(error);
+      else console.log(data);
+
+      console.log('Routes:', data);
+
+      setRoutes(data || []);
+    } catch (error) {
+      console.error('Error fetching routes:', error);
+      Alert.alert('Hata', 'Rotalar yüklenirken bir hata oluştu');
+    }
+  };
+
+  const onRefresh = React.useCallback(async () => {
+    setIsReloading(true);
     setRefreshing(true);
-    // Simulate API call
-    setTimeout(() => {
-      setRoutes(allRoutes);
-      setRefreshing(false);
-    }, 1500);
+    await fetchCategories();
+    await fetchRoutes();
+    setRefreshing(false);
+    setIsReloading(false);
   }, []);
 
   const filterRoutes = (categoryId: number | null) => {
     setSelectedCategory(categoryId);
-    if (categoryId === null) {
-      setRoutes(allRoutes);
-    } else {
-      setRoutes(allRoutes.filter(route => route.categoryId === categoryId));
-    }
+    fetchRoutes();
+    // if (categoryId === null) {
+    //   setRoutes(allRoutes);
+    // } else {
+    //   setRoutes(allRoutes.filter(route => route.categoryId === categoryId));
+    // }
   };
 
-  const renderCategories = () => {
-    if (isLoading) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#666" />
-        </View>
-      );
-    }
-
-    return (
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoriesContainer}>
-        <TouchableOpacity
-          style={[
-            styles.categoryButton,
-            {backgroundColor: selectedCategory === null ? '#121212dd' : '#666'},
-          ]}
-          onPress={() => filterRoutes(null)}>
-          <Icon name="view-grid" size={24} color="white" />
-          <Text style={styles.categoryText}>Tümü</Text>
-        </TouchableOpacity>
-        {categories.map(category => (
-          <TouchableOpacity
-            key={category.id}
-            style={[
-              styles.categoryButton,
-              {
-                backgroundColor:
-                  selectedCategory === category.id ? category.color : '#666',
-              },
-            ]}
-            onPress={() => filterRoutes(category.id)}>
-            <Icon name={category.icon} size={24} color="white" />
-            <Text style={styles.categoryText}>{category.name}</Text>
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity
-          style={[styles.categoryButton, styles.addCategoryButton]}
-          onPress={() => navigation.navigate('AddCategory')}>
-          <Icon name="plus" size={24} color="white" />
-          <Text style={styles.categoryText}>Öneride Bulun</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    );
-  };
-
-  const renderRouteCard = (route: (typeof routes)[0]) => (
+  const renderRouteCard = (route: RouteWithProfile) => (
     <TouchableOpacity
       key={route.id}
       style={styles.routeCard}
       onPress={() => navigation.navigate('RouteDetail', {routeId: route.id})}>
       <View style={styles.authorContainer}>
         <View style={styles.authorInfo}>
-          <Text style={styles.authorName}>{route.author.name}</Text>
-          {route.author.isVerified && (
+          <Text style={styles.authorName}>
+            {route.profiles?.full_name || 'Kaan'}
+          </Text>
+          {(route.profiles?.is_verified || false) && (
             <Icon
               name="check-decagram"
               size={16}
@@ -244,31 +148,42 @@ export const HomeScreen = () => {
               style={styles.verifiedIcon}
             />
           )}
-          <Text style={styles.authorUsername}>{route.author.username}</Text>
+          <Text style={styles.authorUsername}>
+            @{route.profiles?.username || 'kaangrx'}
+          </Text>
         </View>
         <TouchableOpacity style={styles.moreButton}>
           <Icon name="dots-vertical" size={20} color="#666" />
         </TouchableOpacity>
       </View>
-      <Image source={{uri: route.image}} style={styles.routeImage} />
+      <Image
+        source={{
+          uri:
+            route.image_url ||
+            `https://picsum.photos/300/150?random=${Math.floor(
+              Math.random() * 10000,
+            )}`,
+        }}
+        style={styles.routeImage}
+      />
       <View style={styles.routeInfo}>
         <Text style={styles.routeTitle}>{route.title}</Text>
         <View style={styles.routeDetails}>
           <View style={styles.detailItem}>
             <Icon name="map-marker" size={16} color="#666" />
-            <Text style={styles.detailText}>{route.location}</Text>
+            <Text style={styles.detailText}>{route.city_id}</Text>
           </View>
-          <View style={styles.detailItem}>
+          {/* <View style={styles.detailItem}>
             <Icon name="map-marker-distance" size={16} color="#666" />
-            <Text style={styles.detailText}>{route.distance}</Text>
-          </View>
-          <View style={styles.detailItem}>
+            <Text style={styles.detailText}>2.8 km</Text>
+          </View> */}
+          {/* <View style={styles.detailItem}>
             <Icon2 name="location-pin" size={16} color="#d00" />
-            <Text style={styles.detailText}>{route.pinCount}</Text>
-          </View>
+            <Text style={styles.detailText}>2</Text>
+          </View> */}
           <View style={styles.detailItem}>
             <Icon name="star" size={16} color="#FFD700" />
-            <Text style={styles.detailText}>{route.rating}</Text>
+            <Text style={styles.detailText}>4.5</Text>
           </View>
         </View>
       </View>
@@ -286,11 +201,30 @@ export const HomeScreen = () => {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }>
-        {renderCategories()}
-        <View style={styles.routesContainer}>
-          {routes.map(renderRouteCard)}
-        </View>
+        <CategoryList
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onCategoryPress={filterRoutes}
+          onAddCategory={() => navigation.navigate('AddCategory')}
+          loading={isLoading}
+        />
+        {isReloading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="#666" />
+          </View>
+        ) : (
+          <View style={styles.routesContainer}>
+            {routes.length > 0 ? (
+              routes.map(renderRouteCard)
+            ) : (
+              <Text style={styles.noRoutesText}>Rotalar bulunamadı</Text>
+            )}
+          </View>
+        )}
       </ScrollView>
+      <FloatingActionButton
+        onPress={() => navigation.navigate('CreateRoute')}
+      />
     </View>
   );
 };
@@ -300,7 +234,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   categoriesContainer: {
-    padding: 16,
+    paddingTop: 16,
+    paddingHorizontal: 16,
   },
   loadingContainer: {
     height: 100,
@@ -315,8 +250,8 @@ const styles = StyleSheet.create({
   categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 6,
     borderRadius: 25,
     marginRight: 12,
   },
@@ -401,5 +336,10 @@ const styles = StyleSheet.create({
   },
   moreButton: {
     padding: 4,
+  },
+  noRoutesText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
 });

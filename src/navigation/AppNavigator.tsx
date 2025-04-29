@@ -12,7 +12,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {cities, City} from '../data/cities';
 import {Logo} from '../components/Logo';
-
+import {CreateRouteScreen} from '../screens/CreateRouteScreen';
 const Stack = createNativeStackNavigator();
 
 const LocationHeader = () => {
@@ -122,6 +122,14 @@ export const AppNavigator = () => {
               component={AddCategoryScreen}
               options={{
                 title: 'Öneride Bulun',
+                presentation: 'modal',
+              }}
+            />
+            <Stack.Screen
+              name="CreateRoute"
+              component={CreateRouteScreen}
+              options={{
+                title: 'Rota Oluştur',
                 presentation: 'modal',
               }}
             />
