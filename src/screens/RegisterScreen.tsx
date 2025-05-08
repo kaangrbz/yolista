@@ -64,6 +64,8 @@ export const RegisterScreen = () => {
           textContentType="name"
           returnKeyType="next"
           blurOnSubmit={false}
+
+          placeholderTextColor="#666"
           enablesReturnKeyAutomatically
         />
         <TextInput
@@ -76,6 +78,8 @@ export const RegisterScreen = () => {
           textContentType="username"
           returnKeyType="next"
           blurOnSubmit={false}
+
+          placeholderTextColor="#666"
           enablesReturnKeyAutomatically
         />
         <TextInput
@@ -90,6 +94,8 @@ export const RegisterScreen = () => {
           textContentType="emailAddress"
           returnKeyType="next"
           blurOnSubmit={false}
+
+          placeholderTextColor="#666"
           enablesReturnKeyAutomatically
         />
         <TextInput
@@ -104,6 +110,8 @@ export const RegisterScreen = () => {
           textContentType="password"
           returnKeyType="done"
           blurOnSubmit={true}
+
+          placeholderTextColor="#666"
           enablesReturnKeyAutomatically
         />
 

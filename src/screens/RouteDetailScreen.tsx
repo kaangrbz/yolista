@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  useColorScheme,
   Dimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -57,8 +56,6 @@ const routeData = {
 };
 
 export const RouteDetailScreen = ({navigation}: any) => {
-  const isDarkMode = useColorScheme() === 'dark';
-
   const handleLike = (bookmarkId: number) => {
     // TODO: Implement like functionality
     console.log('Like bookmark:', bookmarkId);
@@ -111,11 +108,7 @@ export const RouteDetailScreen = ({navigation}: any) => {
   );
 
   return (
-    <View
-      style={[
-        styles.container,
-        {backgroundColor: isDarkMode ? Colors.darker : Colors.lighter},
-      ]}>
+    <View style={[styles.container, {backgroundColor: Colors.lighter}]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <Image source={{uri: routeData.mainImage}} style={styles.mainImage} />
         <View style={styles.content}>
@@ -130,7 +123,7 @@ export const RouteDetailScreen = ({navigation}: any) => {
                   style={styles.verifiedIcon}
                 />
               )}
-              <Text style={styles.authorUsername}>
+              <Text style={[styles.authorUsername, {color: '#000'}]}>
                 {routeData.author.username}
               </Text>
             </View>

@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {NavigationContainer} from '@react-navigation/native';
+import {DefaultTheme, NavigationContainer, ThemeContext} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useAuth} from '../context/AuthContext';
 import {LoginScreen} from '../screens/LoginScreen';
@@ -13,10 +13,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {cities, City} from '../data/cities';
 import {Logo} from '../components/Logo';
 import {CreateRouteScreen} from '../screens/CreateRouteScreen';
+import { useCityStore, CityState } from '../store/cityStore';
+
 const Stack = createNativeStackNavigator();
 
 const LocationHeader = () => {
-  const [selectedCity, setSelectedCity] = useState<City>(cities[35]); // Default to İzmir (id: 36)
+  const selectedCityId = useCityStore((state: CityState) => state.selectedCityId);
+  const setSelectedCityId = useCityStore((state: CityState) => state.setSelectedCityId);
 
   useEffect(() => {
     const getCityId = async () => {
@@ -25,8 +28,12 @@ const LocationHeader = () => {
         if (savedCityId) {
           const city = cities.find(c => c.id === parseInt(savedCityId, 10));
           if (city) {
-            setSelectedCity(city);
+            setSelectedCityId(city.id);
+          } else {
+            setSelectedCityId(null);
           }
+        } else {
+          setSelectedCityId(null);
         }
       } catch (error) {
         console.error('Şehir ID okuma hatası:', error);
@@ -45,7 +52,7 @@ const LocationHeader = () => {
           onPress: async () => {
             try {
               await AsyncStorage.setItem('city_id', city.id.toString());
-              setSelectedCity(city);
+              setSelectedCityId(city.id);
             } catch (error) {
               console.error('Şehir kaydetme hatası:', error);
               Alert.alert('Hata', 'Şehir seçimi kaydedilemedi');
@@ -58,10 +65,21 @@ const LocationHeader = () => {
     );
   };
 
+  const selectedCity = cities.find(c => c.id === selectedCityId);
+
+  if (!selectedCity) {
+    return (
+      <TouchableOpacity onPress={handlePress} style={styles.locationHeader}>
+        <Icon name="map-marker" size={20} color="#cc0000" />
+        <Text style={styles.cityText}>Sehir Seç</Text>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity onPress={handlePress} style={styles.locationHeader}>
       <Icon name="map-marker" size={20} color="#cc0000" />
-      <Text style={styles.cityText}>{selectedCity.name}</Text>
+      <Text style={styles.cityText}>{selectedCity?.name || 'Sehir Seç'}</Text>
     </TouchableOpacity>
   );
 };
@@ -73,6 +91,15 @@ const LogoutButton = () => {
       <Icon name="logout" size={24} color="#333" />
     </TouchableOpacity>
   );
+};
+
+const LightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#ffffff',
+    text: '#000000',
+  },
 };
 
 export const AppNavigator = () => {
@@ -88,7 +115,7 @@ export const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={LightTheme}>
       <Stack.Navigator>
         {!isAuthenticated || !user ? (
           <>
@@ -122,7 +149,6 @@ export const AppNavigator = () => {
               component={AddCategoryScreen}
               options={{
                 title: 'Öneride Bulun',
-                presentation: 'modal',
               }}
             />
             <Stack.Screen
@@ -130,7 +156,6 @@ export const AppNavigator = () => {
               component={CreateRouteScreen}
               options={{
                 title: 'Rota Oluştur',
-                presentation: 'modal',
               }}
             />
             <Stack.Screen
@@ -157,7 +182,7 @@ const styles = StyleSheet.create({
   },
   cityText: {
     marginLeft: 4,
-    fontSize: 16,
+    fontSize: 14,
     color: '#222222',
     fontWeight: '500',
   },

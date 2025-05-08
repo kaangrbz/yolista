@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  useColorScheme,
   TextInput,
   ScrollView,
 } from 'react-native';
@@ -48,8 +47,6 @@ const colorOptions = [
 ];
 
 export const AddCategoryScreen = ({navigation}: any) => {
-  const isDarkMode = useColorScheme() === 'dark';
-
   const handleSubmit = (values: any) => {
     // TODO: Save category to storage/state
     console.log('Form values:', values);
@@ -57,11 +54,7 @@ export const AddCategoryScreen = ({navigation}: any) => {
   };
 
   return (
-    <View
-      style={[
-        styles.container,
-        {backgroundColor: isDarkMode ? '#000' : '#fff'},
-      ]}>
+    <View style={[styles.container, {backgroundColor: '#fff'}]}>
       <Formik
         initialValues={{name: '', icon: '', color: ''}}
         validationSchema={validationSchema}
@@ -77,23 +70,22 @@ export const AddCategoryScreen = ({navigation}: any) => {
         }) => (
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Text
-                style={[styles.label, {color: isDarkMode ? '#fff' : '#222'}]}>
+              <Text style={[styles.label, {color: '#222'}]}>
                 Kategori Adı
               </Text>
               <TextInput
                 style={[
                   styles.input,
                   {
-                    color: isDarkMode ? '#fff' : '#000',
-                    borderColor: isDarkMode ? '#333' : '#ddd',
+                    color: '#000',
+                    borderColor: '#ddd',
                   },
                 ]}
                 onChangeText={handleChange('name')}
                 onBlur={handleBlur('name')}
                 value={values.name}
                 placeholder="Kategori adını girin"
-                placeholderTextColor={isDarkMode ? '#666' : '#999'}
+                placeholderTextColor={'#999'}
               />
               {errors.name && touched.name && (
                 <Text style={styles.errorText}>{errors.name}</Text>
