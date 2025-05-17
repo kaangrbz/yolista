@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,58 +6,46 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  useColorScheme,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon2 from 'react-native-vector-icons/MaterialIcons';
-import {Colors} from 'react-native/Libraries/NewAppScreen';
+import { Colors } from 'react-native/Libraries/NewAppScreen';
+import RouteModel from '../model/routes.model';
+import Seperator from '../components/Seperator';
+import { getRandomNumber } from '../utils/math';
+import { Images } from '../assets';
+import { navigate, PageName } from '../types/navigation';
+import { AuthorInfo, CommentSection, ReactionSection, SeperatorLine } from '../components';
 
-const {width} = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 // Demo data - in real app, this would come from navigation params
-const routeData = {
-  id: 1,
-  title: 'Kemeraltı Turu',
-  mainImage: 'https://picsum.photos/800/400',
-  author: {
-    name: 'Kaan',
-    username: '@kaangrbz',
-    isVerified: true,
-  },
-  bookmarks: [
-    {
-      id: 1,
-      title: 'Kemeraltı Çarşısı',
-      image: 'https://picsum.photos/800/401',
-      note: 'Tarihi çarşıda alışveriş yapabilir, yerel lezzetleri tadabilirsiniz.',
-      likes: 234,
-      isLiked: false,
-      isSaved: false,
-    },
-    {
-      id: 2,
-      title: 'Saat Kulesi',
-      image: 'https://picsum.photos/800/402',
-      note: "İzmir'in simgesi olan tarihi saat kulesi. Fotoğraf çekmek için ideal.",
-      likes: 156,
-      isLiked: true,
-      isSaved: true,
-    },
-    {
-      id: 3,
-      title: 'Kızlarağası Hanı',
-      image: 'https://picsum.photos/800/403',
-      note: 'Osmanlı döneminden kalma tarihi han. İçinde birçok hediyelik eşya dükkanı bulunuyor.',
-      likes: 89,
-      isLiked: false,
-      isSaved: false,
-    },
-  ],
-};
 
-export const RouteDetailScreen = ({navigation}: any) => {
-  const isDarkMode = useColorScheme() === 'dark';
+export const RouteDetailScreen = ({ navigation, route }: { navigation: any, route: { params: { routeId: string } } }) => {
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [routeData, setRouteData] = useState<any>({});
+  const routeId = route.params.routeId;
+
+  useEffect(()=> {
+    const loadRoute = async () => {
+      try {
+        let route = await RouteModel.getRouteAndBookmarksById(routeId)
+        
+        setTimeout(() => {
+          setRouteData(route);
+        setIsPageLoading(false)
+        }, getRandomNumber(200, 500));
+        console.log('route -< ', route);
+        
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    loadRoute();
+  }, [])
 
   const handleLike = (bookmarkId: number) => {
     // TODO: Implement like functionality
@@ -76,7 +64,7 @@ export const RouteDetailScreen = ({navigation}: any) => {
 
   const renderBookmark = (bookmark: (typeof routeData.bookmarks)[0]) => (
     <View key={bookmark.id} style={styles.bookmarkCard}>
-      <Image source={{uri: bookmark.image}} style={styles.bookmarkImage} />
+      <Image source={{ uri: bookmark.image_url || 'https://picsum.photos/seed/picsum/200/300' }} style={styles.bookmarkImage} />
       <View style={styles.bookmarkContent}>
         <Text style={styles.bookmarkTitle}>{bookmark.title}</Text>
         <Text style={styles.bookmarkNote}>{bookmark.note}</Text>
@@ -111,39 +99,36 @@ export const RouteDetailScreen = ({navigation}: any) => {
   );
 
   return (
-    <View
-      style={[
-        styles.container,
-        {backgroundColor: isDarkMode ? Colors.darker : Colors.lighter},
-      ]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <Image source={{uri: routeData.mainImage}} style={styles.mainImage} />
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <View style={styles.authorInfo}>
-              <Text style={styles.authorName}>{routeData.author.name}</Text>
-              {routeData.author.isVerified && (
-                <Icon
-                  name="check-decagram"
-                  size={16}
-                  color="#1DA1F2"
-                  style={styles.verifiedIcon}
-                />
-              )}
-              <Text style={styles.authorUsername}>
-                {routeData.author.username}
-              </Text>
+    <View style={[styles.container, { backgroundColor: Colors.lighter }]}>
+      {isPageLoading ?
+        <View style={{display: 'flex', alignItems: 'center', justifyContent: 'center' , height: '100%'}}><ActivityIndicator size='small' /></View>
+        : (<ScrollView showsVerticalScrollIndicator={false}>
+          <Image source={{ uri: routeData.image_url }} style={styles.mainImage} />
+          <View>
+
+            <AuthorInfo
+              fullName={routeData.profiles.full_name}
+              isVerified={routeData.profiles.isVerified}
+              username={routeData.profiles.username}
+              createdAt={routeData.created_at}
+              authorId={routeData.profiles.id}
+              loggedUserId={routeData.profiles.id}
+              routeId={routeId}
+            />
+            <Text style={styles.title}>{routeData.title}</Text>
+            <Text style={styles.description}>{routeData.description}</Text>
+            <ReactionSection />
+            <SeperatorLine />
+            <CommentSection parentType="routeDetail" />
+            <SeperatorLine />
+            <View style={styles.bookmarksContainer}>
+              {routeData.bookmarks.map(renderBookmark)}
             </View>
-            <TouchableOpacity style={styles.moreButton}>
-              <Icon name="dots-vertical" size={20} color="#666" />
-            </TouchableOpacity>
           </View>
-          <Text style={styles.title}>{routeData.title}</Text>
-          <View style={styles.bookmarksContainer}>
-            {routeData.bookmarks.map(renderBookmark)}
-          </View>
-        </View>
-      </ScrollView>
+
+        </ScrollView>)
+      }
+
     </View>
   );
 };
@@ -155,15 +140,6 @@ const styles = StyleSheet.create({
   mainImage: {
     width: width,
     height: width * 0.6,
-  },
-  content: {
-    padding: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
   },
   authorInfo: {
     flexDirection: 'row',
@@ -189,7 +165,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#222',
-    marginBottom: 16,
+    paddingHorizontal: 10,  
+  },
+  description: {
+    fontSize: 16,
+    color: '#666',
+    marginVertical: 5,
+    paddingHorizontal: 10,
   },
   bookmarksContainer: {
     gap: 16,

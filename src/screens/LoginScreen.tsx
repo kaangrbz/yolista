@@ -60,6 +60,7 @@ export const LoginScreen = () => {
           textContentType="emailAddress"
           returnKeyType="next"
           blurOnSubmit={false}
+          placeholderTextColor="#666"
           enablesReturnKeyAutomatically
         />
         <TextInput
@@ -74,6 +75,7 @@ export const LoginScreen = () => {
           textContentType="password"
           returnKeyType="done"
           blurOnSubmit={true}
+          placeholderTextColor="#666"
           enablesReturnKeyAutomatically
         />
 

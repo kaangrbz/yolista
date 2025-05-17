@@ -1,11 +1,10 @@
-import {supabase} from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 interface Route {
-  id: string;
+  id?: string;
   title: string;
   description: string;
   image_url: string;
-  category_id: number;
   city_id: number;
   is_deleted: boolean;
   created_at: string;
@@ -22,11 +21,49 @@ interface Profile {
 
 export interface RouteWithProfile extends Route {
   profiles: Profile;
+  cities: {
+    name: string;
+  };
 }
 
 const RouteModel = {
   async getAllRoutes(): Promise<RouteWithProfile[]> {
-    const {data, error} = await supabase
+    const { data, error } = await supabase
+      .from('routes')
+      .select(`
+    id,
+    title,
+    description,
+    image_url,
+    city_id,
+    is_deleted,
+    created_at,
+    updated_at,
+    author_id,
+    profiles (
+      username,
+      full_name,
+      avatar_url,
+      is_verified
+    ),
+    cities (
+      name
+    )
+  `)
+      .eq('is_deleted', false)
+
+    if (error) throw new Error(`Failed to fetch routes: ${error.message}`);
+    if (!data) return [];
+    // Ensure author is always a single object, not array
+    return data.map((route: any) => ({
+      ...route,
+      profiles: Array.isArray(route.profiles) ? route.profiles[0] : route.profiles,
+      cities: Array.isArray(route.cities) ? route.cities[0] : route.cities,
+    })) as RouteWithProfile[];
+  },
+
+  async getAllRoutesByCityId(cityId: number): Promise<RouteWithProfile[]> {
+    const { data, error } = await supabase
       .from('routes')
       .select(
         `
@@ -34,7 +71,6 @@ const RouteModel = {
         title,
         description,
         image_url,
-        category_id,
         city_id,
         is_deleted,
         created_at,
@@ -46,23 +82,26 @@ const RouteModel = {
             avatar_url,
             is_verified
         )
+        cities (
+            name
+        )
         `,
       )
+      .eq('city_id', cityId)
       .eq('is_deleted', false);
-
-    console.log('Fetched routes:', data);
 
     if (error) throw new Error(`Failed to fetch routes: ${error.message}`);
     if (!data) return [];
     // Ensure author is always a single object, not array
     return data.map((route: any) => ({
       ...route,
-      author: Array.isArray(route.author) ? route.author[0] : route.author,
+      profiles: Array.isArray(route.profiles) ? route.profiles[0] : route.profiles,
+      cities: Array.isArray(route.cities) ? route.cities[0] : route.cities,
     })) as RouteWithProfile[];
   },
 
   async getRouteById(routeId: string): Promise<RouteWithProfile | null> {
-    const {data, error} = await supabase
+    const { data, error } = await supabase
       .from('routes')
       .select(
         `
@@ -70,7 +109,6 @@ const RouteModel = {
         title,
         description,
         image_url,
-        category_id,
         city_id,
         is_deleted,
         created_at,
@@ -85,6 +123,7 @@ const RouteModel = {
       `,
       )
       .eq('id', routeId)
+      .order('created_at', { ascending: true })
       .single();
 
     if (error) throw new Error(`Failed to fetch route: ${error.message}`);
@@ -93,21 +132,92 @@ const RouteModel = {
     return {
       ...data,
       profiles: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles,
+      cities: Array.isArray(data.cities) ? data.cities[0] : data.cities,
     } as RouteWithProfile;
   },
 
-  async createRoute(routeData: Partial<Route>): Promise<Route> {
-    const {data, error} = await supabase
+  async getRouteAndBookmarksById(routeId: string): Promise<RouteWithProfile | null> {
+    const { data, error } = await supabase
       .from('routes')
-      .insert(routeData)
+      .select(
+        `
+        id,
+        title,
+        description,
+        image_url,
+        city_id,
+        is_deleted,
+        created_at,
+        updated_at,
+        author_id,
+        profiles (
+          username,
+          full_name,
+          avatar_url,
+          is_verified
+        ),
+        cities (
+          name
+        ),
+        bookmarks (
+          id,
+          route_id,
+          order_index,
+          created_at,
+          updated_at
+        ),
+        likes (
+          count
+        )
+      `,
+      )
+      .eq('id', routeId)
+      .order('created_at', { ascending: true })
       .single();
 
-    if (error) throw new Error(`Failed to create route: ${error.message}`);
-    return data as Route;
+    if (error) throw new Error(`Failed to fetch route: ${error.message}`);
+    if (!data) return null;
+    // Ensure author is always a single object, not array
+    return {
+      ...data,
+      profiles: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles,
+      cities: Array.isArray(data.cities) ? data.cities[0] : data.cities,
+      bookmarks: Array.isArray(data.bookmarks) ? data.bookmarks : [],
+    } as RouteWithProfile;
+  },
+
+  async createRoute(routeData: Partial<Route> & { bookmarks?: any[] }) {
+    // bookmarks'ı ayır
+    const { bookmarks, ...routeFields } = routeData;
+    // Önce rotayı ekle
+    const { data: route, error } = await supabase
+      .from('routes')
+      .insert(routeFields)
+      .single();
+
+    if (error || !route) {
+      return { data: route, error };
+    }
+
+    // Eğer bookmarks varsa, bunları da ekle
+    let bookmarksError = null;
+    if (bookmarks && Array.isArray(bookmarks) && bookmarks.length > 0) {
+      // Her bookmark'a route_id ekle
+      const bookmarksWithRouteId = bookmarks.map(b => ({
+        ...b,
+        route_id: route.id,
+      }));
+      const { error: bmError } = await supabase
+        .from('bookmarks')
+        .insert(bookmarksWithRouteId);
+      bookmarksError = bmError;
+    }
+
+    return { data: route, error: error || bookmarksError };
   },
 
   async updateRoute(routeId: string, updates: Partial<Route>): Promise<Route> {
-    const {data, error} = await supabase
+    const { data, error } = await supabase
       .from('routes')
       .update(updates)
       .eq('id', routeId)
@@ -117,15 +227,14 @@ const RouteModel = {
     return data as Route;
   },
 
-  async deleteRoute(routeId: string): Promise<Route> {
-    const {data, error} = await supabase
-      .from('routes')
-      .update({is_deleted: true})
-      .eq('id', routeId)
-      .single();
+  async deleteRoute(routeId: string): Promise<{ error: any }> {
 
-    if (error) throw new Error(`Failed to delete route: ${error.message}`);
-    return data as Route;
+    const { error } = await supabase
+      .from('routes')
+      .delete()
+      .eq('id', routeId)
+
+    return { error };
   },
 };
 

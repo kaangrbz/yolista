@@ -65,7 +65,7 @@ create table public.routes (
   description text,
   main_image_url text,
   author_id uuid references public.profiles(id) on delete cascade,
-  city_id integer references public.cities(id),
+  city_id integer not null references public.cities(id),
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );

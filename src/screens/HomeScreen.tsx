@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,163 +6,131 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Dimensions,
-  useColorScheme,
   ActivityIndicator,
   Alert,
   RefreshControl,
+  TextInput,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Icon2 from 'react-native-vector-icons/MaterialIcons';
-import {Colors} from 'react-native/Libraries/NewAppScreen';
+import { Colors } from 'react-native/Libraries/NewAppScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {useNavigation} from '@react-navigation/native';
-import FloatingActionButton from '../components/FloatingActionButton';
-import {supabase} from '../lib/supabase';
-import CategoryList from '../components/CategoryList';
-import {Database} from '../types/database.types';
-import RouteModel, {RouteWithProfile} from '../model/routes.model';
-
-type Category = Database['public']['Tables']['categories']['Row'];
+import { useNavigation } from '@react-navigation/native';
+import RouteModel, { RouteWithProfile } from '../model/routes.model';
+import { CityState, useCityStore } from '../store/cityStore';
+import { LoadingFloatingAction, AuthorInfo } from '../components';
+import { getRandomNumber } from '../utils/math';
+import { navigate, PageName } from '../types/navigation';
+import { checkFirstTime } from '../utils/welcome';
+import { NoImage } from '../assets';
+import { supabase } from '../lib/supabase';
 
 export const HomeScreen = () => {
-  const isDarkMode = useColorScheme() === 'dark';
   const [isLoading, setIsLoading] = useState(true);
   const [isReloading, setIsReloading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const navigation = useNavigation();
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Get selected city ID from store at the top level
+  const selectedCityId = useCityStore((state: CityState) => state.selectedCityId);
 
   useEffect(() => {
-    const checkFirstTime = async () => {
+    const fetchUserId = async () => {
       try {
-        const hasSeenWelcome = await AsyncStorage.getItem('has_seen_welcome');
-        if (!hasSeenWelcome) {
-          Alert.alert(
-            "Yolista'ya Hoş Geldiniz! 👋",
-            'Yolista ile şehrinizi keşfedin, yeni rotalar bulun ve unutulmaz deneyimler yaşayın. Şehir içi, doğa ve tarihi rotaları keşfetmeye başlayın!',
-            [
-              {
-                text: 'Harika!',
-                onPress: async () => {
-                  await AsyncStorage.setItem('has_seen_welcome', 'true');
-                },
-              },
-            ],
-          );
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUserId(user.id);
         }
       } catch (error) {
-        console.error('Hoş geldiniz mesajı hatası:', error);
+        console.error('Error fetching user ID:', error);
       }
     };
 
+    fetchUserId();
+
     checkFirstTime();
-    fetchCategories();
     fetchRoutes();
   }, []);
 
+  // Only fetch routes when selectedCityId changes
   useEffect(() => {
-    // Simulate async request
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      const {data, error} = await supabase
-        .from('categories')
-        .select('*')
-        .limit(7)
-        .order('index', {ascending: true}); // 'index' sütununa göre sıralama
-
-      if (error) throw error;
-      setCategories(data);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      Alert.alert('Hata', 'Kategoriler yüklenirken bir hata oluştu');
+    if (selectedCityId) {
+      fetchRoutes();
     }
-  };
+  }, [selectedCityId]);
 
   const fetchRoutes = async () => {
     try {
-      // const data = await RouteModel.getAllRoutes();
+      // Use selectedCityId from component scope
+      const cityId = selectedCityId || 0;
+      setIsLoading(true);
 
-      // const {data, error} = await supabase.rpc(
-      //   'get_active_routes_with_profiles',
-      // );
+      if (!cityId) {
+        // Clear routes or show a message if no city is selected
+        setRoutes([]);
+        // Optional: Show a less intrusive message than Alert
+        console.log('No city selected, clearing routes.');
+        // Alert.alert('Bir şehir seçin', 'Lütfen bir şehir seçin');
+        // return;
+      }
 
-      // if (error) throw error;
+      // Fetch routes using the cityId from the component scope
+      let data = await RouteModel.getAllRoutesByCityId(cityId);
 
-      let {data, error} = await supabase.rpc('get_active_routes_with_profiles');
-      if (error) console.error(error);
-      else console.log(data);
+      console.log('data', data);
 
-      console.log('Routes:', data);
+      if (data.length === 0) {
+        data = await RouteModel.getAllRoutes();
+
+        console.log('routes all', data);
+
+      }
 
       setRoutes(data || []);
     } catch (error) {
       console.error('Error fetching routes:', error);
       Alert.alert('Hata', 'Rotalar yüklenirken bir hata oluştu');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const onRefresh = React.useCallback(async () => {
-    setIsReloading(true);
-    setRefreshing(true);
-    await fetchCategories();
-    await fetchRoutes();
-    setRefreshing(false);
-    setIsReloading(false);
-  }, []);
-
-  const filterRoutes = (categoryId: number | null) => {
-    setSelectedCategory(categoryId);
-    fetchRoutes();
-    // if (categoryId === null) {
-    //   setRoutes(allRoutes);
-    // } else {
-    //   setRoutes(allRoutes.filter(route => route.categoryId === categoryId));
-    // }
-  };
+    try {
+      setIsReloading(true);
+      setRefreshing(true);
+      // fetchRoutes will now use the correct selectedCityId from component scope
+      await fetchRoutes();
+      setRefreshing(false);
+      setIsReloading(false);
+    } catch (error) {
+      console.error('Error refreshing routes:', error);
+      Alert.alert('Hata', 'Rotalar yenilenirken bir hata oluştu');
+      setIsReloading(false);
+      setRefreshing(false);
+    }
+  }, [selectedCityId]);
 
   const renderRouteCard = (route: RouteWithProfile) => (
     <TouchableOpacity
       key={route.id}
       style={styles.routeCard}
-      onPress={() => navigation.navigate('RouteDetail', {routeId: route.id})}>
-      <View style={styles.authorContainer}>
-        <View style={styles.authorInfo}>
-          <Text style={styles.authorName}>
-            {route.profiles?.full_name || 'Kaan'}
-          </Text>
-          {(route.profiles?.is_verified || false) && (
-            <Icon
-              name="check-decagram"
-              size={16}
-              color="#1DA1F2"
-              style={styles.verifiedIcon}
-            />
-          )}
-          <Text style={styles.authorUsername}>
-            @{route.profiles?.username || 'kaangrx'}
-          </Text>
-        </View>
-        <TouchableOpacity style={styles.moreButton}>
-          <Icon name="dots-vertical" size={20} color="#666" />
-        </TouchableOpacity>
-      </View>
+      onPress={() => navigate(navigation, PageName.RouteDetail, { routeId: route.id })}>
+      <AuthorInfo
+        fullName={route.profiles?.full_name}
+        isVerified={route.profiles?.is_verified}
+        username={route.profiles?.username}
+        createdAt={route.created_at}
+        authorId={route.author_id}
+        callback={fetchRoutes}
+        loggedUserId={userId}
+        routeId={route.id}
+      />
       <Image
         source={{
           uri:
-            route.image_url ||
-            `https://picsum.photos/300/150?random=${Math.floor(
-              Math.random() * 10000,
-            )}`,
+            route.image_url || NoImage,
         }}
         style={styles.routeImage}
       />
@@ -171,19 +139,47 @@ export const HomeScreen = () => {
         <View style={styles.routeDetails}>
           <View style={styles.detailItem}>
             <Icon name="map-marker" size={16} color="#666" />
-            <Text style={styles.detailText}>{route.city_id}</Text>
+            <Text style={styles.detailText}>{route.cities?.name}</Text>
           </View>
-          {/* <View style={styles.detailItem}>
-            <Icon name="map-marker-distance" size={16} color="#666" />
-            <Text style={styles.detailText}>2.8 km</Text>
-          </View> */}
-          {/* <View style={styles.detailItem}>
-            <Icon2 name="location-pin" size={16} color="#d00" />
-            <Text style={styles.detailText}>2</Text>
-          </View> */}
-          <View style={styles.detailItem}>
-            <Icon name="star" size={16} color="#FFD700" />
-            <Text style={styles.detailText}>4.5</Text>
+        </View>
+        <View style={styles.reactionContainer}>
+          <TouchableOpacity style={styles.reactionItem}>
+            <Icon name="comment-outline" size={18} color="#121" />
+            <Text style={styles.reactionText}>{getRandomNumber(1, 10)}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.reactionItem}>
+            <Icon name="heart-outline" size={18} color="#c00" />
+            <Text style={[styles.reactionText]}>{getRandomNumber(1, 50)}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.reactionItem}>
+            <Icon name="eye-outline" size={18} color="#121" />
+            <Text style={styles.reactionText}>{getRandomNumber(50, 500)}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.reactionItem}>
+            <Icon name="bookmark-outline" size={18} color="#121" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.reactionItem}>
+            <Icon name="share-variant" size={18} color="#121" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.commentContainer}>
+          <View style={styles.commentInputContainer}>
+            <Image
+              source={{
+                uri:
+                  route.image_url ||
+                  `https://picsum.photos/20/20`,
+              }}
+              style={styles.commentImage}
+            />
+            <TextInput
+              placeholder="Yorum yap"
+              placeholderTextColor="#666"
+              style={styles.commentInput}
+            />
+            <TouchableOpacity>
+              <Icon name="send" size={20} color="#121" />
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -191,39 +187,43 @@ export const HomeScreen = () => {
   );
 
   return (
-    <View
-      style={[
-        styles.container,
-        {backgroundColor: isDarkMode ? Colors.darker : Colors.lighter},
-      ]}>
+    <View style={[styles.container, { backgroundColor: Colors.lighter }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }>
-        <CategoryList
+        {/* <CategoryList
           categories={categories}
           selectedCategory={selectedCategory}
           onCategoryPress={filterRoutes}
           onAddCategory={() => navigation.navigate('AddCategory')}
           loading={isLoading}
-        />
-        {isReloading ? (
+        /> */}
+        {isReloading || isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#666" />
+            <ActivityIndicator size="small" color="#222" />
           </View>
         ) : (
-          <View style={styles.routesContainer}>
-            {routes.length > 0 ? (
-              routes.map(renderRouteCard)
-            ) : (
-              <Text style={styles.noRoutesText}>Rotalar bulunamadı</Text>
-            )}
-          </View>
+          routes.length > 0 ? (
+            <View style={styles.routesContainer}>
+              {routes.map(renderRouteCard)}
+            </View>
+          ) : (
+            <View style={styles.noRoutesContainer}>
+              <Text style={styles.noRoutesText}>Rota bulunamadı, hemen aşağıdaki butona tıklayarak yeni bir rota oluştur!</Text>
+            </View>
+          )
         )}
+
+        {/* just spacer */}
+        <View style={{ height: 80 }} />
       </ScrollView>
-      <FloatingActionButton
-        onPress={() => navigation.navigate('CreateRoute')}
+      <LoadingFloatingAction
+        backgroundColor='#121212'
+        iconName='plus'
+        onPress={() => navigate(navigation, PageName.CreateRoute)}
+
       />
     </View>
   );
@@ -262,12 +262,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   routesContainer: {
-    padding: 16,
+  },
+  noRoutesContainer: {
+    paddingTop: 16,
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   routeCard: {
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
     backgroundColor: 'white',
-    borderRadius: 12,
-    marginBottom: 16,
+    marginVertical: 10,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -280,20 +288,20 @@ const styles = StyleSheet.create({
   routeImage: {
     width: '100%',
     height: 200,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
   },
   routeInfo: {
-    padding: 16,
   },
   routeTitle: {
     fontSize: 18,
+    paddingTop: 10,
+    paddingHorizontal: 16,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   routeDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
   },
   detailItem: {
     flexDirection: 'row',
@@ -303,43 +311,51 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     color: '#666',
   },
-  addCategoryButton: {
-    backgroundColor: '#666',
-    borderWidth: 2,
-    borderColor: '#12121250',
-    borderStyle: 'dashed',
-  },
-  authorContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  authorInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  authorName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#222',
-  },
-  verifiedIcon: {
-    marginLeft: 4,
-  },
-  authorUsername: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  moreButton: {
-    padding: 4,
-  },
   noRoutesText: {
     fontSize: 16,
+    width: '70%',
     color: '#666',
     textAlign: 'center',
+  },
+  reactionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginVertical: 8,
+    width: '100%',
+    justifyContent: 'space-between',
+  },
+  reactionText: {
+    marginLeft: 4,
+    color: '#666',
+  },
+  reactionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 4,
+  },
+  commentContainer: {
+    borderStartWidth: 1,
+    borderEndWidth: 1,
+  },
+  commentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+    paddingLeft: 6,
+    paddingRight: 12,
+    backgroundColor: '#f0f0f0',
+    // borderRadius: 10,
+  },
+  commentInput: {
+    flex: 1,
+    fontSize: 12,
+    color: '#222',
+  },
+  commentImage: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
   },
 });
