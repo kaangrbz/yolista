@@ -128,11 +128,9 @@ export const HomeScreen = () => {
         routeId={route.id}
       />
       <Image
-        source={{
-          uri:
-            route.image_url || NoImage,
-        }}
+        source={route.image_url ? { uri: route.image_url } : NoImage}
         style={styles.routeImage}
+        resizeMode="contain"
       />
       <View style={styles.routeInfo}>
         <Text style={styles.routeTitle}>{route.title}</Text>
