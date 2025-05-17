@@ -1,0 +1,61 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# macOS system files
+.DS_Store
+
+# Android build files
+/android/.gradle/
+/android/app/build/
+/android/local.properties
+/android/*.keystore
+/android/captures/
+
+# iOS build files
+/ios/Pods/
+/ios/build/
+/ios/*.xcodeproj/project.xcworkspace/
+/ios/*.xcodeproj/xcuserdata/
+/ios/*.xcodeproj/xcshareddata/
+/ios/*.xcodeproj/xcshareddata/
+/ios/*.xcuserstate
+
+# React Native packager
+*.log
+*.tflite
+*.lock
+
+# IDE files
+.vscode/
+/.idea/
+/*.iml
+
+# Testing
+/coverage/
+
+# Build outputs
+*.apk
+*.aab
+*.ipa
+*.app
+*.xcarchive
+
+# Fastlane
+/fastlane/report.xml
+/fastlane/Preview.html
+/fastlane/screenshots/**/*.png
+/fastlane/test_output/
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*.swn
+
+# Environment files
+.env
+.env.local
+.env.*.local
