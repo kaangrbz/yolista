@@ -10,13 +10,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Icon2 from 'react-native-vector-icons/MaterialIcons';
 import { Colors } from 'react-native/Libraries/NewAppScreen';
 import RouteModel from '../model/routes.model';
-import Seperator from '../components/Seperator';
 import { getRandomNumber } from '../utils/math';
-import { Images } from '../assets';
-import { navigate, PageName } from '../types/navigation';
+import { NoImage } from '../assets';
 import { AuthorInfo, CommentSection, ReactionSection, SeperatorLine } from '../components';
 
 const { width } = Dimensions.get('window');
@@ -28,17 +25,17 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
   const [routeData, setRouteData] = useState<any>({});
   const routeId = route.params.routeId;
 
-  useEffect(()=> {
+  useEffect(() => {
     const loadRoute = async () => {
       try {
         let route = await RouteModel.getRouteAndBookmarksById(routeId)
-        
+
         setTimeout(() => {
           setRouteData(route);
-        setIsPageLoading(false)
+          setIsPageLoading(false)
         }, getRandomNumber(200, 500));
-        console.log('route -< ', route);
-        
+        console.log('route detail', route);
+
       } catch (error) {
         console.error(error);
       }
@@ -62,12 +59,19 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
     console.log('Share bookmark:', bookmarkId);
   };
 
-  const renderBookmark = (bookmark: (typeof routeData.bookmarks)[0]) => (
+  const renderBookmark = (bookmark: any) => {
+
+    console.log('render bookmark', bookmark);
+    return (
     <View key={bookmark.id} style={styles.bookmarkCard}>
-      <Image source={{ uri: bookmark.image_url || 'https://picsum.photos/seed/picsum/200/300' }} style={styles.bookmarkImage} />
+      <Image
+        source={bookmark.image_url ? { uri: bookmark.image_url } : NoImage}
+        style={styles.bookmarkImage} 
+        resizeMode="contain"
+      />
       <View style={styles.bookmarkContent}>
         <Text style={styles.bookmarkTitle}>{bookmark.title}</Text>
-        <Text style={styles.bookmarkNote}>{bookmark.note}</Text>
+        <Text style={styles.bookmarkNote}>{bookmark.description}</Text>
         <View style={styles.bookmarkActions}>
           <TouchableOpacity
             style={styles.actionButton}
@@ -95,15 +99,16 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
           </TouchableOpacity>
         </View>
       </View>
-    </View>
-  );
+    </View>)
+  }
 
   return (
-    <View style={[styles.container, { backgroundColor: Colors.lighter }]}>
+    <View style={[styles.container]}>
       {isPageLoading ?
-        <View style={{display: 'flex', alignItems: 'center', justifyContent: 'center' , height: '100%'}}><ActivityIndicator size='small' /></View>
+        <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><ActivityIndicator size='small' /></View>
         : (<ScrollView showsVerticalScrollIndicator={false}>
-          <Image source={{ uri: routeData.image_url }} style={styles.mainImage} />
+          <Image source={routeData.image_url ? { uri: routeData.image_url } : NoImage} style={styles.mainImage}
+            resizeMode="contain" />
           <View>
 
             <AuthorInfo
@@ -122,7 +127,9 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
             <CommentSection parentType="routeDetail" />
             <SeperatorLine />
             <View style={styles.bookmarksContainer}>
-              {routeData.bookmarks.map(renderBookmark)}
+              {/* {routeData.bookmarks?.map(renderBookmark)} */}
+              {routeData.bookmarks?.length > 0 ? routeData.bookmarks?.map(renderBookmark) : 
+              <Text style={{ color: '#666', textAlign: 'center', marginTop: 20 }}>Henüz bir durak eklenmemiş</Text>}
             </View>
           </View>
 
@@ -165,7 +172,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#222',
-    paddingHorizontal: 10,  
+    paddingHorizontal: 10,
   },
   description: {
     fontSize: 16,
@@ -174,9 +181,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   bookmarksContainer: {
-    gap: 16,
   },
   bookmarkCard: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
     backgroundColor: 'white',
     borderRadius: 12,
     overflow: 'hidden',

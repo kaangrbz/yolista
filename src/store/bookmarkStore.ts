@@ -1,14 +1,5 @@
 import { create } from 'zustand';
-
-export interface Bookmark {
-  id: string;
-  title: string;
-  image?: string;
-  imageUri?: string;
-  description?: string | null;
-  longitude?: number;
-  latitude?: number;
-}
+import { Bookmark } from '../model/routes.model';
 
 export interface BookmarkState {
   bookmarks: Bookmark[];
@@ -23,7 +14,6 @@ export const useBookmarkStore = create<BookmarkState>((set) => ({
   addBookmark: (bookmark = {}) => 
     set((state) => ({ 
       bookmarks: [...state.bookmarks, {
-        id: Math.random().toString(36).substring(2, 9),
         title: '',
         description: '',
         ...bookmark

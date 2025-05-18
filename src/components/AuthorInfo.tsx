@@ -79,10 +79,6 @@ export default AuthorInfo;
 
 const styles = StyleSheet.create({
   authorContainer: {
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',

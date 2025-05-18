@@ -3,7 +3,6 @@ import {
     View,
     Text,
     StyleSheet,
-    ActivityIndicator,
     Alert,
     TextInput,
     TouchableOpacity,
@@ -14,27 +13,15 @@ import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import RouteModel from '../model/routes.model';
-import { launchImageLibrary, Asset } from 'react-native-image-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { LoadingFloatingAction } from '../components';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import BookmarkList, { Bookmark } from '../components/BookmarkList';
+import BookmarkList from '../components/BookmarkList';
 import { useBookmarkStore } from '../store/bookmarkStore';
+import { showToast } from '../utils/alert';
+import { useCityStore, CityState } from '../store/cityStore';
 
 export const CreateRouteScreen = () => {
     const navigation = useNavigation();
-
-    interface City {
-        id: number;
-        name: string;
-    }
-
-    interface Bookmark {
-        title: string;
-        image: string;
-        description?: string | null;
-        longitude?: number;
-        latitude?: number;
-    }
 
     // Form state
     const [formData, setFormData] = useState({
@@ -48,22 +35,25 @@ export const CreateRouteScreen = () => {
         description: '',
         cityId: '',
         mainImage: '',
-        stops: ''
+        bookmarks: ''
     });
     const [touched, setTouched] = useState({
         title: false,
         description: false,
         cityId: false,
         mainImage: false,
-        stops: false
+        bookmarks: false
     });
 
+    const defaultSelectedCityId = useCityStore((state: CityState) => state.selectedCityId);
     const [cities, setCities] = useState<{ label: string, value: number }[]>([]);
-    const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
+    const [selectedCityId, setSelectedCityId] = useState<number | null>(defaultSelectedCityId);
     const [open, setOpen] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    
+    // Get selected city ID from store at the top level
+    console.log('defaultSelectedCityId', defaultSelectedCityId);
+
     // Bookmark state using Zustand store
     const { bookmarks, addBookmark, updateBookmark, removeBookmark, clearBookmarks } = useBookmarkStore();
 
@@ -95,7 +85,7 @@ export const CreateRouteScreen = () => {
             title: '',
             description: '',
             cityId: '',
-            stops: ''
+            bookmarks: ''
         };
         let isValid = true;
 
@@ -116,13 +106,13 @@ export const CreateRouteScreen = () => {
 
         // Bookmarks validation
         if (bookmarks.length === 0) {
-            errors.stops = 'En az bir durak zorunludur';
+            errors.bookmarks = 'En az bir durak zorunludur';
             isValid = false;
         } else {
             // Check if all bookmarks have titles
             const incompleteBookmarks = bookmarks.filter(bookmark => !bookmark.title.trim());
             if (incompleteBookmarks.length > 0) {
-                errors.stops = 'Tüm durakların adları girilmelidir';
+                errors.bookmarks = 'Tüm durakların adları girilmelidir';
                 isValid = false;
             }
         }
@@ -170,13 +160,13 @@ export const CreateRouteScreen = () => {
         }));
         validateForm();
     };
-    
+
     // Initialize with at least one empty bookmark when the screen loads
     useEffect(() => {
         if (bookmarks.length === 0) {
             addBookmark();
         }
-        
+
         return () => {
             // Clear bookmarks when component unmounts
             clearBookmarks();
@@ -191,7 +181,7 @@ export const CreateRouteScreen = () => {
                 selectionLimit: 1,
                 quality: 0.8,
             });
-            
+
             if (!result.didCancel && result.assets && result.assets.length > 0) {
                 const asset = result.assets[0];
                 if (asset.uri) {
@@ -206,6 +196,8 @@ export const CreateRouteScreen = () => {
     };
 
     const handleSubmit = async (): Promise<void> => {
+        showToast('warning', 'Form kontrol ediliyor');
+        return;
         // Validate form
         const isValid = validateForm();
 
@@ -215,10 +207,11 @@ export const CreateRouteScreen = () => {
             description: true,
             cityId: true,
             mainImage: true,
-            stops: true
+            bookmarks: true
         });
 
         if (!isValid) {
+            showToast('error', 'Lütfen tüm alanları doldurun', 'Hata');
             return;
         }
 
@@ -239,7 +232,7 @@ export const CreateRouteScreen = () => {
             bookmarks: bookmarks.map(bookmark => ({
                 title: bookmark.title,
                 description: bookmark.description,
-                image: bookmark.imageUri
+                image_url: bookmark.imageUri
             }))
         };
 
@@ -247,17 +240,17 @@ export const CreateRouteScreen = () => {
             const { data, error } = await RouteModel.createRoute(routeData);
 
             if (error) {
-                Alert.alert('Hata', 'Rota eklenirken bir hata oluştu');
+                showToast('error', 'Rota eklenirken bir hata oluştu', 'Hata');
                 return;
             }
 
             console.log('routeData', data);
 
-            Alert.alert('Başarılı', 'Rota başarıyla eklendi');
+            showToast('success', 'Rota başarıyla eklendi', 'Başarılı');
             navigation.goBack();
         } catch (error) {
             console.error('Error adding route:', error);
-            Alert.alert('Hata', 'Rota eklenirken bir hata oluştu');
+            showToast('error', 'Rota eklenirken bir hata oluştu', 'Hata');
         }
         finally {
             setIsPublishing(false);
@@ -265,152 +258,149 @@ export const CreateRouteScreen = () => {
     };
 
     return (
-        <><ScrollView style={[styles.container, { backgroundColor: '#fff' }]}>
-            <View style={styles.form}>
-                <View style={styles.inputContainer}>
-                    <Text style={[styles.label, { color: '#222' }]}>
-                        Rota Resmi <Text style={{ color: '#666' }}>(Önerilen oran: 2:1)</Text>
-                    </Text>
-                    <TouchableOpacity
-                        style={{
-                            height: 200,
-                            borderWidth: 1,
-                            borderColor: '#ddd',
-                            borderRadius: 8,
-                            marginBottom: 8,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: '#fafafa',
-                        }}
-                        onPress={async () => {
-                            const result = await launchImageLibrary({
-                                mediaType: 'photo',
-                                selectionLimit: 1,
-                            });
-                            const asset = result.assets?.[0];
-                            if (!result.didCancel && asset && asset.uri) {
-                                setSelectedImage(asset.uri);
-                                setFormData(prev => ({ ...prev, mainImage: asset.uri as string }));
-                            }
-                        }}
-                    >
-                        {selectedImage ? (
-                            <Image
-                                source={{ uri: selectedImage }}
-                                style={{ width: '100%', height: 200, borderRadius: 8 }}
-                                resizeMode="contain"
-                            />
-                        ) : (
-                            <Text style={{ color: '#888' }}>Galeriden resim seç</Text>
+        <>
+            <ScrollView style={[styles.container, { backgroundColor: '#fff' }]}>
+                <View style={styles.form}>
+                    <View style={styles.inputContainer}>
+                        <Text style={[styles.label, { color: '#222' }]}>
+                            Rota Resmi <Text style={{ color: '#666' }}>(Önerilen oran: 2:1)</Text>
+                        </Text>
+                        <TouchableOpacity
+                            style={{
+                                height: 200,
+                                borderWidth: 1,
+                                borderColor: '#ddd',
+                                borderRadius: 8,
+                                marginBottom: 8,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: '#fafafa',
+                            }}
+                            onPress={async () => {
+                                const result = await launchImageLibrary({
+                                    mediaType: 'photo',
+                                    selectionLimit: 1,
+                                });
+                                const asset = result.assets?.[0];
+                                if (!result.didCancel && asset && asset.uri) {
+                                    setSelectedImage(asset.uri);
+                                    setFormData(prev => ({ ...prev, mainImage: asset.uri as string }));
+                                }
+                            }}
+                        >
+                            {selectedImage ? (
+                                <Image
+                                    source={{ uri: selectedImage }}
+                                    style={{ width: '100%', height: 200, borderRadius: 8 }}
+                                    resizeMode="contain"
+                                />
+                            ) : (
+                                <Text style={{ color: '#888' }}>Galeriden resim seç</Text>
+                            )}
+                        </TouchableOpacity>
+                        {formErrors.mainImage && touched.mainImage && (
+                            <Text style={styles.errorText}>{formErrors.mainImage}</Text>
                         )}
-                    </TouchableOpacity>
-                    {formErrors.mainImage && touched.mainImage && (
-                        <Text style={styles.errorText}>{formErrors.mainImage}</Text>
-                    )}
-                </View>
-                <View style={styles.inputContainer}>
-                    <Text style={[styles.label, { color: '#222' }]}>
-                        Rota Adı <Text style={{ color: 'red' }}>*</Text>
-                    </Text>
-                    <TextInput
-                        style={styles.input}
-                        onChangeText={(text) => handleInputChange('title', text)}
-                        onBlur={() => handleInputBlur('title')}
-                        value={formData.title}
-                        placeholder="Rota adını girin"
-                        placeholderTextColor={'#999'}
-                    />
-                    {formErrors.title && touched.title && (
-                        <Text style={styles.errorText}>{formErrors.title}</Text>
-                    )}
-                </View>
-                <View style={styles.inputContainer}>
-                    <Text style={[styles.label, { color: '#222' }]}>
-                        Açıklama
-                    </Text>
-                    <TextInput
-                        style={[styles.input, { height: 100 }]}
-                        multiline
-                        numberOfLines={4}
-                        onChangeText={(text) => handleInputChange('description', text)}
-                        onBlur={() => handleInputBlur('description')}
-                        value={formData.description}
-                        placeholder="Rota açıklamasını girin"
-                        placeholderTextColor={'#999'}
-                    />
-                    {formErrors.description && touched.description && (
-                        <Text style={styles.errorText}>{formErrors.description}</Text>
-                    )}
-                </View>
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <Text style={[styles.label, { color: '#222' }]}>
+                            Rota Adı <Text style={{ color: 'red' }}>*</Text>
+                        </Text>
+                        <TextInput
+                            style={styles.input}
+                            onChangeText={(text) => handleInputChange('title', text)}
+                            onBlur={() => handleInputBlur('title')}
+                            value={formData.title}
+                            placeholder="Rota adını girin"
+                            placeholderTextColor={'#999'}
+                        />
+                        {formErrors.title && touched.title && (
+                            <Text style={styles.errorText}>{formErrors.title}</Text>
+                        )}
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <Text style={[styles.label, { color: '#222' }]}>
+                            Açıklama
+                        </Text>
+                        <TextInput
+                            style={[styles.input, { height: 100 }]}
+                            multiline
+                            numberOfLines={4}
+                            onChangeText={(text) => handleInputChange('description', text)}
+                            onBlur={() => handleInputBlur('description')}
+                            value={formData.description}
+                            placeholder="Rota açıklamasını girin"
+                            placeholderTextColor={'#999'}
+                        />
+                        {formErrors.description && touched.description && (
+                            <Text style={styles.errorText}>{formErrors.description}</Text>
+                        )}
+                    </View>
 
-                <View style={styles.inputContainer}>
-                    <Text style={[styles.label, { color: '#222' }]}>
-                        Şehir seç <Text style={{ color: 'red' }}>*</Text>
-                    </Text>
-                    <DropDownPicker
-                        open={open}
-                        value={selectedCityId}
-                        items={cities}
-                        setOpen={setOpen}
-                        setValue={setSelectedCityId}
-                        searchable
-                        onChangeValue={(value) => {
-                            if (value !== null) {
-                                handleInputBlur('cityId');
-                            }
-                        }}
-                        setItems={setCities}
-                        placeholder="Şehir seçin"
-                        style={{
-                            borderColor: '#ddd',
-                            backgroundColor: '#fff',
-                        }}
-                        textStyle={{
-                            color: '#000',
-                        }}
-                        dropDownContainerStyle={{
-                            borderColor: '#ddd',
-                            backgroundColor: '#fff',
-                        }}
-                        zIndex={1000}
-                        onClose={() => handleInputBlur('cityId')}
-                    />
-                    {formErrors.cityId && touched.cityId && (
-                        <Text style={styles.errorText}>{formErrors.cityId}</Text>
-                    )}
+                    <View style={styles.inputContainer}>
+                        <Text style={[styles.label, { color: '#222' }]}>
+                            Şehir seç <Text style={{ color: 'red' }}>*</Text>
+                        </Text>
+                        <DropDownPicker
+                            open={open}
+                            value={selectedCityId}
+                            items={cities}
+                            setOpen={setOpen}
+                            setValue={setSelectedCityId}
+                            searchable
+                            onChangeValue={(value) => {
+                                if (value !== null) {
+                                    handleInputBlur('cityId');
+                                }
+                            }}
+                            setItems={setCities}
+                            placeholder="Şehir seçin"
+                            style={{
+                                borderColor: '#ddd',
+                                backgroundColor: '#fff',
+                            }}
+                            textStyle={{
+                                color: '#000',
+                            }}
+                            dropDownContainerStyle={{
+                                borderColor: '#ddd',
+                                backgroundColor: '#fff',
+                            }}
+                            zIndex={1000}
+                            onClose={() => handleInputBlur('cityId')}
+                        />
+                        {formErrors.cityId && touched.cityId && (
+                            <Text style={styles.errorText}>{formErrors.cityId}</Text>
+                        )}
+                    </View>
+
+                    <View style={styles.inputContainer}>
+
+                        <BookmarkList
+                            bookmarks={bookmarks}
+                            onAddBookmark={() => {
+                                if (bookmarks.length < 10) {
+                                    addBookmark();
+                                } else {
+                                    Alert.alert('Uyarı', 'En fazla 10 durak ekleyebilirsiniz.');
+                                }
+                            }}
+                            onUpdateBookmark={updateBookmark}
+                            onImageSelect={handleBookmarkImageSelect}
+                            onRemoveBookmark={(id: string) => {
+                                // Prevent removing the last bookmark
+                                if (bookmarks.length > 1) {
+                                    removeBookmark(id);
+                                } else {
+                                    Alert.alert('Uyarı', 'En az bir durak olmalıdır.');
+                                }
+                            }}
+                            error={formErrors.bookmarks && touched.bookmarks ? formErrors.bookmarks : undefined}
+                        />
+                    </View>
                 </View>
-
-                <View style={styles.inputContainer}>
-                    
-                    <BookmarkList
-                        bookmarks={bookmarks}
-                        onAddBookmark={() => {
-                            if (bookmarks.length < 10) {
-                                addBookmark();
-                            } else {
-                                Alert.alert('Uyarı', 'En fazla 10 durak ekleyebilirsiniz.');
-                            }
-                        }}
-                        onUpdateBookmark={updateBookmark}
-                        onImageSelect={handleBookmarkImageSelect}
-                        onRemoveBookmark={(id: string) => {
-                            // Prevent removing the last bookmark
-                            if (bookmarks.length > 1) {
-                                removeBookmark(id);
-                            } else {
-                                Alert.alert('Uyarı', 'En az bir durak olmalıdır.');
-                            }
-                        }}
-                        error={formErrors.stops && touched.stops ? formErrors.stops : undefined}
-                    />
-                </View>
-
-            </View>
-{/* 
-            <View style={{ height: 80 }} /> */}
-
-
-        </ScrollView>
+                <View style={{ height: 80 }} />
+            </ScrollView>
 
             <View style={{ zIndex: 1000, bottom: 0, position: 'absolute', right: 0 }}>
                 <LoadingFloatingAction
@@ -418,7 +408,8 @@ export const CreateRouteScreen = () => {
                     isDisabled={isPublishing}
                     backgroundColor={isPublishing ? '#ccc' : '#121212'}
                     iconName={"leaf"} />
-            </View></>
+            </View>
+        </>
     );
 }
 

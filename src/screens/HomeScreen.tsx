@@ -10,6 +10,7 @@ import {
   Alert,
   RefreshControl,
   TextInput,
+  FlatList,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors } from 'react-native/Libraries/NewAppScreen';
@@ -23,6 +24,16 @@ import { navigate, PageName } from '../types/navigation';
 import { checkFirstTime } from '../utils/welcome';
 import { NoImage } from '../assets';
 import { supabase } from '../lib/supabase';
+
+import ContentLoader, { Rect, Circle } from 'react-content-loader/native'
+
+const MyLoader = () => (
+  <ContentLoader viewBox="0 0 380 70">
+    <Circle cx="30" cy="30" r="30" />
+    <Rect x="80" y="17" rx="4" ry="4" width="300" height="13" />
+    <Rect x="80" y="40" rx="3" ry="3" width="250" height="10" />
+  </ContentLoader>
+)
 
 export const HomeScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -66,26 +77,23 @@ export const HomeScreen = () => {
       const cityId = selectedCityId || 0;
       setIsLoading(true);
 
-      if (!cityId) {
-        // Clear routes or show a message if no city is selected
-        setRoutes([]);
-        // Optional: Show a less intrusive message than Alert
-        console.log('No city selected, clearing routes.');
-        // Alert.alert('Bir şehir seçin', 'Lütfen bir şehir seçin');
-        // return;
-      }
+      // if (!cityId) {
+      //   // Clear routes or show a message if no city is selected
+      //   setRoutes([]);
+      //   // Optional: Show a less intrusive message than Alert
+      //   console.log('No city selected, clearing routes.');
+      //   // Alert.alert('Bir şehir seçin', 'Lütfen bir şehir seçin');
+      //   // return;
+      // }
 
-      // Fetch routes using the cityId from the component scope
-      let data = await RouteModel.getAllRoutesByCityId(cityId);
+      // // Fetch routes using the cityId from the component scope
+      // let data = await RouteModel.getAllRoutesByCityId(cityId);
 
-      console.log('data', data);
+      // console.log('data', data);
 
-      if (data.length === 0) {
-        data = await RouteModel.getAllRoutes();
+      let data = await RouteModel.getAllRoutes(20);
 
-        console.log('routes all', data);
-
-      }
+      console.log('routes all', data);
 
       setRoutes(data || []);
     } catch (error) {
@@ -143,15 +151,15 @@ export const HomeScreen = () => {
         <View style={styles.reactionContainer}>
           <TouchableOpacity style={styles.reactionItem}>
             <Icon name="comment-outline" size={18} color="#121" />
-            <Text style={styles.reactionText}>{getRandomNumber(1, 10)}</Text>
+            <Text style={styles.reactionText}>{0}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.reactionItem}>
             <Icon name="heart-outline" size={18} color="#c00" />
-            <Text style={[styles.reactionText]}>{getRandomNumber(1, 50)}</Text>
+            <Text style={[styles.reactionText]}>{0}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.reactionItem}>
             <Icon name="eye-outline" size={18} color="#121" />
-            <Text style={styles.reactionText}>{getRandomNumber(50, 500)}</Text>
+            <Text style={styles.reactionText}>{0}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.reactionItem}>
             <Icon name="bookmark-outline" size={18} color="#121" />
@@ -184,46 +192,49 @@ export const HomeScreen = () => {
     </TouchableOpacity>
   );
 
-  return (
-    <View style={[styles.container, { backgroundColor: Colors.lighter }]}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }>
-        {/* <CategoryList
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onCategoryPress={filterRoutes}
-          onAddCategory={() => navigation.navigate('AddCategory')}
-          loading={isLoading}
-        /> */}
-        {isReloading || isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#222" />
-          </View>
-        ) : (
-          routes.length > 0 ? (
-            <View style={styles.routesContainer}>
-              {routes.map(renderRouteCard)}
-            </View>
-          ) : (
-            <View style={styles.noRoutesContainer}>
-              <Text style={styles.noRoutesText}>Rota bulunamadı, hemen aşağıdaki butona tıklayarak yeni bir rota oluştur!</Text>
-            </View>
-          )
-        )}
+  const renderFooter = () => {
+    if (isLoading || isReloading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#222" />
+        </View>
+      );
+    }
+    return null;
+  };
 
-        {/* just spacer */}
-        <View style={{ height: 80 }} />
-      </ScrollView>
-      <LoadingFloatingAction
-        backgroundColor='#121212'
-        iconName='plus'
-        onPress={() => navigate(navigation, PageName.CreateRoute)}
-
-      />
+  const renderEmptyComponent = () => (
+    <View style={styles.noRoutesContainer}>
+      <Text style={styles.noRoutesText}>
+        Rota bulunamadı, hemen aşağıdaki butona tıklayarak yeni bir rota oluştur!
+      </Text>
     </View>
+  );
+
+  return (
+    <>
+    <View style={[styles.container]}>
+      <FlatList
+      data={routes}
+      keyExtractor={(item, index) => index.toString()} // Adjust if your data has unique IDs
+      renderItem={({ item }) => renderRouteCard(item)}
+      contentContainerStyle={routes.length === 0 ? styles.noRoutesContainer : styles.routesContainer}
+      ListFooterComponent={renderFooter} // Shows the loading spinner at the bottom
+      ListEmptyComponent={renderEmptyComponent} // Shows when the list is empty
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+      showsVerticalScrollIndicator={false}
+    />
+      
+    </View>
+    <LoadingFloatingAction
+    backgroundColor='#121212'
+    iconName='plus'
+    onPress={() => navigate(navigation, PageName.CreateRoute)}
+
+  />
+  </>
   );
 };
 
@@ -268,20 +279,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   routeCard: {
-    borderTopWidth: 1,
     borderTopColor: '#ddd',
+    borderTopWidth: 1,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
     backgroundColor: 'white',
-    marginVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: 20,
   },
   routeImage: {
     width: '100%',

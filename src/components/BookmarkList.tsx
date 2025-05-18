@@ -78,7 +78,7 @@ const BookmarkList: React.FC<BookmarkListProps> = ({
         {bookmarks.map((bookmark, index) => (
           <View key={bookmark?.id || index} style={styles.bookmarkItem}>
             <View style={styles.bookmarkHeader}>
-              <Text style={styles.bookmarkHeaderText}>Durak</Text>
+              <Text style={styles.bookmarkHeaderText}>Durak {index + 1}</Text>
               {editable && onRemoveBookmark && (
                 <TouchableOpacity
                   style={styles.removeButton}
@@ -130,7 +130,7 @@ const BookmarkList: React.FC<BookmarkListProps> = ({
         ))}
       </ScrollView>
       
-      {bookmarks.length < 10 && onAddBookmark && (
+      {bookmarks.length < MAX_BOOKMARKS && onAddBookmark && (
         <TouchableOpacity 
           style={styles.addButton}
           onPress={onAddBookmark}

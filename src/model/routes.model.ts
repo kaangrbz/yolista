@@ -26,8 +26,18 @@ export interface RouteWithProfile extends Route {
   };
 }
 
+export interface Bookmark {
+  id: string;
+  title: string;
+  image?: string;
+  imageUri?: string;
+  description?: string | null;
+  longitude?: number;
+  latitude?: number;
+}
+
 const RouteModel = {
-  async getAllRoutes(): Promise<RouteWithProfile[]> {
+  async getAllRoutes(limit?: number): Promise<RouteWithProfile[]> {
     const { data, error } = await supabase
       .from('routes')
       .select(`
@@ -51,6 +61,8 @@ const RouteModel = {
     )
   `)
       .eq('is_deleted', false)
+      .order('created_at', { ascending: false })
+      .limit(limit || 20);
 
     if (error) throw new Error(`Failed to fetch routes: ${error.message}`);
     if (!data) return [];
@@ -161,6 +173,11 @@ const RouteModel = {
         ),
         bookmarks (
           id,
+          title,
+          image_url,
+          description,
+          longitude,
+          latitude,
           route_id,
           order_index,
           created_at,
@@ -190,14 +207,16 @@ const RouteModel = {
     // bookmarks'ı ayır
     const { bookmarks, ...routeFields } = routeData;
     // Önce rotayı ekle
-    const { data: route, error } = await supabase
+    const {data: route, error} = await supabase
       .from('routes')
       .insert(routeFields)
-      .single();
+      .select();
 
+      console.log('route create', route, error);
     if (error || !route) {
-      return { data: route, error };
+      return { data: route, error, type: 'route' };
     }
+
 
     // Eğer bookmarks varsa, bunları da ekle
     let bookmarksError = null;
@@ -205,7 +224,7 @@ const RouteModel = {
       // Her bookmark'a route_id ekle
       const bookmarksWithRouteId = bookmarks.map(b => ({
         ...b,
-        route_id: route.id,
+        route_id: route[0].id,
       }));
       const { error: bmError } = await supabase
         .from('bookmarks')
@@ -213,7 +232,8 @@ const RouteModel = {
       bookmarksError = bmError;
     }
 
-    return { data: route, error: error || bookmarksError };
+    console.log('bookmarks create', bookmarks, bookmarksError);
+    return { data: route, error: error || bookmarksError, type: 'bookmarks' };
   },
 
   async updateRoute(routeId: string, updates: Partial<Route>): Promise<Route> {
