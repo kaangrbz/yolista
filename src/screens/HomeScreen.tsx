@@ -13,13 +13,10 @@ import {
   FlatList,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Colors } from 'react-native/Libraries/NewAppScreen';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import RouteModel, { RouteWithProfile } from '../model/routes.model';
 import { CityState, useCityStore } from '../store/cityStore';
 import { LoadingFloatingAction, AuthorInfo } from '../components';
-import { getRandomNumber } from '../utils/math';
 import { navigate, PageName } from '../types/navigation';
 import { checkFirstTime } from '../utils/welcome';
 import { NoImage } from '../assets';
