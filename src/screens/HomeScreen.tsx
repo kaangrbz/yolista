@@ -48,6 +48,7 @@ export const HomeScreen = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          console.log('user', user);
           setUserId(user.id);
         }
       } catch (error) {
@@ -88,9 +89,7 @@ export const HomeScreen = () => {
 
       // console.log('data', data);
 
-      let data = await RouteModel.getAllRoutes(20);
-
-      console.log('routes all', data);
+      let data = await RouteModel.getRoutes(20, true);
 
       setRoutes(data || []);
     } catch (error) {
@@ -127,10 +126,10 @@ export const HomeScreen = () => {
         isVerified={route.profiles?.is_verified}
         username={route.profiles?.username}
         createdAt={route.created_at}
-        authorId={route.author_id}
+        authorId={route.user_id}
         callback={fetchRoutes}
         loggedUserId={userId}
-        routeId={route.id}
+        routeId={route.id || ''}
       />
       <Image
         source={route.image_url ? { uri: route.image_url } : NoImage}

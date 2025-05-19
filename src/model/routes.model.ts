@@ -1,25 +1,37 @@
 import { supabase } from '../lib/supabase';
+import { showToast } from '../utils/alert';
 
-interface Route {
+// Route interface
+export interface RoutePoint {
   id?: string;
+  client_id?: string; // Make client_id optional
+  parent_id?: string;
+  city_id?: number;
+  user_id?: string;
   title: string;
-  description: string;
-  image_url: string;
-  city_id: number;
-  is_deleted: boolean;
-  created_at: string;
-  updated_at: string;
-  author_id: string;
+  description?: string;
+  image_url?: string;
+  latitude?: number;
+  longitude?: number;
+  order_index: number;
+  is_deleted?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
-interface Profile {
+// Interface for server-side route data (without client_id)
+interface ServerRoutePoint extends Omit<RoutePoint, 'client_id'> {
+  // All properties from RoutePoint except client_id
+}
+
+export interface Profile {
   username: string;
   full_name: string;
   avatar_url: string;
   is_verified: boolean;
 }
 
-export interface RouteWithProfile extends Route {
+export interface RouteWithProfile extends RoutePoint {
   profiles: Profile;
   cities: {
     name: string;
@@ -37,32 +49,23 @@ export interface Bookmark {
 }
 
 const RouteModel = {
-  async getAllRoutes(limit?: number): Promise<RouteWithProfile[]> {
-    const { data, error } = await supabase
+  async getRoutes(limit?: number, onlyMain?: boolean): Promise<RouteWithProfile[]> {
+    const query = supabase
       .from('routes')
       .select(`
-    id,
-    title,
-    description,
-    image_url,
-    city_id,
-    is_deleted,
-    created_at,
-    updated_at,
-    author_id,
-    profiles (
-      username,
-      full_name,
-      avatar_url,
-      is_verified
-    ),
-    cities (
-      name
-    )
-  `)
+          *,
+          profiles (
+            *
+          ),
+          cities (
+            *
+          )
+      `)
       .eq('is_deleted', false)
-      .order('created_at', { ascending: false })
-      .limit(limit || 20);
+      .order('created_at', { ascending: false });
+
+    //* Fetch only main routes when `onlyMain` is true
+    const { data, error } = await (onlyMain ? query.eq('order_index', 0).limit(limit || 20) : query.limit(limit || 20));
 
     if (error) throw new Error(`Failed to fetch routes: ${error.message}`);
     if (!data) return [];
@@ -74,169 +77,73 @@ const RouteModel = {
     })) as RouteWithProfile[];
   },
 
-  async getAllRoutesByCityId(cityId: number): Promise<RouteWithProfile[]> {
-    const { data, error } = await supabase
+  
+
+
+  async createRoute(routeData: RoutePoint[]) {
+    // Remove client_id from each route object
+    const cleanedRouteData: ServerRoutePoint[] = routeData.map(({ client_id, ...rest }) => rest);
+    
+    // Önce ana rotayı bul
+
+    const mainRouteData: ServerRoutePoint | undefined = cleanedRouteData.find((route) => route.order_index === 0);
+
+    if (!mainRouteData) {
+      showToast('error', 'Ana rotayı bulamadım', 'Hata');
+      return { data: null, error: true, message: 'Ana rota bulunamadı.', type: 'find-main-route' };
+    }
+
+    // Önce ana rotayı ekle
+    const { data: route, error } = await supabase
       .from('routes')
-      .select(
-        `
-        id,
-        title,
-        description,
-        image_url,
-        city_id,
-        is_deleted,
-        created_at,
-        updated_at,
-        author_id,
-        profiles (
-            username,
-            full_name,
-            avatar_url,
-            is_verified
-        )
-        cities (
-            name
-        )
-        `,
-      )
-      .eq('city_id', cityId)
-      .eq('is_deleted', false);
-
-    if (error) throw new Error(`Failed to fetch routes: ${error.message}`);
-    if (!data) return [];
-    // Ensure author is always a single object, not array
-    return data.map((route: any) => ({
-      ...route,
-      profiles: Array.isArray(route.profiles) ? route.profiles[0] : route.profiles,
-      cities: Array.isArray(route.cities) ? route.cities[0] : route.cities,
-    })) as RouteWithProfile[];
-  },
-
-  async getRouteById(routeId: string): Promise<RouteWithProfile | null> {
-    const { data, error } = await supabase
-      .from('routes')
-      .select(
-        `
-        id,
-        title,
-        description,
-        image_url,
-        city_id,
-        is_deleted,
-        created_at,
-        updated_at,
-        author_id,
-        profiles (
-          username,
-          full_name,
-          avatar_url,
-          is_verified
-        )
-      `,
-      )
-      .eq('id', routeId)
-      .order('created_at', { ascending: true })
-      .single();
-
-    if (error) throw new Error(`Failed to fetch route: ${error.message}`);
-    if (!data) return null;
-    // Ensure author is always a single object, not array
-    return {
-      ...data,
-      profiles: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles,
-      cities: Array.isArray(data.cities) ? data.cities[0] : data.cities,
-    } as RouteWithProfile;
-  },
-
-  async getRouteAndBookmarksById(routeId: string): Promise<RouteWithProfile | null> {
-    const { data, error } = await supabase
-      .from('routes')
-      .select(
-        `
-        id,
-        title,
-        description,
-        image_url,
-        city_id,
-        is_deleted,
-        created_at,
-        updated_at,
-        author_id,
-        profiles (
-          username,
-          full_name,
-          avatar_url,
-          is_verified
-        ),
-        cities (
-          name
-        ),
-        bookmarks (
-          id,
-          title,
-          image_url,
-          description,
-          longitude,
-          latitude,
-          route_id,
-          order_index,
-          created_at,
-          updated_at
-        ),
-        likes (
-          count
-        )
-      `,
-      )
-      .eq('id', routeId)
-      .order('created_at', { ascending: true })
-      .single();
-
-    if (error) throw new Error(`Failed to fetch route: ${error.message}`);
-    if (!data) return null;
-    // Ensure author is always a single object, not array
-    return {
-      ...data,
-      profiles: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles,
-      cities: Array.isArray(data.cities) ? data.cities[0] : data.cities,
-      bookmarks: Array.isArray(data.bookmarks) ? data.bookmarks : [],
-    } as RouteWithProfile;
-  },
-
-  async createRoute(routeData: Partial<Route> & { bookmarks?: any[] }) {
-    // bookmarks'ı ayır
-    const { bookmarks, ...routeFields } = routeData;
-    // Önce rotayı ekle
-    const {data: route, error} = await supabase
-      .from('routes')
-      .insert(routeFields)
+      .insert(mainRouteData)
       .select();
 
-      console.log('route create', route, error);
-    if (error || !route) {
-      return { data: route, error, type: 'route' };
+    let mainRouteId = null;
+    if (route && route.length > 0) {
+      mainRouteId = route[0].id;
     }
 
+    if (error || !route) {
+      return { data: route, error, type: 'create-route' };
+    }
+
+    if (!mainRouteId) {
+      showToast('error', 'Ana rotayı bulamadım', 'Hata');
+      return { data: null, error: true, message: 'Ana rota bulunamadı.', type: 'find-main-route' };
+    }
+
+    // Diğer rotaları ekle
+    const { data: routes, error: routesError } = await supabase
+      .from('routes')
+      .insert(cleanedRouteData.filter((route) => route.order_index !== 0))
+      .select();
+
+      console.log('routes', routes, routesError);
+
+    if (routesError || !routes) {
+      return { data: routes, error: routesError, type: 'create-route' };
+    }
 
     // Eğer bookmarks varsa, bunları da ekle
-    let bookmarksError = null;
-    if (bookmarks && Array.isArray(bookmarks) && bookmarks.length > 0) {
-      // Her bookmark'a route_id ekle
-      const bookmarksWithRouteId = bookmarks.map(b => ({
-        ...b,
-        route_id: route[0].id,
-      }));
-      const { error: bmError } = await supabase
-        .from('bookmarks')
-        .insert(bookmarksWithRouteId);
-      bookmarksError = bmError;
-    }
+    // let bookmarksError = null;
+    // if (routeData && Array.isArray(routeData) && routeData.length > 0) {
+    //   // Her bookmark'a route_id ekle
+    //   const bookmarksWithRouteId = routeData.map(b => ({
+    //     ...b,
+    //     route_id: route[0].id,
+    //   }));
+    //   const { error: bmError } = await supabase
+    //     .from('bookmarks')
+    //     .insert(bookmarksWithRouteId);
+    //   bookmarksError = bmError;
+    // }
 
-    console.log('bookmarks create', bookmarks, bookmarksError);
-    return { data: route, error: error || bookmarksError, type: 'bookmarks' };
+    // console.log('bookmarks create', bookmarks, bookmarksError);
+    return { data: route, error: error};
   },
 
-  async updateRoute(routeId: string, updates: Partial<Route>): Promise<Route> {
+  async updateRoute(routeId: string, updates: Partial<RoutePoint>): Promise<RoutePoint> {
     const { data, error } = await supabase
       .from('routes')
       .update(updates)
@@ -244,7 +151,7 @@ const RouteModel = {
       .single();
 
     if (error) throw new Error(`Failed to update route: ${error.message}`);
-    return data as Route;
+    return data as RoutePoint;
   },
 
   async deleteRoute(routeId: string): Promise<{ error: any }> {

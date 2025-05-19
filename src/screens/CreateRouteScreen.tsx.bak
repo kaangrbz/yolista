@@ -3,132 +3,150 @@ import {
     View,
     Text,
     StyleSheet,
+    Alert,
     TextInput,
     TouchableOpacity,
+    Image,
     ScrollView
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import DropDownPicker from 'react-native-dropdown-picker';
-import RouteModel, { RoutePoint } from '../model/routes.model';
+import RouteModel from '../model/routes.model';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { LoadingFloatingAction } from '../components';
+// Bookmark functionality removed
 import { showToast } from '../utils/alert';
 import { useCityStore, CityState } from '../store/cityStore';
 
-
+// Route interface
+interface RoutePoint {
+    id: string;
+    title: string;
+    description?: string;
+    image_url?: string;
+    latitude?: number;
+    longitude?: number;
+    order_index: number;
+}
 
 export const CreateRouteScreen = () => {
     const navigation = useNavigation();
-    const [user, setUser] = useState<any>(null);
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const { data, error } = await supabase.auth.getUser();
-                console.log('user', data.user);
-                if (error) throw error;
-                setUser(data.user);
-            } catch (error) {
-                showToast('error', 'Lütfen tekrar giriş yapınız', 'Hata');
-            }
-        };
-        fetchUser();
-    }, []);
-
-
-    useEffect(() => {
-        fetchCities();
-
-        // Initialize with one empty route point
-        if (routePoints.length === 0) {
-            addRoutePoint();
-        }
-    }, []);
     // Form state
+    const [formData, setFormData] = useState({
+        title: '',
+        description: '',
+        mainImage: ''
+    });
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [formErrors, setFormErrors] = useState({
         title: '',
         description: '',
         cityId: '',
+        mainImage: '',
         routes: ''
     });
     const [touched, setTouched] = useState({
         title: false,
         description: false,
         cityId: false,
+        mainImage: false,
         routes: false
     });
-
+    
     // Route points state
     const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
-
+    
     // Route management functions
-    const addRoutePoint = async () => {
-        console.log('user', user);
+    const addRoutePoint = () => {
         const newRoutePoint: RoutePoint = {
-            client_id: new Date().getTime().toString(),
+            id: Date.now().toString(),
             title: '',
             description: '',
-            order_index: routePoints.length,
-            is_deleted: false,
-            city_id: selectedCityId,
-            user_id: (await supabase.auth.getUser()).data.user?.id,
-
+            order_index: routePoints.length
         };
         setRoutePoints([...routePoints, newRoutePoint]);
     };
-
+    
     const updateRoutePoint = (id: string, field: keyof RoutePoint, value: any) => {
-        setRoutePoints(routePoints.map(point =>
-            point.client_id === id ? { ...point, [field]: value } : point
+        setRoutePoints(routePoints.map(point => 
+            point.id === id ? { ...point, [field]: value } : point
         ));
     };
-
+    
     const removeRoutePoint = (id: string) => {
         if (routePoints.length <= 1) {
-            showToast('warning', 'En az bir durak olmalıdır.');
+            Alert.alert('Uyarı', 'En az bir durak olmalıdır.');
             return;
         }
-
+        
         // Remove the route point and reorder the remaining points
         const updatedPoints = routePoints
-            .filter(point => point.client_id !== id)
+            .filter(point => point.id !== id)
             .map((point, index) => ({
                 ...point,
                 order_index: index
             }));
-
+        
         setRoutePoints(updatedPoints);
     };
-
+    
     const moveRoutePoint = (fromIndex: number, toIndex: number) => {
         if (fromIndex === toIndex) return;
-
+        
         const updatedPoints = [...routePoints];
         const [movedPoint] = updatedPoints.splice(fromIndex, 1);
         updatedPoints.splice(toIndex, 0, movedPoint);
-
+        
         // Update order_index values
         const reorderedPoints = updatedPoints.map((point, index) => ({
             ...point,
             order_index: index
         }));
-
+        
         setRoutePoints(reorderedPoints);
     };
-
-    const handleRouteImageSelect = (pointId: string) => {
-        // Disabled image handling functionality
-        showToast('info', 'Resim ekleme ozelligi cok yakinda aktif edilecektir.');
+    
+    const handleRouteImageSelect = async (pointId: string) => {
+        try {
+            const result = await launchImageLibrary({
+                mediaType: 'photo',
+                selectionLimit: 1,
+                quality: 0.8,
+            });
+    
+            if (!result.didCancel && result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+                if (asset.uri) {
+                    updateRoutePoint(pointId, 'image_url', asset.uri);
+                }
+            }
+        } catch (error) {
+            console.error('Error selecting image:', error);
+            Alert.alert('Hata', 'Resim seçilirken bir hata oluştu');
+        }
     };
 
     const defaultSelectedCityId = useCityStore((state: CityState) => state.selectedCityId);
     const [cities, setCities] = useState<{ label: string, value: number }[]>([]);
-    const [selectedCityId, setSelectedCityId] = useState<number>(defaultSelectedCityId || 0);
+    const [selectedCityId, setSelectedCityId] = useState<number | null>(defaultSelectedCityId);
     const [open, setOpen] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    // Get selected city ID from store at the top level
+    console.log('defaultSelectedCityId', defaultSelectedCityId);
 
     // Bookmark functionality removed
+
+    useEffect(() => {
+        fetchCities();
+        
+        // Initialize with one empty route point
+        if (routePoints.length === 0) {
+            addRoutePoint();
+        }
+    }, []);
 
     const fetchCities = async () => {
         try {
@@ -150,6 +168,7 @@ export const CreateRouteScreen = () => {
     // Validate form fields
     const validateForm = () => {
         const errors = {
+            mainImage: '',
             title: '',
             description: '',
             cityId: '',
@@ -157,11 +176,18 @@ export const CreateRouteScreen = () => {
         };
         let isValid = true;
 
-        // Title validation
-        const hasTitle = routePoints.every(point => point && point.title.trim() && point.title.trim().length > 0);
+        // Main Image validation
+        // if (!formData.mainImage) {
+        //     errors.mainImage = 'Rota resmi zorunludur';
+        //     isValid = false;
+        // }
 
-        if (!hasTitle) {
-            errors.title = 'Durak başlığı zorunludur';
+        // Title validation
+        if (!formData.title) {
+            errors.title = 'Rota adı zorunludur';
+            isValid = false;
+        } else if (formData.title.length < 2) {
+            errors.title = 'Rota adı en az 2 karakter olmalıdır';
             isValid = false;
         }
 
@@ -183,6 +209,23 @@ export const CreateRouteScreen = () => {
         setFormErrors(errors);
         return isValid;
     };
+
+    // Handle input changes
+    const handleInputChange = (field: string, value: string) => {
+        setFormData(prev => ({
+            ...prev,
+            [field]: value
+        }));
+
+        // Mark field as touched
+        if (!touched[field as keyof typeof touched]) {
+            setTouched(prev => ({
+                ...prev,
+                [field]: true
+            }));
+        }
+    };
+
     // Handle input blur
     const handleInputBlur = (field: string) => {
         setTouched(prev => ({
@@ -190,35 +233,83 @@ export const CreateRouteScreen = () => {
             [field]: true
         }));
         validateForm();
+
+// Handle input blur
+const handleInputBlur = (field: string) => {
+    setTouched(prev => ({
+        ...prev,
+        [field]: true
+    }));
+    validateForm();
+};
+
+const handleSubmit = async (): Promise<void> => {
+    showToast('warning', 'Form kontrol ediliyor');
+    return;
+    // Validate form fields
+    const errors = validateForm();
+    if (Object.values(errors).some(error => error !== '')) {
+        setFormErrors(errors);
+        setTouched({
+            title: true,
+            description: true,
+            cityId: true,
+            mainImage: true,
+            routes: true
+        });
+        showToast('error', 'Lütfen formu kontrol edin');
+        return false;
+    }
+
+    setIsPublishing(true);
+
+    // Make sure selectedCityId is not null before proceeding
+    if (selectedCityId === null) {
+        Alert.alert('Hata', 'Lütfen şehir seçiniz');
+        setIsPublishing(false);
+        return;
+    }
+
+    let routeData = {
+        title: formData.title,
+        description: formData.description,
+        city_id: selectedCityId, // Now we're sure it's not null
+        author_id: (await supabase.auth.getUser())?.data.user?.id,
+        routePoints: routePoints.map(point => ({
+            title: point.title,
+            description: point.description || '',
+            image_url: point.image_url || '',
+            latitude: point.latitude,
+            longitude: point.longitude,
+            order_index: point.order_index
+        })),
     };
+        if (selectedCityId === null) {
+            Alert.alert('Hata', 'Lütfen şehir seçiniz');
+            setIsPublishing(false);
+            return;
+        }
 
-    const handleSubmit = async (): Promise<void> => {
-        showToast('warning', 'Form kontrol ediliyor');
-        console.log('route points', routePoints);
-
-        // Validate form fields
-        // const errors = validateForm();
-
-        // if (Object.values(errors).some(error => error !== '')) {
-        //     setFormErrors(errors);
-        //     setTouched({
-        //         title: true,
-        //         description: true,
-        //         cityId: true,
-        //         routes: true
-        //     });
-        //     showToast('error', 'Lütfen formu kontrol edin');
-        //     return;
-        // }
-
-        setIsPublishing(true);
+        let routeData = {
+            title: formData.title,
+            description: formData.description,
+            city_id: selectedCityId, // Now we're sure it's not null
+            author_id: (await supabase.auth.getUser())?.data.user?.id,
+            routePoints: routePoints.map(point => ({
+                title: point.title,
+                description: point.description || '',
+                image_url: point.image_url || '',
+                latitude: point.latitude,
+                longitude: point.longitude,
+                order_index: point.order_index
+            })),
+        };
 
         try {
-            const { data, error } = await RouteModel.createRoute(routePoints);
+            const { data, error } = await RouteModel.createRoute(routeData);
 
             if (error) {
                 showToast('error', 'Rota eklenirken bir hata oluştu', 'Hata');
-                console.error('error', error);
                 return;
             }
 
@@ -239,6 +330,82 @@ export const CreateRouteScreen = () => {
         <>
             <ScrollView style={[styles.container, { backgroundColor: '#fff' }]}>
                 <View style={styles.form}>
+                    <View style={styles.inputContainer}>
+                        <Text style={[styles.label, { color: '#222' }]}>
+                            Rota Resmi <Text style={{ color: '#666' }}>(Önerilen oran: 2:1)</Text>
+                        </Text>
+                        <TouchableOpacity
+                            style={{
+                                height: 200,
+                                borderWidth: 1,
+                                borderColor: '#ddd',
+                                borderRadius: 8,
+                                marginBottom: 8,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: '#fafafa',
+                            }}
+                            onPress={async () => {
+                                const result = await launchImageLibrary({
+                                    mediaType: 'photo',
+                                    selectionLimit: 1,
+                                });
+                                const asset = result.assets?.[0];
+                                if (!result.didCancel && asset && asset.uri) {
+                                    setSelectedImage(asset.uri);
+                                    setFormData(prev => ({ ...prev, mainImage: asset.uri as string }));
+                                }
+                            }}
+                        >
+                            {selectedImage ? (
+                                <Image
+                                    source={{ uri: selectedImage }}
+                                    style={{ width: '100%', height: 200, borderRadius: 8 }}
+                                    resizeMode="contain"
+                                />
+                            ) : (
+                                <Text style={{ color: '#888' }}>Galeriden resim seç</Text>
+                            )}
+                        </TouchableOpacity>
+                        {formErrors.mainImage && touched.mainImage && (
+                            <Text style={styles.errorText}>{formErrors.mainImage}</Text>
+                        )}
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <Text style={[styles.label, { color: '#222' }]}>
+                            Rota Adı <Text style={{ color: 'red' }}>*</Text>
+                        </Text>
+                        <TextInput
+                            style={styles.input}
+                            onChangeText={(text) => handleInputChange('title', text)}
+                            onBlur={() => handleInputBlur('title')}
+                            value={formData.title}
+                            placeholder="Rota adını girin"
+                            placeholderTextColor={'#999'}
+                        />
+                        {formErrors.title && touched.title && (
+                            <Text style={styles.errorText}>{formErrors.title}</Text>
+                        )}
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <Text style={[styles.label, { color: '#222' }]}>
+                            Açıklama
+                        </Text>
+                        <TextInput
+                            style={[styles.input, { height: 100 }]}
+                            multiline
+                            numberOfLines={4}
+                            onChangeText={(text) => handleInputChange('description', text)}
+                            onBlur={() => handleInputBlur('description')}
+                            value={formData.description}
+                            placeholder="Rota açıklamasını girin"
+                            placeholderTextColor={'#999'}
+                        />
+                        {formErrors.description && touched.description && (
+                            <Text style={styles.errorText}>{formErrors.description}</Text>
+                        )}
+                    </View>
+
                     <View style={styles.inputContainer}>
                         <Text style={[styles.label, { color: '#222' }]}>
                             Şehir seç <Text style={{ color: 'red' }}>*</Text>
@@ -275,89 +442,6 @@ export const CreateRouteScreen = () => {
                             <Text style={styles.errorText}>{formErrors.cityId}</Text>
                         )}
                     </View>
-
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.sectionTitle}>Rota Durakları <Text style={{ color: 'red' }}>*</Text></Text>
-                        <Text style={{ color: '#666', fontSize: 12, marginBottom: 8 }}> (En fazla 10 durak ekleyebilirsiniz)</Text>
-                        {formErrors.routes && touched.routes && (
-                            <Text style={styles.errorText}>{formErrors.routes}</Text>
-                        )}
-
-                        {routePoints.map((point, index) => (
-                            <View key={point.id} style={styles.routeItem}>
-                                <View style={styles.routeHeader}>
-                                    <Text style={styles.routeHeaderText}>Durak {index + 1}</Text>
-                                    <Text style={styles.routeHeaderText}>
-                                        {index === 0 && '(Ana Durak)'}
-                                    </Text>
-                                    <View style={styles.routeActions}>
-                                        {index > 0 && (
-                                            <TouchableOpacity
-                                                style={styles.actionButton}
-                                                onPress={() => moveRoutePoint(index, index - 1)}
-                                            >
-                                                <Text style={styles.actionButtonText}>↑</Text>
-                                            </TouchableOpacity>
-                                        )}
-                                        {index < routePoints.length - 1 && (
-                                            <TouchableOpacity
-                                                style={styles.actionButton}
-                                                onPress={() => moveRoutePoint(index, index + 1)}
-                                            >
-                                                <Text style={styles.actionButtonText}>↓</Text>
-                                            </TouchableOpacity>
-                                        )}
-                                        <TouchableOpacity
-                                            style={[styles.actionButton, styles.removeButton]}
-                                            onPress={() => removeRoutePoint(point.client_id)}
-                                        >
-                                            <Text style={styles.removeButtonText}>✕</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-
-                                <TouchableOpacity
-                                    style={styles.imagePicker}
-                                    onPress={() => handleRouteImageSelect(point.client_id)}
-                                >
-                                    <Text style={{ color: '#888' }}>Durak resmi ekle</Text>
-                                </TouchableOpacity>
-
-                                <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Başlık</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        value={point.title}
-                                        onChangeText={(text) => updateRoutePoint(point.client_id, 'title', text)}
-                                        placeholder="Durak başlığı"
-                                        placeholderTextColor="#999"
-                                    />
-                                </View>
-
-                                <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Açıklama</Text>
-                                    <TextInput
-                                        style={[styles.input, { height: 80 }]}
-                                        value={point.description}
-                                        onChangeText={(text) => updateRoutePoint(point.client_id, 'description', text)}
-                                        placeholder="Durak açıklaması"
-                                        placeholderTextColor="#999"
-                                        multiline
-                                        numberOfLines={3}
-                                    />
-                                </View>
-                            </View>
-                        ))}
-
-                        {routePoints.length < 10 && (
-                            <TouchableOpacity
-                                style={styles.addButton}
-                                onPress={addRoutePoint}
-                            >
-                                <Text style={styles.addButtonText}>Yeni durak ekle</Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
                 </View>
                 <View style={{ height: 80 }} />
             </ScrollView>
@@ -372,7 +456,6 @@ export const CreateRouteScreen = () => {
         </>
     );
 }
-
 
 const styles = StyleSheet.create({
     sectionTitle: {
@@ -665,81 +748,5 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    imagePicker: {
-        padding: 16,
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        marginBottom: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#fafafa',
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 8,
-    },
-    routeItem: {
-        backgroundColor: '#f9f9f9',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: '#eee',
-    },
-    routeHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    routeHeaderText: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    routeActions: {
-        flexDirection: 'row',
-    },
-    actionButton: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        backgroundColor: '#f0f0f0',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginLeft: 8,
-    },
-    actionButtonText: {
-        fontSize: 16,
-        color: '#333',
-    },
-    removeButton: {
-        backgroundColor: '#ffeeee',
-    },
-    removeButtonText: {
-        color: '#ff6b6b',
-        fontSize: 16,
-    },
-    inputGroup: {
-        marginBottom: 12,
-    },
-    inputLabel: {
-        fontSize: 14,
-        marginBottom: 4,
-        color: '#666',
-    },
-    addButton: {
-        backgroundColor: '#121212',
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginTop: 8,
-    },
-    addButtonText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-});
+    }
+})
