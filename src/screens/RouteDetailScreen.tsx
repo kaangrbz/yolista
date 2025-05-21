@@ -28,7 +28,10 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
   useEffect(() => {
     const loadRoute = async () => {
       try {
-        let route = await RouteModel.getRouteAndBookmarksById(routeId)
+        let routes = await RouteModel.getRoutesById(routeId)
+
+        console.log('routes', routes);
+        return;
 
         setTimeout(() => {
           setRouteData(route);

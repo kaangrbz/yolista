@@ -66,30 +66,17 @@ const RouteModel = {
       cities: Array.isArray(route.cities) ? route.cities[0] : route.cities,
     })) as RouteWithProfile[];
   },
-  async getRouteById(routeId: string): Promise<RouteWithProfile> {
-    const {query} = supabase
+  async getRoutesById(routeId: string): Promise<any> {
+
+    let { data: routes, error } = await supabase
       .from('routes')
-      .select(`
-          *,
-          profiles (
-            *
-          ),
-          cities (
-            *
-          )
-      `)
+      .select('*')
+      .or(`id.eq.${routeId},parent_id.eq.${routeId}`)
       .eq('is_deleted', false)
-      .order('created_at', { ascending: false });
+      .order('order_index', { ascending: true });
 
-
-    if (error) throw new Error(`Failed to fetch routes: ${error.message}`);
-    if (!data) return [];
     // Ensure author is always a single object, not array
-    return data.map((route: any) => ({
-      ...route,
-      profiles: Array.isArray(route.profiles) ? route.profiles[0] : route.profiles,
-      cities: Array.isArray(route.cities) ? route.cities[0] : route.cities,
-    })) as RouteWithProfile[];
+    return routes;
   },
 
 
@@ -131,14 +118,12 @@ const RouteModel = {
     cleanedRouteData.forEach((route) => {
       route.parent_id = mainRouteId;
     });
-    
+
     // Diğer rotaları ekle
     const { data: routes, error: routesError } = await supabase
       .from('routes')
       .insert(cleanedRouteData.filter((route) => route.order_index !== 0))
       .select();
-
-    console.log('routes', routes, routesError);
 
     if (routesError || !routes) {
       return { data: routes, error: routesError, type: 'create-route' };
@@ -175,10 +160,10 @@ const RouteModel = {
 
   async deleteRoute(routeId: string): Promise<{ data: any, error: any }> {
     const { data, error } = await supabase
-        .from('routes')
-        .update({ is_deleted: true })
-        .eq('id', routeId)
-        .select()
+      .from('routes')
+      .update({ is_deleted: true })
+      .eq('id', routeId)
+      .select()
 
     if (error) throw new Error(`Failed to delete route: ${error.message}`);
     return { data, error }
