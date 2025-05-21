@@ -158,7 +158,7 @@ export const CreateRouteScreen = () => {
         let isValid = true;
 
         // Title validation
-        const hasTitle = routePoints.every(point => point && point.title.trim() && point.title.trim().length > 0);
+        const hasTitle = routePoints.every(point => point.title.trim() && point.title.trim().length > 0);
 
         if (!hasTitle) {
             errors.title = 'Durak başlığı zorunludur';
@@ -197,19 +197,12 @@ export const CreateRouteScreen = () => {
         console.log('route points', routePoints);
 
         // Validate form fields
-        // const errors = validateForm();
+        const isValid = validateForm();
 
-        // if (Object.values(errors).some(error => error !== '')) {
-        //     setFormErrors(errors);
-        //     setTouched({
-        //         title: true,
-        //         description: true,
-        //         cityId: true,
-        //         routes: true
-        //     });
-        //     showToast('error', 'Lütfen formu kontrol edin');
-        //     return;
-        // }
+        if (!isValid) {
+            showToast('error', 'Lütfen formu kontrol edin');
+            return;
+        }
 
         setIsPublishing(true);
 
@@ -324,7 +317,7 @@ export const CreateRouteScreen = () => {
                                 </TouchableOpacity>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Başlık</Text>
+                                    <Text style={styles.inputLabel}>Başlık <Text style={{ color: 'red' }}>*</Text></Text>
                                     <TextInput
                                         style={styles.input}
                                         value={point.title}
@@ -359,7 +352,7 @@ export const CreateRouteScreen = () => {
                         )}
                     </View>
                 </View>
-                <View style={{ height: 80 }} />
+                <View style={{ height: 50 }} />
             </ScrollView>
 
             <View style={{ zIndex: 1000, bottom: 0, position: 'absolute', right: 0 }}>
@@ -541,11 +534,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-    errorText: {
-        color: 'red',
-        fontSize: 12,
-        marginTop: 4,
-    },
     row: {
         display: 'flex',
         flexDirection: 'row',
@@ -675,71 +663,5 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#fafafa',
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 8,
-    },
-    routeItem: {
-        backgroundColor: '#f9f9f9',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: '#eee',
-    },
-    routeHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    routeHeaderText: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    routeActions: {
-        flexDirection: 'row',
-    },
-    actionButton: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        backgroundColor: '#f0f0f0',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginLeft: 8,
-    },
-    actionButtonText: {
-        fontSize: 16,
-        color: '#333',
-    },
-    removeButton: {
-        backgroundColor: '#ffeeee',
-    },
-    removeButtonText: {
-        color: '#ff6b6b',
-        fontSize: 16,
-    },
-    inputGroup: {
-        marginBottom: 12,
-    },
-    inputLabel: {
-        fontSize: 14,
-        marginBottom: 4,
-        color: '#666',
-    },
-    addButton: {
-        backgroundColor: '#121212',
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginTop: 8,
-    },
-    addButtonText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '600',
     },
 });

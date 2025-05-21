@@ -38,16 +38,6 @@ export interface RouteWithProfile extends RoutePoint {
   };
 }
 
-export interface Bookmark {
-  id: string;
-  title: string;
-  image?: string;
-  imageUri?: string;
-  description?: string | null;
-  longitude?: number;
-  latitude?: number;
-}
-
 const RouteModel = {
   async getRoutes(limit?: number, onlyMain?: boolean): Promise<RouteWithProfile[]> {
     const query = supabase
@@ -76,14 +66,38 @@ const RouteModel = {
       cities: Array.isArray(route.cities) ? route.cities[0] : route.cities,
     })) as RouteWithProfile[];
   },
+  async getRouteById(routeId: string): Promise<RouteWithProfile> {
+    const {query} = supabase
+      .from('routes')
+      .select(`
+          *,
+          profiles (
+            *
+          ),
+          cities (
+            *
+          )
+      `)
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: false });
 
-  
+
+    if (error) throw new Error(`Failed to fetch routes: ${error.message}`);
+    if (!data) return [];
+    // Ensure author is always a single object, not array
+    return data.map((route: any) => ({
+      ...route,
+      profiles: Array.isArray(route.profiles) ? route.profiles[0] : route.profiles,
+      cities: Array.isArray(route.cities) ? route.cities[0] : route.cities,
+    })) as RouteWithProfile[];
+  },
+
 
 
   async createRoute(routeData: RoutePoint[]) {
     // Remove client_id from each route object
     const cleanedRouteData: ServerRoutePoint[] = routeData.map(({ client_id, ...rest }) => rest);
-    
+
     // Önce ana rotayı bul
 
     const mainRouteData: ServerRoutePoint | undefined = cleanedRouteData.find((route) => route.order_index === 0);
@@ -113,13 +127,18 @@ const RouteModel = {
       return { data: null, error: true, message: 'Ana rota bulunamadı.', type: 'find-main-route' };
     }
 
+    // Diğer rotaların parent_id'sini ana rotanın id'si ile güncelle
+    cleanedRouteData.forEach((route) => {
+      route.parent_id = mainRouteId;
+    });
+    
     // Diğer rotaları ekle
     const { data: routes, error: routesError } = await supabase
       .from('routes')
       .insert(cleanedRouteData.filter((route) => route.order_index !== 0))
       .select();
 
-      console.log('routes', routes, routesError);
+    console.log('routes', routes, routesError);
 
     if (routesError || !routes) {
       return { data: routes, error: routesError, type: 'create-route' };
@@ -140,7 +159,7 @@ const RouteModel = {
     // }
 
     // console.log('bookmarks create', bookmarks, bookmarksError);
-    return { data: route, error: error};
+    return { data: route, error: error };
   },
 
   async updateRoute(routeId: string, updates: Partial<RoutePoint>): Promise<RoutePoint> {
@@ -154,14 +173,15 @@ const RouteModel = {
     return data as RoutePoint;
   },
 
-  async deleteRoute(routeId: string): Promise<{ error: any }> {
+  async deleteRoute(routeId: string): Promise<{ data: any, error: any }> {
+    const { data, error } = await supabase
+        .from('routes')
+        .update({ is_deleted: true })
+        .eq('id', routeId)
+        .select()
 
-    const { error } = await supabase
-      .from('routes')
-      .delete()
-      .eq('id', routeId)
-
-    return { error };
+    if (error) throw new Error(`Failed to delete route: ${error.message}`);
+    return { data, error }
   },
 };
 

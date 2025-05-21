@@ -5,8 +5,8 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Seperator from './Seperator';
 import { DropdownMenu } from './DropdownMenu';
 import { getTimeAgo } from '../utils/timeAgo';
-import { Alert } from 'react-native';
 import RouteModel from '../model/routes.model';
+import { showToast } from '../utils/alert';
 
 const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId }: {
   fullName: string;
@@ -21,20 +21,26 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
   const [visibleDropdown, setVisibleDropdown] = useState(false);  
     const handleDeleteRoute = async () => {
       try {
-        const { error } = await RouteModel.deleteRoute(routeId);
+        const { data, error } = await RouteModel.deleteRoute(routeId);
         if (error) {
           console.error('Error deleting route:', error);
-          Alert.alert('Hata', 'Rota silme işlemi sırasında bir hata oluştu');
+          showToast('error', 'Rota silme işlemi sırasında bir hata oluştu');
           return;
         }
-        Alert.alert('Başarılı', 'Rota silme işlemi başarılı');
+
+        showToast('success', 'Rota silme işlemi başarılı');
         
-        if (callback && typeof callback === 'function') {
-          callback();
+        try {
+          if (callback && typeof callback === 'function') {
+            callback();
+          }
+        } catch (error) {
+          console.error('Error deleting route:', error);
+          showToast('error', 'Rota silme işlemi sırasında bir hata oluştu');
         }
       } catch (error) {
         console.error('Error deleting route:', error);
-        Alert.alert('Hata', 'Rota silme işlemi sırasında bir hata oluştu');
+        showToast('error', 'Rota silme işlemi sırasında bir hata oluştu');
       }
     };
   return (
