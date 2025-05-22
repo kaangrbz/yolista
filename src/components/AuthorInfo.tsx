@@ -7,8 +7,9 @@ import { DropdownMenu } from './DropdownMenu';
 import { getTimeAgo } from '../utils/timeAgo';
 import RouteModel from '../model/routes.model';
 import { showToast } from '../utils/alert';
+import { useNavigation } from '@react-navigation/native';
 
-const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId }: {
+const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId, cityName }: {
   fullName: string;
   isVerified: boolean;
   username: string;
@@ -17,6 +18,7 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
   callback?: () => void;
   loggedUserId?: string | null;
   routeId: string;
+  cityName?: string;
 }) => {
   const [visibleDropdown, setVisibleDropdown] = useState(false);  
     const handleDeleteRoute = async () => {
@@ -43,13 +45,15 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
         showToast('error', 'Rota silme işlemi sırasında bir hata oluştu');
       }
     };
+
+    const navigation = useNavigation();
   return (
 
 
     <View style={styles.authorContainer}>
       <View style={styles.authorInfo}>
         <Text style={styles.authorName}>
-          {fullName || 'Kaan'}
+          {fullName}
         </Text>
         {(isVerified || false) && (
           <Icon
@@ -59,11 +63,20 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
             style={styles.verifiedIcon}
           />
         )}
-        <Text style={styles.authorUsername}>
-          @{username || 'kaangrx'}
-        </Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Profile', { userId: authorId })}>
+          <Text style={styles.authorUsername}>
+            @{username}
+          </Text>
+        </TouchableOpacity>
         <Seperator />
         <Text style={styles.timeAgo}>{getTimeAgo(createdAt)}</Text>
+        <Seperator />
+        {cityName && (
+          <View style={styles.cityContainer}>
+            <Icon name="map-marker" size={16} color="#666" />
+            <Text style={styles.cityName}>{cityName}</Text>
+          </View>
+        )}
       </View>
       <DropdownMenu visible={visibleDropdown} handleOpen={() => setVisibleDropdown(true)} handleClose={() => setVisibleDropdown(false)} trigger={<Icon name="dots-vertical" size={20} color="#666" />}>
         {/* <TouchableOpacity style={styles.menuOption}>
@@ -93,6 +106,7 @@ const styles = StyleSheet.create({
   authorInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 2
   },
   authorName: {
     fontSize: 16,
@@ -113,7 +127,10 @@ const styles = StyleSheet.create({
   timeAgo: {
     fontSize: 12,
     color: '#999',
-    marginRight: 10,
+  },
+  cityName: {
+    fontSize: 12,
+    color: '#333',
   },
   menuText: {
     fontSize: 16,
@@ -127,6 +144,11 @@ const styles = StyleSheet.create({
   },
   menuItemIcon: {
     marginRight: 10,
+  },
+  cityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
 });
     

@@ -66,18 +66,71 @@ const RouteModel = {
       cities: Array.isArray(route.cities) ? route.cities[0] : route.cities,
     })) as RouteWithProfile[];
   },
-  async getRoutesById(routeId: string): Promise<any> {
 
-    let { data: routes, error } = await supabase
+  async getRoutesById(routeId: string, userId?: string): Promise<any> {
+    // Step 1: Fetch Routes
+    const { data: routes, error: routesError } = await supabase
       .from('routes')
-      .select('*')
+      .select(`
+        *,
+        profiles (*),
+        cities (*)
+      `)
       .or(`id.eq.${routeId},parent_id.eq.${routeId}`)
       .eq('is_deleted', false)
       .order('order_index', { ascending: true });
-
-    // Ensure author is always a single object, not array
-    return routes;
+  
+    if (routesError) {
+      console.error("Error fetching routes:", routesError);
+      throw routesError;
+    }
+  
+    if (!routes || routes.length === 0) {
+      return [];
+    }
+  
+    // Step 2: Fetch Likes
+    const routeIds = routes.map((route: any) => route.id);
+  
+    const { data: likesData, error: likesError } = await supabase
+      .from('likes')
+      .select('entity_id, user_id')
+      .eq('entity_type', 'route')
+      .in('entity_id', routeIds);
+  
+    if (likesError) {
+      console.error("Error fetching likes data:", likesError);
+      throw likesError;
+    }
+  
+    // Step 3: Aggregate Likes Count
+    const likesCountMap = likesData?.reduce((acc: Record<string, number>, like: any) => {
+      acc[like.entity_id] = (acc[like.entity_id] || 0) + 1;
+      return acc;
+    }, {});
+    
+    // Step 4: Check if user has liked each route
+    let userLikesMap: Record<string, boolean> = {};
+    if (userId) {
+      userLikesMap = likesData?.reduce((acc: Record<string, boolean>, like: any) => {
+        console.log("like", acc)
+        if (like.user_id === userId) {
+          acc[like.entity_id] = true;
+        }
+        return acc;
+      }, {});
+    }
+  
+    // Step 5: Format and Return Routes
+    const formattedRoutes = routes.map((route: any) => ({
+      ...route,
+      like_count: likesCountMap?.[route.id] || 0,
+      did_like: userId ? !!userLikesMap[route.id] : false,
+    }));
+  
+    return formattedRoutes;
   },
+
 
 
 

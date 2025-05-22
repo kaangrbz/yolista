@@ -14,6 +14,7 @@ import {cities, City} from '../data/cities';
 import {Logo} from '../components/Logo';
 import {CreateRouteScreen} from '../screens/CreateRouteScreen';
 import { useCityStore, CityState } from '../store/cityStore';
+import ProfileScreen from '../screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -163,6 +164,14 @@ export const AppNavigator = () => {
               component={RouteDetailScreen}
               options={{
                 title: 'Rota Detayı',
+                headerBackTitle: 'Geri',
+              }}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={ProfileScreen}
+              options={{
+                title: 'Profil',
                 headerBackTitle: 'Geri',
               }}
             />
