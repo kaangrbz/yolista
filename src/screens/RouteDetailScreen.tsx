@@ -16,88 +16,135 @@ import { getRandomNumber } from '../utils/math';
 import { NoImage } from '../assets';
 import { AuthorInfo, CommentSection, ReactionSection, SeperatorLine } from '../components';
 
-const { width } = Dimensions.get('window');
+import { supabase } from '../lib/supabase';
 
-// Demo data - in real app, this would come from navigation params
+const { width } = Dimensions.get('window');
 
 export const RouteDetailScreen = ({ navigation, route }: { navigation: any, route: { params: { routeId: string } } }) => {
   const [isPageLoading, setIsPageLoading] = useState(true);
-  const [routeData, setRouteData] = useState<any>({});
+  const [routes, setRoutes] = useState<any>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const routeId = route.params.routeId;
+
+  // Fetch current user ID
+  useEffect(() => {
+    const fetchUserId = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUserId(user.id);
+        }
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      }
+    };
+
+    fetchUserId();
+  }, []);
 
   useEffect(() => {
     const loadRoute = async () => {
       try {
-        let route = await RouteModel.getRouteAndBookmarksById(routeId)
+        // Pass userId to getRoutesById to enable did_like functionality
+        let routes = await RouteModel.getRoutesById(routeId, userId || undefined)
+        console.log("🚀 ~ loadRoute ~ routes:", routes)
 
         setTimeout(() => {
-          setRouteData(route);
+          setRoutes(routes);
           setIsPageLoading(false)
         }, getRandomNumber(200, 500));
-        console.log('route detail', route);
 
       } catch (error) {
         console.error(error);
       }
-    }
+    };
 
     loadRoute();
-  }, [])
+  }, [routeId, userId]); // Re-fetch when userId changes
 
-  const handleLike = (bookmarkId: number) => {
-    // TODO: Implement like functionality
-    console.log('Like bookmark:', bookmarkId);
+  const handleLike = async (entityId: string, isLiked: boolean) => {
+    if (!userId) {
+      // Handle unauthenticated user - maybe show login prompt
+      console.log('User must be logged in to like routes');
+      return;
+    }
+    
+    try {
+      if (isLiked) {
+        // Add like
+        const { error } = await supabase
+          .from('likes')
+          .insert({
+            user_id: userId,
+            entity_id: entityId,
+            entity_type: 'route'
+          });
+          
+        if (error) throw error;
+      } else {
+        // Remove like
+        const { error } = await supabase
+          .from('likes')
+          .delete()
+          .match({
+            user_id: userId,
+            entity_id: entityId,
+            entity_type: 'route'
+          });
+          
+        if (error) throw error;
+      }
+      
+      // No need to refresh the entire route data - the UI is already updated optimistically
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      // You might want to revert the optimistic update here
+    }
   };
 
-  const handleSave = (bookmarkId: number) => {
+  const handleSave = (routeId: string) => {
     // TODO: Implement save functionality
-    console.log('Save bookmark:', bookmarkId);
+    console.log('Save route:', routeId);
   };
 
-  const handleShare = (bookmarkId: number) => {
+  const handleShare = (routeId: string) => {
     // TODO: Implement share functionality
-    console.log('Share bookmark:', bookmarkId);
+    console.log('Share route:', routeId);
   };
 
-  const renderBookmark = (bookmark: any) => {
-
-    console.log('render bookmark', bookmark);
+  const renderRoute = (route: any, index: number) => {
     return (
-    <View key={bookmark.id} style={styles.bookmarkCard}>
-      <Image
-        source={bookmark.image_url ? { uri: bookmark.image_url } : NoImage}
-        style={styles.bookmarkImage} 
-        resizeMode="contain"
-      />
-      <View style={styles.bookmarkContent}>
-        <Text style={styles.bookmarkTitle}>{bookmark.title}</Text>
-        <Text style={styles.bookmarkNote}>{bookmark.description}</Text>
-        <View style={styles.bookmarkActions}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleLike(bookmark.id)}>
-            <Icon
-              name={bookmark.isLiked ? 'heart' : 'heart-outline'}
-              size={24}
-              color={bookmark.isLiked ? '#ff4757' : '#666'}
+    <View key={route.id} style={styles.routeCard}>
+        <Image source={{uri: route.image_url || 'https://picsum.photos/400/200?random=' + route.id}} style={styles.mainImage}
+            resizeMode="cover" />
+      <View style={styles.routeContent}>
+
+            {index === 0 && (
+              <AuthorInfo
+              fullName={route.profiles.full_name}
+              isVerified={route.profiles.isVerified}
+              username={route.profiles.username}
+              createdAt={route.created_at}
+              authorId={route.profiles.id}
+              loggedUserId={route.profiles.id}
+              cityName={route.cities.name}
+              routeId={routeId}
             />
-            <Text style={styles.actionText}>{bookmark.likes}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleSave(bookmark.id)}>
-            <Icon
-              name={bookmark.isSaved ? 'bookmark' : 'bookmark-outline'}
-              size={24}
-              color={bookmark.isSaved ? '#2ecc71' : '#666'}
+            )}
+            
+            <Text style={styles.routeTitle}>{route.title}</Text>
+            {route.description && <Text style={styles.description}>{route.description}</Text>}
+            <ReactionSection 
+              likeCount={route.like_count} 
+              commentCount={route.comment_count} 
+              viewCount={route.view_count}
+              didLike={route.did_like}
+              routeId={route.id}
+              onLike={handleLike}
             />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleShare(bookmark.id)}>
-            <Icon name="share-variant" size={24} color="#666" />
-          </TouchableOpacity>
-        </View>
+            <SeperatorLine />
+            <CommentSection parentType="routeDetail" />
+            
       </View>
     </View>)
   }
@@ -107,31 +154,8 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
       {isPageLoading ?
         <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><ActivityIndicator size='small' /></View>
         : (<ScrollView showsVerticalScrollIndicator={false}>
-          <Image source={routeData.image_url ? { uri: routeData.image_url } : NoImage} style={styles.mainImage}
-            resizeMode="contain" />
-          <View>
-
-            <AuthorInfo
-              fullName={routeData.profiles.full_name}
-              isVerified={routeData.profiles.isVerified}
-              username={routeData.profiles.username}
-              createdAt={routeData.created_at}
-              authorId={routeData.profiles.id}
-              loggedUserId={routeData.profiles.id}
-              routeId={routeId}
-            />
-            <Text style={styles.title}>{routeData.title}</Text>
-            <Text style={styles.description}>{routeData.description}</Text>
-            <ReactionSection />
-            <SeperatorLine />
-            <CommentSection parentType="routeDetail" />
-            <SeperatorLine />
-            <View style={styles.bookmarksContainer}>
-              {/* {routeData.bookmarks?.map(renderBookmark)} */}
-              {routeData.bookmarks?.length > 0 ? routeData.bookmarks?.map(renderBookmark) : 
-              <Text style={{ color: '#666', textAlign: 'center', marginTop: 20 }}>Henüz bir durak eklenmemiş</Text>}
-            </View>
-          </View>
+          {routes?.length > 0 ? routes?.map((route: any, index: number) =>  renderRoute(route, index)) : 
+          <Text style={{ color: '#666', textAlign: 'center', marginTop: 20 }}>Henüz bir durak eklenmemiş</Text>}
 
         </ScrollView>)
       }
@@ -180,13 +204,13 @@ const styles = StyleSheet.create({
     marginVertical: 5,
     paddingHorizontal: 10,
   },
-  bookmarksContainer: {
+  routesContainer: {
+    marginTop: 20,
   },
-  bookmarkCard: {
+  routeCard: {
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
     backgroundColor: 'white',
-    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: {
@@ -197,26 +221,27 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  bookmarkImage: {
+  routeImage: {
     width: '100%',
     height: 200,
+    borderRadius: 0,
   },
-  bookmarkContent: {
-    padding: 16,
+  routeContent: {
   },
-  bookmarkTitle: {
+  routeTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#222',
-    marginBottom: 8,
+    paddingHorizontal: 10,
+    marginTop: 8,
   },
-  bookmarkNote: {
+  routeNote: {
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
     marginBottom: 12,
   },
-  bookmarkActions: {
+  routeActions: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
     gap: 16,

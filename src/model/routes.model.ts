@@ -66,31 +66,71 @@ const RouteModel = {
       cities: Array.isArray(route.cities) ? route.cities[0] : route.cities,
     })) as RouteWithProfile[];
   },
-  async getRouteById(routeId: string): Promise<RouteWithProfile> {
-    const {query} = supabase
+
+  async getRoutesById(routeId: string, userId?: string): Promise<any> {
+    // Step 1: Fetch Routes
+    const { data: routes, error: routesError } = await supabase
       .from('routes')
       .select(`
-          *,
-          profiles (
-            *
-          ),
-          cities (
-            *
-          )
+        *,
+        profiles (*),
+        cities (*)
       `)
+      .or(`id.eq.${routeId},parent_id.eq.${routeId}`)
       .eq('is_deleted', false)
-      .order('created_at', { ascending: false });
-
-
-    if (error) throw new Error(`Failed to fetch routes: ${error.message}`);
-    if (!data) return [];
-    // Ensure author is always a single object, not array
-    return data.map((route: any) => ({
+      .order('order_index', { ascending: true });
+  
+    if (routesError) {
+      console.error("Error fetching routes:", routesError);
+      throw routesError;
+    }
+  
+    if (!routes || routes.length === 0) {
+      return [];
+    }
+  
+    // Step 2: Fetch Likes
+    const routeIds = routes.map((route: any) => route.id);
+  
+    const { data: likesData, error: likesError } = await supabase
+      .from('likes')
+      .select('entity_id, user_id')
+      .eq('entity_type', 'route')
+      .in('entity_id', routeIds);
+  
+    if (likesError) {
+      console.error("Error fetching likes data:", likesError);
+      throw likesError;
+    }
+  
+    // Step 3: Aggregate Likes Count
+    const likesCountMap = likesData?.reduce((acc: Record<string, number>, like: any) => {
+      acc[like.entity_id] = (acc[like.entity_id] || 0) + 1;
+      return acc;
+    }, {});
+    
+    // Step 4: Check if user has liked each route
+    let userLikesMap: Record<string, boolean> = {};
+    if (userId) {
+      userLikesMap = likesData?.reduce((acc: Record<string, boolean>, like: any) => {
+        console.log("like", acc)
+        if (like.user_id === userId) {
+          acc[like.entity_id] = true;
+        }
+        return acc;
+      }, {});
+    }
+  
+    // Step 5: Format and Return Routes
+    const formattedRoutes = routes.map((route: any) => ({
       ...route,
-      profiles: Array.isArray(route.profiles) ? route.profiles[0] : route.profiles,
-      cities: Array.isArray(route.cities) ? route.cities[0] : route.cities,
-    })) as RouteWithProfile[];
+      like_count: likesCountMap?.[route.id] || 0,
+      did_like: userId ? !!userLikesMap[route.id] : false,
+    }));
+  
+    return formattedRoutes;
   },
+
 
 
 
@@ -131,14 +171,12 @@ const RouteModel = {
     cleanedRouteData.forEach((route) => {
       route.parent_id = mainRouteId;
     });
-    
+
     // Diğer rotaları ekle
     const { data: routes, error: routesError } = await supabase
       .from('routes')
       .insert(cleanedRouteData.filter((route) => route.order_index !== 0))
       .select();
-
-    console.log('routes', routes, routesError);
 
     if (routesError || !routes) {
       return { data: routes, error: routesError, type: 'create-route' };
@@ -175,10 +213,10 @@ const RouteModel = {
 
   async deleteRoute(routeId: string): Promise<{ data: any, error: any }> {
     const { data, error } = await supabase
-        .from('routes')
-        .update({ is_deleted: true })
-        .eq('id', routeId)
-        .select()
+      .from('routes')
+      .update({ is_deleted: true })
+      .eq('id', routeId)
+      .select()
 
     if (error) throw new Error(`Failed to delete route: ${error.message}`);
     return { data, error }

@@ -26,13 +26,19 @@ import ContentLoader, { Rect, Circle } from 'react-content-loader/native'
 
 const MyLoader = () => (
   <ContentLoader viewBox="0 0 380 70">
-    <Circle cx="30" cy="30" r="30" />
-    <Rect x="80" y="17" rx="4" ry="4" width="300" height="13" />
-    <Rect x="80" y="40" rx="3" ry="3" width="250" height="10" />
+    <Circle cx="50" cy="30" r="30" />
+    <Rect x="100" y="17" rx="4" ry="4" width="250" height="13" />
+    <Rect x="100" y="40" rx="3" ry="3" width="170" height="10" />
   </ContentLoader>
 )
 
 export const HomeScreen = () => {
+  // return (
+  //   <View>
+  //     <MyLoader />
+  //   </View>
+  // )
+
   const [isLoading, setIsLoading] = useState(true);
   const [isReloading, setIsReloading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -116,77 +122,108 @@ export const HomeScreen = () => {
     }
   }, [selectedCityId]);
 
-  const renderRouteCard = (route: RouteWithProfile) => (
-    <TouchableOpacity
-      key={route.id}
-      style={styles.routeCard}
-      onPress={() => navigate(navigation, PageName.RouteDetail, { routeId: route.id })}>
-      <AuthorInfo
-        fullName={route.profiles?.full_name}
-        isVerified={route.profiles?.is_verified}
-        username={route.profiles?.username}
-        createdAt={route.created_at}
-        authorId={route.user_id}
-        callback={fetchRoutes}
-        loggedUserId={userId}
-        routeId={route.id || ''}
-      />
-      <Image
-        source={route.image_url ? { uri: route.image_url } : NoImage}
-        style={styles.routeImage}
-        resizeMode="contain"
-      />
-      <View style={styles.routeInfo}>
-        <Text style={styles.routeTitle}>{route.title}</Text>
-        <View style={styles.routeDetails}>
-          <View style={styles.detailItem}>
-            <Icon name="map-marker" size={16} color="#666" />
-            <Text style={styles.detailText}>{route.cities?.name}</Text>
-          </View>
-        </View>
-        <View style={styles.reactionContainer}>
-          <TouchableOpacity style={styles.reactionItem}>
-            <Icon name="comment-outline" size={18} color="#121" />
-            <Text style={styles.reactionText}>{0}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.reactionItem}>
-            <Icon name="heart-outline" size={18} color="#c00" />
-            <Text style={[styles.reactionText]}>{0}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.reactionItem}>
-            <Icon name="eye-outline" size={18} color="#121" />
-            <Text style={styles.reactionText}>{0}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.reactionItem}>
-            <Icon name="bookmark-outline" size={18} color="#121" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.reactionItem}>
-            <Icon name="share-variant" size={18} color="#121" />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.commentContainer}>
-          <View style={styles.commentInputContainer}>
-            <Image
-              source={{
-                uri:
-                  route.image_url ||
-                  `https://picsum.photos/20/20`,
-              }}
-              style={styles.commentImage}
-            />
-            <TextInput
-              placeholder="Yorum yap"
-              placeholderTextColor="#666"
-              style={styles.commentInput}
-            />
-            <TouchableOpacity>
-              <Icon name="send" size={20} color="#121" />
+  // New state for expanded descriptions
+  const [expandedDescriptions, setExpandedDescriptions] = useState<{ [key: string]: boolean }>({});
+  // New state for tracking which descriptions need 'See More'
+  const [showSeeMore, setShowSeeMore] = useState<{ [key: string]: boolean }>({});
+
+  // Helper to measure if description is longer than 3 lines (after first render)
+  const handleTextLayout = (e: any, routeId: string | undefined) => {
+    const key = String(routeId ?? '');
+    console.log('handleTextLayout', { key, lines: e.nativeEvent.lines.length });
+    if (e.nativeEvent.lines.length > 3 && !showSeeMore[key]) {
+      setShowSeeMore(prev => ({ ...prev, [key]: true }));
+    }
+  };
+
+  const renderRouteCard = (route: RouteWithProfile) => {
+    const routeKey = String(route.id ?? '');
+    return (
+      <TouchableOpacity
+        key={routeKey}
+        style={styles.routeCard}
+        onPress={() => navigate(navigation, PageName.RouteDetail, { routeId: route.id })}>
+        <AuthorInfo
+          fullName={route.profiles?.full_name}
+          isVerified={route.profiles?.is_verified}
+          username={route.profiles?.username}
+          createdAt={route.created_at}
+          authorId={route.user_id}
+          callback={fetchRoutes}
+          loggedUserId={userId}
+          routeId={route.id || ''}
+          cityName={route.cities?.name}
+        />
+        <Image
+          source={route.image_url ? { uri: route.image_url } : NoImage}
+          style={styles.routeImage}
+          resizeMode="contain"
+        />
+        <View style={styles.routeInfo}>
+          <Text style={styles.routeTitle}>{route.title}</Text>
+          {route.description && (
+            <>
+              <Text
+                style={styles.routeDescription}
+                numberOfLines={expandedDescriptions[routeKey] ? undefined : 3}
+                onTextLayout={e => handleTextLayout(e, routeKey)}
+              >
+                {route.description}
+              </Text>
+              {/* Always show for debugging; revert to showSeeMore[routeKey] after testing */}
+              <Text
+                style={styles.seeMoreText}
+                onPress={() => setExpandedDescriptions(prev => ({ ...prev, [routeKey]: !prev[routeKey] }))}
+              >
+                {expandedDescriptions[routeKey] ? 'daha az' : 'daha fazla'}
+              </Text>
+            </>
+          )}
+
+          <View style={styles.reactionContainer}>
+            <TouchableOpacity style={styles.reactionItem}>
+              <Icon name="comment-outline" size={18} color="#121" />
+              <Text style={styles.reactionText}>{0}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.reactionItem}>
+              <Icon name="heart-outline" size={18} color="#c00" />
+              <Text style={[styles.reactionText]}>{0}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.reactionItem}>
+              <Icon name="eye-outline" size={18} color="#121" />
+              <Text style={styles.reactionText}>{0}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.reactionItem}>
+              <Icon name="bookmark-outline" size={18} color="#121" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.reactionItem}>
+              <Icon name="share-variant" size={18} color="#121" />
             </TouchableOpacity>
           </View>
+          <View style={styles.commentContainer}>
+            <View style={styles.commentInputContainer}>
+              <Image
+                source={{
+                  uri:
+                    route.image_url ||
+                    `https://picsum.photos/20/20`,
+                }}
+                style={styles.commentImage}
+              />
+              <TextInput
+                placeholder="Yorum yap"
+                placeholderTextColor="#666"
+                style={styles.commentInput}
+              />
+              <TouchableOpacity>
+                <Icon name="send" size={20} color="#121" />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    )
+  }
 
   const renderFooter = () => {
     if (isLoading || isReloading) {
@@ -209,28 +246,28 @@ export const HomeScreen = () => {
 
   return (
     <>
-    <View style={[styles.container]}>
-      <FlatList
-      data={routes}
-      keyExtractor={(item, index) => index.toString()} // Adjust if your data has unique IDs
-      renderItem={({ item }) => renderRouteCard(item)}
-      contentContainerStyle={routes.length === 0 ? styles.noRoutesContainer : styles.routesContainer}
-      ListFooterComponent={renderFooter} // Shows the loading spinner at the bottom
-      ListEmptyComponent={renderEmptyComponent} // Shows when the list is empty
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-      showsVerticalScrollIndicator={false}
-    />
-      
-    </View>
-    <LoadingFloatingAction
-    backgroundColor='#121212'
-    iconName='plus'
-    onPress={() => navigate(navigation, PageName.CreateRoute)}
+      <View style={[styles.container]}>
+        <FlatList
+          data={routes}
+          keyExtractor={(item, index) => index.toString()} // Adjust if your data has unique IDs
+          renderItem={({ item }) => renderRouteCard(item)}
+          contentContainerStyle={routes.length === 0 ? styles.noRoutesContainer : styles.routesContainer}
+          ListFooterComponent={renderFooter} // Shows the loading spinner at the bottom
+          ListEmptyComponent={renderEmptyComponent} // Shows when the list is empty
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        />
 
-  />
-  </>
+      </View>
+      <LoadingFloatingAction
+        backgroundColor='#121212'
+        iconName='plus'
+        onPress={() => navigate(navigation, PageName.CreateRoute)}
+
+      />
+    </>
   );
 };
 
@@ -293,7 +330,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingHorizontal: 16,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   routeDetails: {
     flexDirection: 'row',
@@ -354,5 +391,16 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
+  },
+  routeDescription: {
+    fontSize: 14,
+    paddingHorizontal: 16,
+    color: '#666',
+  },
+  seeMoreText: {
+    color: '#666',
+    marginTop: 2,
+    fontSize: 12,
+    paddingHorizontal: 16,
   },
 });
