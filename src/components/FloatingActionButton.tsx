@@ -5,7 +5,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 interface LoadingFloatingActionProps {
   onPress?: () => Promise<void>;
-  onPressItem?: (name: string) => void;
+  onPressItem?: (name?: string) => void;
   iconName?: string;
   iconColor?: string;
   iconSize?: number;
@@ -18,7 +18,7 @@ interface LoadingFloatingActionProps {
 
 export const LoadingFloatingAction: React.FC<LoadingFloatingActionProps> = ({
   onPress,
-  onPressItem,
+  onPressItem = () => {},
   iconName = 'content-save-edit-outline',
   iconColor = 'white',
   iconSize = 30,
@@ -44,7 +44,7 @@ export const LoadingFloatingAction: React.FC<LoadingFloatingActionProps> = ({
       visible={isVisible}
       color={backgroundColor}
       position={position}
-      onPressItem={onPressItem || ((name?: string) => {})}
+      onPressItem={onPressItem}
       showBackground={false}
       floatingIcon={
         isLoading ? (

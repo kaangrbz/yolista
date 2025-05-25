@@ -11,6 +11,7 @@ import {
   RefreshControl,
   TextInput,
   FlatList,
+  SafeAreaView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
@@ -21,6 +22,7 @@ import { navigate, PageName } from '../types/navigation';
 import { checkFirstTime } from '../utils/welcome';
 import { NoImage } from '../assets';
 import { supabase } from '../lib/supabase';
+import { HomeHeader } from '../components/header/Header';
 
 import ContentLoader, { Rect, Circle } from 'react-content-loader/native'
 
@@ -75,6 +77,17 @@ export const HomeScreen = () => {
     }
   }, [selectedCityId]);
 
+  function shuffleArray(array: RouteWithProfile[]) {
+    for (let i = array.length - 1; i > 0; i--) {
+      // Pick a random index from 0 to i
+      const j = Math.floor(Math.random() * (i + 1));
+      // Swap elements at i and j
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+  
+
   const fetchRoutes = async () => {
     try {
       // Use selectedCityId from component scope
@@ -97,7 +110,7 @@ export const HomeScreen = () => {
 
       let data = await RouteModel.getRoutes(20, true);
 
-      setRoutes(data || []);
+      setRoutes(shuffleArray(data || []));
     } catch (error) {
       console.error('Error fetching routes:', error);
       Alert.alert('Hata', 'Rotalar yüklenirken bir hata oluştu');
@@ -157,7 +170,7 @@ export const HomeScreen = () => {
         <Image
           source={route.image_url ? { uri: route.image_url } : NoImage}
           style={styles.routeImage}
-          resizeMode="contain"
+          resizeMode="cover"
         />
         <View style={styles.routeInfo}>
           <Text style={styles.routeTitle}>{route.title}</Text>
@@ -171,12 +184,14 @@ export const HomeScreen = () => {
                 {route.description}
               </Text>
               {/* Always show for debugging; revert to showSeeMore[routeKey] after testing */}
-              <Text
-                style={styles.seeMoreText}
-                onPress={() => setExpandedDescriptions(prev => ({ ...prev, [routeKey]: !prev[routeKey] }))}
-              >
-                {expandedDescriptions[routeKey] ? 'daha az' : 'daha fazla'}
-              </Text>
+              {expandedDescriptions[routeKey] && (
+                <Text
+                  style={styles.seeMoreText}
+                  onPress={() => setExpandedDescriptions(prev => ({ ...prev, [routeKey]: !prev[routeKey] }))}
+                >
+                  {expandedDescriptions[routeKey] ? 'daha az' : 'daha fazla'}
+                </Text>
+              )}
             </>
           )}
 
@@ -245,8 +260,8 @@ export const HomeScreen = () => {
   );
 
   return (
-    <>
-      <View style={[styles.container]}>
+    <SafeAreaView style={[styles.container]}>
+        <HomeHeader />
         <FlatList
           data={routes}
           keyExtractor={(item, index) => index.toString()} // Adjust if your data has unique IDs
@@ -260,14 +275,13 @@ export const HomeScreen = () => {
           showsVerticalScrollIndicator={false}
         />
 
-      </View>
       <LoadingFloatingAction
         backgroundColor='#121212'
         iconName='plus'
         onPress={() => navigate(navigation, PageName.CreateRoute)}
 
       />
-    </>
+    </SafeAreaView>
   );
 };
 
@@ -317,7 +331,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
     backgroundColor: 'white',
-    marginBottom: 20,
+    paddingVertical: 12,
   },
   routeImage: {
     width: '100%',
