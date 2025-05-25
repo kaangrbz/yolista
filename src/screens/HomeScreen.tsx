@@ -156,7 +156,7 @@ export const HomeScreen = () => {
         key={routeKey}
         style={styles.routeCard}
         onPress={() => navigate(navigation, PageName.RouteDetail, { routeId: route.id })}>
-        <AuthorInfo
+        <AuthorInfo 
           fullName={route.profiles?.full_name}
           isVerified={route.profiles?.is_verified}
           username={route.profiles?.username}
@@ -164,7 +164,7 @@ export const HomeScreen = () => {
           authorId={route.user_id}
           callback={fetchRoutes}
           loggedUserId={userId}
-          routeId={route.id || ''}
+          routeId={route.id || ''} 
           cityName={route.cities?.name}
         />
         <Image

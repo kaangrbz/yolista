@@ -7,7 +7,7 @@ import { DropdownMenu } from './DropdownMenu';
 import { getTimeAgo } from '../utils/timeAgo';
 import RouteModel from '../model/routes.model';
 import { showToast } from '../utils/alert';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useNavigationState } from '@react-navigation/native';
 
 const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId, cityName }: {
   fullName: string;
@@ -22,6 +22,9 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
 }) => {
   const [visibleDropdown, setVisibleDropdown] = useState(false);  
     const navigation = useNavigation();
+
+    const screenName = useNavigationState((state) => state.routes[state.index].name)
+    console.log('screenName', screenName);
     const handleDeleteRoute = async () => {
       try {
         const { data, error } = await RouteModel.deleteRoute(routeId);
@@ -36,8 +39,9 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
         try {
           if (callback && typeof callback === 'function') {
             callback();
-
-            navigation.goBack();
+            if(screenName !== 'HomeMain') {
+              navigation.goBack();
+            }
           }
         } catch (error) {
           console.error('Error deleting route:', error);
