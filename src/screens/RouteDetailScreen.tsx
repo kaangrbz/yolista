@@ -15,7 +15,7 @@ import RouteModel from '../model/routes.model';
 import { getRandomNumber } from '../utils/math';
 import { NoImage } from '../assets';
 import { AuthorInfo, CommentSection, ReactionSection, SeperatorLine } from '../components';
-
+import { showToast } from '../utils/alert';
 import { supabase } from '../lib/supabase';
 
 const { width } = Dimensions.get('window');
@@ -24,6 +24,7 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [routes, setRoutes] = useState<any>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isRouteDeleted, setIsRouteDeleted] = useState(false);
   const routeId = route.params.routeId;
 
   // Fetch current user ID
@@ -48,6 +49,11 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
         // Pass userId to getRoutesById to enable did_like functionality
         let routes = await RouteModel.getRoutesById(routeId, userId || undefined)
         console.log("🚀 ~ loadRoute ~ routes:", routes)
+
+        if (routes && routes.length > 0 && routes[0].is_deleted) {
+          setIsRouteDeleted(true);
+          return;
+        }
 
         setTimeout(() => {
           setRoutes(routes);
@@ -147,6 +153,14 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
             
       </View>
     </View>)
+  }
+
+  if (isRouteDeleted) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Bu rota silinmiş veya artık mevcut değil.</Text>
+      </View>
+    )
   }
 
   return (

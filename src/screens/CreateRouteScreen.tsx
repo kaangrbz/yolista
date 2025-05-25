@@ -5,7 +5,9 @@ import {
     StyleSheet,
     TextInput,
     TouchableOpacity,
-    ScrollView
+    ScrollView,
+    SafeAreaView,
+    ActivityIndicator
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
@@ -14,12 +16,19 @@ import RouteModel, { RoutePoint } from '../model/routes.model';
 import { LoadingFloatingAction } from '../components';
 import { showToast } from '../utils/alert';
 import { useCityStore, CityState } from '../store/cityStore';
+import { CreateRouteHeader } from '../components/header/Header';
 
 
 
 export const CreateRouteScreen = () => {
     const navigation = useNavigation();
     const [user, setUser] = useState<any>(null);
+    const defaultSelectedCityId = useCityStore((state: CityState) => state.selectedCityId);
+    const [cities, setCities] = useState<{ label: string, value: number }[]>([]);
+    const [selectedCityId, setSelectedCityId] = useState<number>(defaultSelectedCityId || 0);
+    const [open, setOpen] = useState(false);
+    const [isPublishing, setIsPublishing] = useState(false);
+    const [isLoadingCity, setIsLoadingCity] = useState(true);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -63,7 +72,6 @@ export const CreateRouteScreen = () => {
 
     // Route management functions
     const addRoutePoint = async () => {
-        console.log('user', user);
         const newRoutePoint: RoutePoint = {
             client_id: new Date().getTime().toString(),
             title: '',
@@ -121,18 +129,11 @@ export const CreateRouteScreen = () => {
         showToast('info', 'Resim ekleme ozelligi cok yakinda aktif edilecektir.');
     };
 
-    const defaultSelectedCityId = useCityStore((state: CityState) => state.selectedCityId);
-    const [cities, setCities] = useState<{ label: string, value: number }[]>([]);
-    const [selectedCityId, setSelectedCityId] = useState<number>(defaultSelectedCityId || 0);
-    const [open, setOpen] = useState(false);
-    const [isPublishing, setIsPublishing] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-
     // Bookmark functionality removed
 
     const fetchCities = async () => {
         try {
-            setIsLoading(true);
+            setIsLoadingCity(true);
             const { data, error } = await supabase
                 .from('cities')
                 .select('*')
@@ -143,7 +144,7 @@ export const CreateRouteScreen = () => {
         } catch (error) {
             console.error('Error fetching cities:', error);
         } finally {
-            setIsLoading(false);
+            setIsLoadingCity(false);
         }
     };
 
@@ -192,10 +193,33 @@ export const CreateRouteScreen = () => {
         validateForm();
     };
 
-    const handleSubmit = async (): Promise<void> => {
-        showToast('warning', 'Form kontrol ediliyor');
-        console.log('route points', routePoints);
+    const resetForm = () => {
+        // Clear route points
+        setRoutePoints([]);
 
+        // Reset form fields
+        setSelectedCityId(defaultSelectedCityId || 0);
+
+        // Reset form errors and touched state
+        setFormErrors({
+            title: '',
+            description: '',
+            cityId: '',
+            routes: ''
+        });
+
+        setTouched({
+            title: false,
+            description: false,
+            cityId: false,
+            routes: false
+        });
+
+        // Add one empty route point
+        addRoutePoint();
+    };
+
+    const handleSubmit = async (): Promise<void> => {
         // Validate form fields
         const isValid = validateForm();
 
@@ -207,7 +231,7 @@ export const CreateRouteScreen = () => {
         setIsPublishing(true);
 
         try {
-            const { data, error } = await RouteModel.createRoute(routePoints);
+            const { data, error } = await RouteModel.createRoute(routePoints, selectedCityId);
 
             if (error) {
                 showToast('error', 'Rota eklenirken bir hata oluştu', 'Hata');
@@ -215,55 +239,60 @@ export const CreateRouteScreen = () => {
                 return;
             }
 
-            console.log('routeData', data);
-
             showToast('success', 'Rota başarıyla eklendi', 'Başarılı');
+            resetForm();
             navigation.goBack();
         } catch (error) {
             console.error('Error adding route:', error);
             showToast('error', 'Rota eklenirken bir hata oluştu', 'Hata');
-        }
-        finally {
+        } finally {
             setIsPublishing(false);
         }
     };
 
     return (
-        <>
-            <ScrollView style={[styles.container, { backgroundColor: '#fff' }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: '#fff' }]}>
+            <CreateRouteHeader navigation={navigation} />
+            <ScrollView style={[styles.container]}>
                 <View style={styles.form}>
                     <View style={styles.inputContainer}>
                         <Text style={[styles.label, { color: '#222' }]}>
                             Şehir seç <Text style={{ color: 'red' }}>*</Text>
                         </Text>
-                        <DropDownPicker
-                            open={open}
-                            value={selectedCityId}
-                            items={cities}
-                            setOpen={setOpen}
-                            setValue={setSelectedCityId}
-                            searchable
-                            onChangeValue={(value) => {
-                                if (value !== null) {
-                                    handleInputBlur('cityId');
-                                }
-                            }}
-                            setItems={setCities}
-                            placeholder="Şehir seçin"
-                            style={{
-                                borderColor: '#ddd',
-                                backgroundColor: '#fff',
-                            }}
-                            textStyle={{
-                                color: '#000',
-                            }}
-                            dropDownContainerStyle={{
-                                borderColor: '#ddd',
-                                backgroundColor: '#fff',
-                            }}
-                            zIndex={1000}
-                            onClose={() => handleInputBlur('cityId')}
-                        />
+
+                        {isLoadingCity && (
+                            <ActivityIndicator size="small" color="#000" />
+                        )}
+                        {!isLoadingCity && (
+                            <DropDownPicker
+                                open={open}
+                                value={selectedCityId}
+                                items={cities}
+                                setOpen={setOpen}
+                                setValue={setSelectedCityId}
+                                searchable
+                                onChangeValue={(value) => {
+                                    if (value !== null) {
+                                        handleInputBlur('cityId');
+                                    }
+                                }}
+                                setItems={setCities}
+                                placeholder="Şehir seçin"
+                                style={{
+                                    borderColor: '#ddd',
+                                    backgroundColor: '#fff',
+                                }}
+                                textStyle={{
+                                    color: '#000',
+                                }}
+                                dropDownContainerStyle={{
+                                    borderColor: '#ddd',
+                                    backgroundColor: '#fff',
+                                }}
+                                zIndex={1000}
+                                onClose={() => handleInputBlur('cityId')}
+                            />
+                        )}
                         {formErrors.cityId && touched.cityId && (
                             <Text style={styles.errorText}>{formErrors.cityId}</Text>
                         )}
@@ -277,7 +306,7 @@ export const CreateRouteScreen = () => {
                         )}
 
                         {routePoints.map((point, index) => (
-                            <View key={point.id} style={styles.routeItem}>
+                            <View key={point.client_id} style={styles.routeItem}>
                                 <View style={styles.routeHeader}>
                                     <Text style={styles.routeHeaderText}>Durak {index + 1}</Text>
                                     <Text style={styles.routeHeaderText}>
@@ -362,7 +391,7 @@ export const CreateRouteScreen = () => {
                     backgroundColor={isPublishing ? '#ccc' : '#121212'}
                     iconName={"leaf"} />
             </View>
-        </>
+        </SafeAreaView>
     );
 }
 

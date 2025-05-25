@@ -77,7 +77,6 @@ const RouteModel = {
         cities (*)
       `)
       .or(`id.eq.${routeId},parent_id.eq.${routeId}`)
-      .eq('is_deleted', false)
       .order('order_index', { ascending: true });
   
     if (routesError) {
@@ -134,7 +133,7 @@ const RouteModel = {
 
 
 
-  async createRoute(routeData: RoutePoint[]) {
+  async createRoute(routeData: RoutePoint[], cityId: number) {
     // Remove client_id from each route object
     const cleanedRouteData: ServerRoutePoint[] = routeData.map(({ client_id, ...rest }) => rest);
 
@@ -146,6 +145,9 @@ const RouteModel = {
       showToast('error', 'Ana rotayı bulamadım', 'Hata');
       return { data: null, error: true, message: 'Ana rota bulunamadı.', type: 'find-main-route' };
     }
+
+    console.log('cityId', cityId);
+    mainRouteData.city_id = cityId;
 
     // Önce ana rotayı ekle
     const { data: route, error } = await supabase
@@ -170,6 +172,7 @@ const RouteModel = {
     // Diğer rotaların parent_id'sini ana rotanın id'si ile güncelle
     cleanedRouteData.forEach((route) => {
       route.parent_id = mainRouteId;
+      route.city_id = cityId;
     });
 
     // Diğer rotaları ekle

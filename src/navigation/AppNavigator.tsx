@@ -4,17 +4,13 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useAuth} from '../context/AuthContext';
 import {LoginScreen} from '../screens/LoginScreen';
 import {RegisterScreen} from '../screens/RegisterScreen';
-import {HomeScreen} from '../screens/HomeScreen';
-import {AddCategoryScreen} from '../screens/AddCategoryScreen';
-import {RouteDetailScreen} from '../screens/RouteDetailScreen';
 import {TouchableOpacity, StyleSheet, Text, Alert, View} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {cities, City} from '../data/cities';
 import {Logo} from '../components/Logo';
-import {CreateRouteScreen} from '../screens/CreateRouteScreen';
 import { useCityStore, CityState } from '../store/cityStore';
-import ProfileScreen from '../screens/ProfileScreen';
+import MainTabNavigator from './MainTabNavigator';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,7 +25,7 @@ const LocationHeader = () => {
         if (savedCityId) {
           const city = cities.find(c => c.id === parseInt(savedCityId, 10));
           if (city) {
-            setSelectedCityId(city.id);
+            setSelectedCityId(city.id, city.name);
           } else {
             setSelectedCityId(null);
           }
@@ -53,7 +49,7 @@ const LocationHeader = () => {
           onPress: async () => {
             try {
               await AsyncStorage.setItem('city_id', city.id.toString());
-              setSelectedCityId(city.id);
+              setSelectedCityId(city.id, city.name);
             } catch (error) {
               console.error('Şehir kaydetme hatası:', error);
               Alert.alert('Hata', 'Şehir seçimi kaydedilemedi');
@@ -137,42 +133,10 @@ export const AppNavigator = () => {
         ) : (
           <>
             <Stack.Screen
-              name="Home"
-              component={HomeScreen}
+              name="MainTabs"
+              component={MainTabNavigator}
               options={{
-                headerTitle: () => <Logo size="small" color="#1DA1F2" />,
-                headerLeft: () => <LogoutButton />,
-                headerRight: () => <LocationHeader />,
-              }}
-            />
-            <Stack.Screen
-              name="AddCategory"
-              component={AddCategoryScreen}
-              options={{
-                title: 'Öneride Bulun',
-              }}
-            />
-            <Stack.Screen
-              name="CreateRoute"
-              component={CreateRouteScreen}
-              options={{
-                title: 'Rota Oluştur',
-              }}
-            />
-            <Stack.Screen
-              name="RouteDetail"
-              component={RouteDetailScreen}
-              options={{
-                title: 'Rota Detayı',
-                headerBackTitle: 'Geri',
-              }}
-            />
-            <Stack.Screen
-              name="Profile"
-              component={ProfileScreen}
-              options={{
-                title: 'Profil',
-                headerBackTitle: 'Geri',
+                headerShown: false,
               }}
             />
           </>

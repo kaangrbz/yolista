@@ -21,6 +21,7 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
   cityName?: string;
 }) => {
   const [visibleDropdown, setVisibleDropdown] = useState(false);  
+    const navigation = useNavigation();
     const handleDeleteRoute = async () => {
       try {
         const { data, error } = await RouteModel.deleteRoute(routeId);
@@ -35,6 +36,8 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
         try {
           if (callback && typeof callback === 'function') {
             callback();
+
+            navigation.goBack();
           }
         } catch (error) {
           console.error('Error deleting route:', error);
@@ -46,7 +49,7 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
       }
     };
 
-    const navigation = useNavigation();
+
   return (
 
 

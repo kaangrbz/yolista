@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
-  FlatList,
+  ScrollView,
 } from 'react-native';
 import { Tabs } from 'react-native-collapsible-tab-view';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -26,37 +26,52 @@ const HEADER_HEIGHT = 300;
 // Tab Content Components
 const PostsTab = () => {
   return (
-    <Tabs.ScrollView>
-      <View style={styles.tabContent}>
-        <View style={styles.postContainer}>
-          <Text style={styles.noContentText}>Henüz gönderi yok</Text>
+    <Tabs.FlatList
+      data={[]}
+      renderItem={null}
+      ListEmptyComponent={() => (
+        <View style={styles.tabContent}>
+          <View style={styles.postContainer}>
+            <Text style={styles.noContentText}>Henüz gönderi yok</Text>
+          </View>
         </View>
-      </View>
-    </Tabs.ScrollView>
+      )}
+      contentContainerStyle={styles.tabContentContainer}
+    />
   );
 };
 
 const SavedTab = () => {
   return (
-    <Tabs.ScrollView>
-      <View style={styles.tabContent}>
-        <View style={styles.postContainer}>
-          <Text style={styles.noContentText}>Kaydedilen öğe yok</Text>
+    <Tabs.FlatList
+      data={[]}
+      renderItem={null}
+      ListEmptyComponent={() => (
+        <View style={styles.tabContent}>
+          <View style={styles.postContainer}>
+            <Text style={styles.noContentText}>Kaydedilen öğe yok</Text>
+          </View>
         </View>
-      </View>
-    </Tabs.ScrollView>
+      )}
+      contentContainerStyle={styles.tabContentContainer}
+    />
   );
 };
 
 const TaggedTab = () => {
   return (
-    <Tabs.ScrollView>
-      <View style={styles.tabContent}>
-        <View style={styles.postContainer}>
-          <Text style={styles.noContentText}>Etiketlendiğiniz gönderi yok</Text>
+    <Tabs.FlatList
+      data={[]}
+      renderItem={null}
+      ListEmptyComponent={() => (
+        <View style={styles.tabContent}>
+          <View style={styles.postContainer}>
+            <Text style={styles.noContentText}>Etiketlendiğiniz gönderi yok</Text>
+          </View>
         </View>
-      </View>
-    </Tabs.ScrollView>
+      )}
+      contentContainerStyle={styles.tabContentContainer}
+    />
   );
 };
 
@@ -140,7 +155,7 @@ const ProfileScreen = ({ userId, currentUserId }: ProfilePageProps) => {
         headerHeight={HEADER_HEIGHT}
         headerContainerStyle={styles.tabsHeaderContainer}
         containerStyle={styles.tabsContainer}
-        initialTabName="posts"
+        lazy
       >
         <Tabs.Tab name="posts" label="Gönderiler">
           <PostsTab />
@@ -254,15 +269,6 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     backgroundColor: '#fff',
-  },
-  tabBar: {
-    backgroundColor: '#fff',
-    elevation: 0,
-    shadowOpacity: 0,
-  },
-  tabLabel: {
-    fontWeight: '600',
-    textTransform: 'none',
   },
   tabContent: {
     flex: 1,
