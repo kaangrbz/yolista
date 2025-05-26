@@ -3,20 +3,17 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   Image,
   Dimensions,
   ActivityIndicator,
+  FlatList,
+  RefreshControl,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Colors } from 'react-native/Libraries/NewAppScreen';
 import RouteModel from '../model/routes.model';
 import { getRandomNumber } from '../utils/math';
-import { NoImage } from '../assets';
 import { AuthorInfo, CommentSection, ReactionSection, SeperatorLine } from '../components';
-import { showToast } from '../utils/alert';
 import { supabase } from '../lib/supabase';
+import { showToast } from '../utils/alert';
 
 const { width } = Dimensions.get('window');
 
@@ -25,6 +22,7 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
   const [routes, setRoutes] = useState<any>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [isRouteDeleted, setIsRouteDeleted] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const routeId = route.params.routeId;
 
   // Fetch current user ID
@@ -43,27 +41,26 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
     fetchUserId();
   }, []);
 
-  useEffect(() => {
-    const loadRoute = async () => {
-      try {
-        // Pass userId to getRoutesById to enable did_like functionality
-        let routes = await RouteModel.getRoutesById(routeId, userId || undefined)
-        console.log("🚀 ~ loadRoute ~ routes:", routes)
-
-        if (routes && routes.length > 0 && routes[0].is_deleted) {
-          setIsRouteDeleted(true);
-          return;
-        }
-
-        setTimeout(() => {
-          setRoutes(routes);
-          setIsPageLoading(false)
-        }, getRandomNumber(200, 500));
-
-      } catch (error) {
-        console.error(error);
+  const loadRoute = async () => {
+    try {
+      // Pass userId to getRoutesById to enable did_like functionality
+      let routes = await RouteModel.getRoutesById(routeId, userId || undefined)
+      if (routes && routes.length > 0 && routes[0].is_deleted) {
+        setIsRouteDeleted(true);
+        return;
       }
-    };
+
+      setTimeout(() => {
+        setRoutes(routes);
+        setIsPageLoading(false)
+      }, getRandomNumber(200, 500));
+
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
 
     loadRoute();
   }, [routeId, userId]); // Re-fetch when userId changes
@@ -74,7 +71,7 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
       console.log('User must be logged in to like routes');
       return;
     }
-    
+
     try {
       if (isLiked) {
         // Add like
@@ -85,7 +82,7 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
             entity_id: entityId,
             entity_type: 'route'
           });
-          
+
         if (error) throw error;
       } else {
         // Remove like
@@ -97,10 +94,10 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
             entity_id: entityId,
             entity_type: 'route'
           });
-          
+
         if (error) throw error;
       }
-      
+
       // No need to refresh the entire route data - the UI is already updated optimistically
     } catch (error) {
       console.error('Error toggling like:', error);
@@ -118,15 +115,27 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
     console.log('Share route:', routeId);
   };
 
+  const onRefresh = React.useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await loadRoute();
+      setRefreshing(false);
+    } catch (error) {
+      console.error('Error refreshing route:', error);
+      showToast('error', 'Rota yenilenirken bir hata oluştu');
+      setRefreshing(false);
+    }
+  }, [routeId]);
+
   const renderRoute = (route: any, index: number) => {
     return (
-    <View key={route.id} style={styles.routeCard}>
-        <Image source={{uri: route.image_url || 'https://picsum.photos/400/200?random=' + route.id}} style={styles.mainImage}
-            resizeMode="cover" />
-      <View style={styles.routeContent}>
+      <View key={route.id} style={styles.routeCard}>
+        <Image source={{ uri: route.image_url || 'https://picsum.photos/400/200?random=' + route.id }} style={styles.mainImage}
+          resizeMode="cover" />
+        <View style={styles.routeContent}>
 
-            {index === 0 && (
-              <AuthorInfo
+          {index === 0 && (
+            <AuthorInfo
               fullName={route.profiles.full_name}
               isVerified={route.profiles.isVerified}
               username={route.profiles.username}
@@ -136,23 +145,23 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
               cityName={route.cities.name}
               routeId={routeId}
             />
-            )}
-            
-            <Text style={styles.routeTitle}>{route.title}</Text>
-            {route.description && <Text style={styles.description}>{route.description}</Text>}
-            <ReactionSection 
-              likeCount={route.like_count} 
-              commentCount={route.comment_count} 
-              viewCount={route.view_count}
-              didLike={route.did_like}
-              routeId={route.id}
-              onLike={handleLike}
-            />
-            <SeperatorLine />
-            <CommentSection parentType="routeDetail" />
-            
-      </View>
-    </View>)
+          )}
+
+          <Text style={styles.routeTitle}>{route.title}</Text>
+          {route.description && <Text style={styles.description}>{route.description}</Text>}
+          <ReactionSection
+            likeCount={route.like_count}
+            commentCount={route.comment_count}
+            viewCount={route.view_count}
+            didLike={route.did_like}
+            routeId={route.id}
+            onLike={handleLike}
+          />
+          <SeperatorLine />
+          <CommentSection parentType="routeDetail" />
+
+        </View>
+      </View>)
   }
 
   if (isRouteDeleted) {
@@ -167,11 +176,9 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
     <View style={[styles.container]}>
       {isPageLoading ?
         <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><ActivityIndicator size='small' /></View>
-        : (<ScrollView showsVerticalScrollIndicator={false}>
-          {routes?.length > 0 ? routes?.map((route: any, index: number) =>  renderRoute(route, index)) : 
-          <Text style={{ color: '#666', textAlign: 'center', marginTop: 20 }}>Henüz bir durak eklenmemiş</Text>}
-
-        </ScrollView>)
+        : (<FlatList 
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          showsVerticalScrollIndicator={false} data={routes} renderItem={({ item, index }) => renderRoute(item, index)} />)
       }
 
     </View>

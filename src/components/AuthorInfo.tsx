@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 // import styles from '../styles';
 import Seperator from './Seperator';
@@ -8,6 +8,7 @@ import { getTimeAgo } from '../utils/timeAgo';
 import RouteModel from '../model/routes.model';
 import { showToast } from '../utils/alert';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
+import { NoImage } from '../assets';
 
 const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId, cityName }: {
   fullName: string;
@@ -59,9 +60,16 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
 
     <View style={styles.authorContainer}>
       <View style={styles.authorInfo}>
-        <Text style={styles.authorName}>
-          {fullName}
-        </Text>
+        <Image
+          source={{uri: 'https://picsum.photos/200/200'}}
+          style={styles.authorImage}
+          resizeMode="cover"
+        />
+        <TouchableOpacity onPress={() => navigation.navigate('Profile', { userId: authorId })}>
+          <Text style={styles.authorName}>
+            {fullName}
+          </Text>
+        </TouchableOpacity>
         {(isVerified || false) && (
           <Icon
             name="check-decagram"
@@ -114,6 +122,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2
+  },
+  authorImage: {
+    width: 40,
+    height: 40,
+    borderRadius: '50%',
+    marginRight: 5,
   },
   authorName: {
     fontSize: 16,

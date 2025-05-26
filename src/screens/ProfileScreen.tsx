@@ -8,6 +8,7 @@ import {
   Dimensions,
   ActivityIndicator,
   FlatList,
+  SafeAreaView,
 } from 'react-native';
 import { Tabs } from 'react-native-collapsible-tab-view';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -134,7 +135,7 @@ const ProfileScreen = ({ userId, currentUserId }: ProfilePageProps) => {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Tabs.Container
         renderHeader={renderHeader}
         headerHeight={HEADER_HEIGHT}
@@ -152,7 +153,7 @@ const ProfileScreen = ({ userId, currentUserId }: ProfilePageProps) => {
           <TaggedTab />
         </Tabs.Tab>
       </Tabs.Container>
-    </View>
+    </SafeAreaView>
   );
 };
 

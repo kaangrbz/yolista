@@ -15,6 +15,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { CategoryItem } from '../types/category.types';
 import CategoryModel from '../model/category.modal';
 import { ExploreHeader } from '../components/header/Header';
+import RouteModel, { RouteWithProfile } from '../model/routes.model';
 
 const NUM_COLUMNS = 2;
 const { width } = Dimensions.get('window');
@@ -32,16 +33,19 @@ interface ExploreItem {
 
 // Mock data - replace with your actual data source
 
-const exploreItems: ExploreItem[] = Array(15).fill(0).map((_, index) => ({
+/*
+Array(15).fill(0).map((_, index) => ({
   id: String(index + 1),
   image: `https://picsum.photos/500/500?random=${index}`,
   likes: Math.floor(Math.random() * 1000) + 100,
   title: `Amazing Route ${index + 1}`,
   location: `City ${String.fromCharCode(65 + (index % 5))}`,
-}));
+}))
+*/
 
 const ExploreScreen = () => {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
   const [activeCategory, setActiveCategory] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,17 +90,15 @@ const ExploreScreen = () => {
       }
       setIsLoading(true);
       try {
-        await new Promise((resolve, reject) => {
-          setLoadTimeout(setTimeout(() => {
-            resolve(exploreItems);
-          }, 1000));
-        })
+        const routes = await RouteModel.getRoutes(20, true);
+        setRoutes(routes);
       } catch (error) {
         console.error('Error fetching explore items:', error);
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchExploreItems();
 
     return () => {
@@ -131,7 +133,7 @@ const ExploreScreen = () => {
     </TouchableOpacity>
   );
 
-  const renderExploreItem: ListRenderItem<ExploreItem> = ({ item, index }) => (
+  const renderExploreItem: ListRenderItem<RouteWithProfile> = ({ item, index }) => (
     <TouchableOpacity
       style={[
         styles.exploreItem,
@@ -139,17 +141,17 @@ const ExploreScreen = () => {
       ]}
       activeOpacity={0.8}
     >
-      <Image source={{ uri: item.image }} style={styles.exploreImage} />
+      <Image source={{ uri: item.image_url }} style={styles.exploreImage} />
       <View style={styles.overlay}>
         <View style={styles.likeContainer}>
           <Icon name="heart" size={16} color="#fff" />
-          <Text style={styles.likeCount}>{item.likes.toLocaleString()}</Text>
+          <Text style={styles.likeCount}>{item?.likes?.toLocaleString()}</Text>
         </View>
         <View style={styles.infoContainer}>
           <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
           <View style={styles.locationContainer}>
             <Icon name="map-marker" size={12} color="#fff" />
-            <Text style={styles.locationText} numberOfLines={1}>{item.location}</Text>
+            <Text style={styles.locationText} numberOfLines={1}>{item.cities.name}</Text>
           </View>
         </View>
       </View>
@@ -191,7 +193,7 @@ const ExploreScreen = () => {
           <ActivityIndicator size="small" style={{ flex: 1 }} color="#000" />
         ) : (
           <FlatList
-            data={exploreItems}
+            data={routes}
             renderItem={renderExploreItem}
             keyExtractor={(item) => item.id}
             numColumns={NUM_COLUMNS}

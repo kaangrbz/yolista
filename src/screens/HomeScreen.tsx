@@ -168,7 +168,7 @@ export const HomeScreen = () => {
           cityName={route.cities?.name}
         />
         <Image
-          source={route.image_url ? { uri: route.image_url } : NoImage}
+          source={{ uri: route.image_url || 'https://picsum.photos/800/500' }}
           style={styles.routeImage}
           resizeMode="cover"
         />
@@ -215,7 +215,7 @@ export const HomeScreen = () => {
               <Icon name="share-variant" size={18} color="#121" />
             </TouchableOpacity>
           </View>
-          <View style={styles.commentContainer}>
+          <View style={[styles.commentContainer, {display: 'none'}]}>
             <View style={styles.commentInputContainer}>
               <Image
                 source={{
@@ -275,6 +275,7 @@ export const HomeScreen = () => {
           showsVerticalScrollIndicator={false}
         />
 
+
       <LoadingFloatingAction
         backgroundColor='#121212'
         iconName='plus'
@@ -331,7 +332,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
     backgroundColor: 'white',
-    paddingVertical: 12,
   },
   routeImage: {
     width: '100%',

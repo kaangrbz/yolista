@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
               id: session.user.id,
               username: session.user.email?.split('@')[0],
               full_name: session.user.user_metadata?.full_name,
-              avatar_url: session.user.user_metadata?.avatar_url,
+              image_url: session.user.user_metadata?.image_url,
             },
           ]);
 

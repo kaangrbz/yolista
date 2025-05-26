@@ -27,7 +27,7 @@ interface ServerRoutePoint extends Omit<RoutePoint, 'client_id'> {
 export interface Profile {
   username: string;
   full_name: string;
-  avatar_url: string;
+  image_url: string;
   is_verified: boolean;
 }
 
