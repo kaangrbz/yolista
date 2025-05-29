@@ -3,6 +3,8 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput } from 'reac
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AuthorInfo from '../AuthorInfo';
 import { RouteWithProfile } from '../../model/routes.model';
+import { navigate, PageName } from '../../types/navigation';
+import { useNavigation } from '@react-navigation/native';
 
 interface RouteCardProps {
   route: RouteWithProfile;
@@ -29,6 +31,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
 }) => {
   const routeKey = String(route.id ?? '');
   const [isExpanded, setIsExpanded] = useState(expandedDescriptions[routeKey] || false);
+  const navigation = useNavigation();
 
   // Handle text layout if needed
   const handleTextLayout = (e: any, key: string) => {
@@ -49,9 +52,10 @@ const RouteCard: React.FC<RouteCardProps> = ({
       )}
       <TouchableOpacity
         style={styles.routeCard}
-        onPress={() => onPress(route.id || '')}>
+        onPress={() => onPress(route.id || '')}
+        pointerEvents="box-none">
         {showAuthorHeader && (
-          <AuthorInfo 
+          <AuthorInfo
             fullName={safeFullName}
             isVerified={route.profiles?.is_verified || false}
             username={safeUsername}
@@ -63,73 +67,89 @@ const RouteCard: React.FC<RouteCardProps> = ({
             cityName={route.cities?.name || ''}
           />
         )}
-      <Image
-        source={{ uri: route.image_url || 'https://picsum.photos/800/500?random=' + route.id  }}
-        style={styles.routeImage}
-        resizeMode="cover"
-      />
-      <View style={styles.routeInfo}>
-        <Text style={styles.routeTitle}>{route.title}</Text>
-        {route.description && (
-          <>
-            <Text
-              style={styles.routeDescription}
-              numberOfLines={isExpanded ? undefined : 3}
-              onTextLayout={e => handleTextLayout(e, routeKey)}
-            >
-              {route.description}
-            </Text>
-            {route.description?.length > 140 && (
-              <TouchableOpacity style={styles.seeMoreText} onPress={() => onToggleDescription(routeKey)}>
-                <Text
-                style={styles.seeMoreText}
-                >
-                {isExpanded ? 'daha az' : 'daha fazla'}
-              </Text>
-              </TouchableOpacity>
-            )}
-          </>
-        )}
-
-        <View style={styles.reactionContainer}>
-          <TouchableOpacity style={styles.reactionItem}>
-            <Icon name="comment-outline" size={18} color="#121" />
-            <Text style={styles.reactionText}>{0}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.reactionItem}>
-            <Icon name="heart-outline" size={18} color="#c00" />
-            <Text style={styles.reactionText}>{route.like_count}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.reactionItem}>
-            <Icon name="eye-outline" size={18} color="#121" />
-            <Text style={styles.reactionText}>{0}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.reactionItem}>
-            <Icon name="bookmark-outline" size={18} color="#121" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.reactionItem}>
-            <Icon name="share-variant" size={18} color="#121" />
-          </TouchableOpacity>
-        </View>
-        <View style={[styles.commentContainer, {display: 'none'}]}>
-          <View style={styles.commentInputContainer}>
-            <Image
-              source={{
-                uri: route.image_url || 'https://picsum.photos/20/20',
+        <Image
+          source={{ uri: route.image_url || 'https://picsum.photos/800/500?random=' + route.id }}
+          style={styles.routeImage}
+          resizeMode="cover"
+        />
+        <View style={styles.routeInfo}>
+          <Text style={styles.routeTitle}>{route.title}</Text>
+          {route.categories?.name && (
+            <TouchableOpacity 
+              style={styles.row} 
+              onPress={(e) => {
+                e.stopPropagation();
+                console.log('Category tapped:', route.categories?.name);
+                navigate(navigation, PageName.Explore, { categoryId: route.category_id });
               }}
-              style={styles.commentImage}
-            />
-            <TextInput
-              placeholder="Yorum yap"
-              placeholderTextColor="#666"
-              style={styles.commentInput}
-            />
-            <TouchableOpacity>
-              <Icon name="send" size={20} color="#121" />
+              activeOpacity={0.7}
+            >
+              <Icon name={route.categories?.icon_name} size={18} color="#666" />
+              <Text style={styles.routeCategory}>
+                {route.categories?.name}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {route.description && (
+            <>
+              <Text
+                style={styles.routeDescription}
+                numberOfLines={isExpanded ? undefined : 3}
+                onTextLayout={e => handleTextLayout(e, routeKey)}
+              >
+                {route.description}
+              </Text>
+              {route.description?.length > 140 && (
+                <TouchableOpacity style={styles.seeMoreText} onPress={() => onToggleDescription(routeKey)}>
+                  <Text
+                    style={styles.seeMoreText}
+                  >
+                    {isExpanded ? 'daha az' : 'daha fazla'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+
+          <View style={styles.reactionContainer}>
+            <TouchableOpacity style={styles.reactionItem}>
+              <Icon name="comment-outline" size={18} color="#121" />
+              <Text style={styles.reactionText}>{0}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.reactionItem}>
+              <Icon name="heart-outline" size={18} color="#c00" />
+              <Text style={styles.reactionText}>{route.like_count}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.reactionItem}>
+              <Icon name="eye-outline" size={18} color="#121" />
+              <Text style={styles.reactionText}>{0}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.reactionItem}>
+              <Icon name="bookmark-outline" size={18} color="#121" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.reactionItem}>
+              <Icon name="share-variant" size={18} color="#121" />
             </TouchableOpacity>
           </View>
+          <View style={[styles.commentContainer, { display: 'none' }]}>
+            <View style={styles.commentInputContainer}>
+              <Image
+                source={{
+                  uri: route.image_url || 'https://picsum.photos/20/20',
+                }}
+                style={styles.commentImage}
+              />
+              <TextInput
+                placeholder="Yorum yap"
+                placeholderTextColor="#666"
+                style={styles.commentInput}
+              />
+              <TouchableOpacity>
+                <Icon name="send" size={20} color="#121" />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </View>
       </TouchableOpacity>
     </View>
   );
@@ -141,6 +161,11 @@ const CONNECTING_LINE_COLOR = '#e1e8ed';
 const styles = StyleSheet.create({
   cardContainer: {
     position: 'relative',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   withConnectingLine: {
     paddingLeft: 16,
@@ -177,10 +202,17 @@ const styles = StyleSheet.create({
   routeTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 4,
     color: '#121212',
   },
   routeDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    marginTop: 4,
+    lineHeight: 20,
+  },
+  routeCategory: {
     fontSize: 14,
     color: '#666',
     marginBottom: 8,

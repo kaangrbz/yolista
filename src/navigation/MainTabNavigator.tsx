@@ -25,6 +25,7 @@ type HomeStackParamList = {
   HomeMain: undefined;
   RouteDetail: { routeId: string };
   AddCategory: undefined;
+  Explore: { categoryId?: number };
 };
 
 type ExploreStackParamList = {
@@ -76,6 +77,10 @@ const HomeStackScreen = () => {
       <HomeStack.Screen 
         name="AddCategory" 
         component={AddCategoryScreen} 
+      />
+      <HomeStack.Screen 
+        name="Explore" 
+        component={ExploreScreen} 
       />
     </HomeStack.Navigator>
   );

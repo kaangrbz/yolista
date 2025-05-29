@@ -98,17 +98,30 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
               <Text style={styles.menuText}>Edit</Text>
             </TouchableOpacity> */}
         {loggedUserId === authorId && (
-          <TouchableOpacity style={styles.menuOption} onPress={handleDeleteRoute}>
-            <Icon name="delete" size={20} color="#c00" style={styles.menuItemIcon} />
-            <Text style={[styles.menuText, { color: '#c00' }]}>Sil</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.menuOption} onPress={handleDeleteRoute}>
+              <Icon name="delete" size={20} color="#c00" style={styles.menuItemIcon} />
+              <Text style={[styles.menuText, { color: '#c00' }]}>Sil</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.menuOption} onPress={() => showToast('warning', 'Arşivleme özelliği henüz aktif değil')}>
+              <Icon name="archive" size={20} color="#333" style={styles.menuItemIcon} />
+              <Text style={styles.menuText}>Arşivle</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.menuOption} onPress={() => showToast('warning', 'Düzenleme özelliği henüz aktif değil')}>
+              <Icon name="lock" size={20} color="#333" style={styles.menuItemIcon} />
+              <Text style={styles.menuText}>Düzenle</Text>
+            </TouchableOpacity>
+          </>
         )}
 
-
+        {loggedUserId !== authorId &&
         <TouchableOpacity style={styles.menuOption} onPress={() => showToast('warning', 'Raporlama özelliği henüz aktif değil')}>
           <Icon name="alert-octagon" size={20} color="#c00" style={styles.menuItemIcon} />
           <Text style={styles.menuText}>Raporla</Text>
         </TouchableOpacity>
+      }
       </DropdownMenu>
     </View>
   )

@@ -1,6 +1,7 @@
 export enum PageName {
   Home = 'Home',
   RouteDetail = 'RouteDetail',
+  Explore = 'Explore',
   Profile = 'Profile',
   AddCategory = 'AddCategory',
   CreateRoute = 'CreateRoute',
@@ -10,6 +11,7 @@ export enum PageName {
 
 export type NavigationParams = {
   [PageName.RouteDetail]: { routeId: string };
+  [PageName.Explore]: { categoryId?: number };
   [PageName.Profile]: { userid: string };
   [PageName.AddCategory]: undefined;
   [PageName.CreateRoute]: undefined;

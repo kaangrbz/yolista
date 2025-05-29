@@ -18,7 +18,7 @@ import { ExploreHeader } from '../components/header/Header';
 import GlobalFloatingAction from '../components/common/GlobalFloatingAction';
 import RouteModel, { RouteWithProfile, GetRoutesProps } from '../model/routes.model';
 import { navigate, PageName } from '../types/navigation';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 const NUM_COLUMNS = 2;
 const { width } = Dimensions.get('window');
@@ -47,15 +47,17 @@ Array(15).fill(0).map((_, index) => ({
 */
 
 const ExploreScreen = () => {
+  const route = useRoute();
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
-  const [activeCategory, setActiveCategory] = useState(0);
+  const [activeCategory, setActiveCategory] = useState(route.params?.categoryId || 0);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadTimeout, setLoadTimeout] = useState<NodeJS.Timeout | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-
   const navigation = useNavigation();
+
+  console.log(route.params?.categoryId);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -108,6 +110,7 @@ const ExploreScreen = () => {
   useEffect(() => {
 
     fetchExploreItems();
+    
 
     return () => {
       if (loadTimeout) {
