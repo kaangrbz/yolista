@@ -1,3 +1,0 @@
-/Users/kaan/Desktop/yazilim/yolista/android/app/.cxx/Debug/2m214s49/x86/CMakeFiles/appmodules.dir
-/Users/kaan/Desktop/yazilim/yolista/android/app/.cxx/Debug/2m214s49/x86/CMakeFiles/edit_cache.dir
-/Users/kaan/Desktop/yazilim/yolista/android/app/.cxx/Debug/2m214s49/x86/CMakeFiles/rebuild_cache.dir

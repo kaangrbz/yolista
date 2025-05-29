@@ -257,7 +257,6 @@ const styles = StyleSheet.create({
     paddingLeft: 6,
     paddingRight: 12,
     backgroundColor: '#f0f0f0',
-    // borderRadius: 10,
   },
   commentInput: {
     flex: 1,

@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   authorImage: {
     width: 40,
     height: 40,
-    borderRadius: '50%',
+    borderRadius: 999, // Do not use borderRadius: string, it is not supported on android i guess
     marginRight: 5,
   },
   authorName: {

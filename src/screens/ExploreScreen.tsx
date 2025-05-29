@@ -158,7 +158,7 @@ const ExploreScreen = () => {
       activeOpacity={0.8}
       onPress={() => navigate(navigation, PageName.RouteDetail, { routeId: item.id })}
     >
-      <Image source={{ uri: item.image_url || 'https://picsum.photos/300/300' }} style={styles.exploreImage} />
+      <Image source={{ uri: item.image_url || 'https://picsum.photos/300/300?random=' + item.id }} style={styles.exploreImage} />
       <View style={styles.overlay}>
         <View style={styles.likeContainer}>
           <Icon name="heart" size={16} color="#fff" />
