@@ -13,6 +13,7 @@ import { RouteDetailScreen } from '../screens/RouteDetailScreen';
 import { AddCategoryScreen } from '../screens/AddCategoryScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ExploreScreen from '../screens/ExploreScreen';
+import { useAuth } from '../context/AuthContext';
 
 // Define the parameter lists for each stack
 type ProfileStackParamList = {
@@ -39,7 +40,7 @@ const ExploreStack = createStackNavigator<ExploreStackParamList>();
 // Create a stack navigator for the Profile tab to handle its own navigation
 const ProfileStackScreen = () => {
   // You would typically get the current user ID from your auth context
-  const currentUserId = 'current-user-id'; // Replace with actual user ID from your auth context
+  const currentUserId = useAuth().user?.id || '';
 
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>

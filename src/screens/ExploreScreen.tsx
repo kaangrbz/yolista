@@ -160,15 +160,22 @@ const ExploreScreen = () => {
     >
       <Image source={{ uri: item.image_url || 'https://picsum.photos/300/300?random=' + item.id }} style={styles.exploreImage} />
       <View style={styles.overlay}>
-        <View style={styles.likeContainer}>
-          <Icon name="heart" size={16} color="#fff" />
-          <Text style={styles.likeCount}>{item?.like_count?.toLocaleString()}</Text>
+        <View style={styles.row}>
+          <View style={styles.cityContainer}>
+            <Icon name="map-marker" size={16} color="#fff" />
+            <Text style={styles.cityText}>{item.cities.name}</Text>
+          </View>
+          <View style={styles.likeContainer}>
+            <Icon name="heart" size={16} color="#fff" />
+            <Text style={styles.likeCount}>{item?.like_count?.toLocaleString()}</Text>
+          </View>
         </View>
         <View style={styles.infoContainer}>
           <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
-          <View style={styles.locationContainer}>
-            <Icon name="map-marker" size={12} color="#fff" />
-            <Text style={styles.locationText} numberOfLines={1}>{item.cities.name}</Text>
+          
+          <View style={styles.userContainer}>
+            <Text style={styles.userName}>{item.profiles.full_name}</Text>
+            <Text style={styles.userUsername}>@{item.profiles.username}</Text>
           </View>
         </View>
       </View>
@@ -261,6 +268,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -355,6 +367,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
+  cityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  cityText: {
+    color: '#fff',
+    fontSize: 12,
+    marginLeft: 4,
+    fontWeight: '600',
+  },
   likeCount: {
     color: '#fff',
     fontSize: 12,
@@ -375,6 +402,21 @@ const styles = StyleSheet.create({
   locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  userContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  userName: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 1,
+  },
+  userUsername: {
+    color: '#fff',
+    fontSize: 12,
+    marginLeft: 4,
   },
   locationText: {
     color: '#fff',

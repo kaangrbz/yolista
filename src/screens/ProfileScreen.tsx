@@ -31,6 +31,14 @@ interface ProfilePageProps {
   currentUserId: string;
 }
 
+interface ProfileScreenProps {
+  route?: {
+    params?: {
+      userId?: string;
+    };
+  };
+}
+
 const HEADER_HEIGHT = 300;
 
 
@@ -58,38 +66,74 @@ const TaggedTab = () => {
   );
 };
 
-const ProfileScreen = () => {
-    const [isLoading, setIsLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
-    const [expandedDescriptions, setExpandedDescriptions] = useState<{ [key: string]: boolean }>({});
-    const [userId, setUserId] = useState<string | null>(null);
-    const [user, setUser] = useState<any>(null);
-    const [followers, setFollowers] = useState<any>(null);
-    const [followings, setFollowings] = useState<any>(null);
-    const navigation = useNavigation();
-    const selectedCityId = useCityStore((state: CityState) => state.selectedCityId);
-  
-    useEffect(() => {
-      const fetchUserId = async () => {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            setUser(user);
-            setUserId(user.id);
-                      }
-        } catch (error) {
-          console.error('Error fetching user ID:', error);
+const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
+  const [expandedDescriptions, setExpandedDescriptions] = useState<{ [key: string]: boolean }>({});
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [followers, setFollowers] = useState<any[]>([]);
+  const [followings, setFollowings] = useState<any[]>([]);
+  const [isFollowing, setIsFollowing] = useState<boolean>(false);
+  const [isFollowLoading, setIsFollowLoading] = useState<boolean>(false);
+  const navigation = useNavigation();
+  const selectedCityId = useCityStore((state: CityState) => state.selectedCityId);
+
+  // Check if the current profile belongs to the logged-in user
+  const isCurrentUserProfile = currentUserId === profileUserId;
+  const [followingsCount, setFollowingsCount] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (currentUser) {
+          setCurrentUserId(currentUser.id);
+
+          console.log('123',route?.params?.userId, currentUser.id);
+          // If no userId is provided in route params, use the current user's ID
+          const targetUserId = route?.params?.userId || currentUser.id;
+          setProfileUserId(targetUserId);
+
+          // Fetch profile user data
+          const { data: profileUser, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', targetUserId)
+            .single();
+
+          if (profileUser) {
+            setUser(profileUser);
+          }
+
+          // Check if current user is following this profile
+          if (targetUserId !== currentUser.id) {
+            checkFollowStatus(currentUser.id, targetUserId);
+          }
         }
-      };
-  
-      onRefresh();
-    }, []);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUser();
+    onRefresh();
+  }, [route?.params?.userId]);
 
   const fetchRoutes = async () => {
+    if (!profileUserId) return;
+
     try {
       setIsLoading(true);
-      const routes = await RouteModel.getRoutes({ limit: 20, onlyMain: true, userId: userId || undefined });
+      const routes = await RouteModel.getRoutes({
+        limit: 20,
+        onlyMain: true,
+        userId: profileUserId,
+      });
       setRoutes(routes);
     } catch (error) {
       console.error('Error fetching routes:', error);
@@ -99,10 +143,12 @@ const ProfileScreen = () => {
   };
 
   const fetchFollowers = async () => {
+    if (!profileUserId) return;
+
     try {
       setIsLoading(true);
-      const followers = await UserModel.getFollowers(userId || '');
-      setFollowers(followers);
+      const followers = await UserModel.getFollowers(profileUserId);
+      setFollowers(followers || []);
     } catch (error) {
       console.error('Error fetching followers:', error);
     } finally {
@@ -111,10 +157,13 @@ const ProfileScreen = () => {
   };
 
   const fetchFollowings = async () => {
+    if (!profileUserId) return;
+
     try {
       setIsLoading(true);
-      const followings = await UserModel.getFollowings(userId || '');
-      setFollowings(followings);
+      const followings = await UserModel.getFollowings(profileUserId);
+      setFollowings(followings || []);
+      setFollowingsCount(followings.length);
     } catch (error) {
       console.error('Error fetching followings:', error);
     } finally {
@@ -123,36 +172,40 @@ const ProfileScreen = () => {
   };
 
   useEffect(() => {
-    fetchRoutes();
-    // fetchFollowers();
-    // fetchFollowings();
-  }, [userId]);
-
+    if (profileUserId) {
+      fetchRoutes();
+      fetchFollowers();
+      fetchFollowings();
+    }
+  }, [profileUserId]);
 
   const onRefresh = React.useCallback(async () => {
     try {
       setRefreshing(true);
-      // fetchRoutes will now use the correct selectedCityId from component scope
       await fetchRoutes();
-      // await fetchFollowers();
-      // await fetchFollowings();
+      await fetchFollowers();
+      await fetchFollowings();
+
+      if (!isCurrentUserProfile && currentUserId && profileUserId) {
+        checkFollowStatus(currentUserId, profileUserId);
+      }
 
       setTimeout(() => {
         setRefreshing(false);
       }, 1000);
     } catch (error) {
-      console.error('Error refreshing routes:', error);
-      showToast('error', 'Rotalar yenilenirken bir hata oluştu');
+      console.error('Error refreshing data:', error);
+      showToast('error', 'Veriler yenilenirken bir hata oluştu');
       setRefreshing(false);
     }
-  }, [userId]);
+  }, [profileUserId, currentUserId, isCurrentUserProfile]);
 
-    const onRoutePress = useCallback((routeId: string) => {
-      navigate(navigation, PageName.RouteDetail, { routeId });
-    }, [navigation]); 
+  const onRoutePress = useCallback((routeId: string) => {
+    navigate(navigation, PageName.RouteDetail, { routeId });
+  }, [navigation]);
 
-    const onToggleDescription = useCallback((routeId: string) => {
-    setExpandedDescriptions(prev => ({
+  const onToggleDescription = useCallback((routeId: string) => {
+    setExpandedDescriptions((prev) => ({
       ...prev,
       [routeId]: !prev[routeId],
     }));
@@ -163,9 +216,9 @@ const ProfileScreen = () => {
     return (
       <Tabs.ScrollView
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh} 
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
             colors={['#333', '#1DA1F2']}
             tintColor="#000000"
           />
@@ -179,7 +232,7 @@ const ProfileScreen = () => {
           onRoutePress={(routeId) => onRoutePress(routeId)}
           expandedDescriptions={expandedDescriptions}
           onToggleDescription={(routeId) => onToggleDescription(routeId)}
-          userId={userId}
+          userId={currentUserId}
           onRefreshRoutes={fetchRoutes}
         />
       </Tabs.ScrollView>
@@ -196,40 +249,107 @@ const ProfileScreen = () => {
     }
   };
 
+  const checkFollowStatus = async (followerId: string, followingId: string) => {
+    try {
+      const isUserFollowing = await UserModel.isFollowing(followerId, followingId);
+      setIsFollowing(isUserFollowing);
+    } catch (error) {
+      console.error('Error checking follow status:', error);
+    }
+  };
+
+  const handleFollowToggle = async () => {
+    if (!currentUserId || !profileUserId || isCurrentUserProfile) return;
+
+    setIsFollowLoading(true);
+    try {
+      if (isFollowing) {
+        // Unfollow
+        const result = await UserModel.unfollowUser(currentUserId, profileUserId);
+        if (result.success) {
+          setIsFollowing(false);
+          showToast('success', result.message);
+          fetchFollowers(); // Refresh followers count
+        } else {
+          showToast('error', result.message);
+        }
+      } else {
+        // Follow
+        const result = await UserModel.followUser(currentUserId, profileUserId);
+        if (result.success) {
+          setIsFollowing(true);
+          showToast('success', result.message);
+          fetchFollowers(); // Refresh followers count
+        } else {
+          showToast('error', result.message);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling follow status:', error);
+      showToast('error', 'İşlem sırasında bir hata oluştu');
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
+
   const renderHeader = () => {
     return (
       <View style={styles.headerContainer}>
         <View style={{ width: '100%' }}>
           <View style={styles.headerImageContainer}>
             <Image
-              source={{ uri: 'https://picsum.photos/800/300' }}
+              source={{ uri: user?.header_image || 'https://picsum.photos/800/300' }}
               style={styles.headerImage}
             />
             <View style={styles.profilePhotoContainer}>
               <Image
-                source={{ uri: 'https://picsum.photos/200' }}
+                source={{ uri: user?.avatar_url || 'https://picsum.photos/200' }}
                 style={styles.profilePhoto}
               />
             </View>
           </View>
-          <TouchableOpacity style={styles.logoutContainer} onPress={handleLogout}>
-            <Icon name="logout" size={24} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.profileSettingContainer}>
-            <Icon name="cog" size={24} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.profileEditContainer}>
-            <Icon name="pencil" size={24} color="#fff" />
-          </TouchableOpacity>
+
+          {/* Only show these buttons for the current user's profile */}
+          {isCurrentUserProfile && (
+            <>
+              <TouchableOpacity style={styles.logoutContainer} onPress={handleLogout}>
+                <Icon name="logout" size={24} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.profileSettingContainer}>
+                <Icon name="cog" size={24} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.profileEditContainer}>
+                <Icon name="pencil" size={24} color="#fff" />
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* Show follow/unfollow button for other users' profiles */}
+          {!isCurrentUserProfile && currentUserId && profileUserId && (
+            <TouchableOpacity
+              style={[styles.followContainer, isFollowing ? styles.unfollowContainer : {}]}
+              onPress={handleFollowToggle}
+              disabled={isFollowLoading}
+            >
+              {isFollowLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.followButtonText}>
+                  {isFollowing ? 'Takibi Bırak' : 'Takip Et'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.headerTextContainer}>
           <Text style={styles.headerName}>
-            Test <MaterialIcons name="verified" size={16} color="#1DA1F2" />
+            {user?.full_name || 'Kullanıcı'}
+            {user?.verified && <MaterialIcons name="verified" size={16} color="#1DA1F2" />}
           </Text>
 
           <View style={styles.row}>
-            <Text style={styles.headerUsername}>@test</Text>
+            <Text style={styles.headerUsername}>@{user?.username || 'kullanici'}</Text>
           </View>
         </View>
 
@@ -239,11 +359,11 @@ const ProfileScreen = () => {
             <Text style={styles.statLabel}>Gönderi</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statValue}>{followers?.length || 0}</Text>
             <Text style={styles.statLabel}>Takipçi</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statValue}>{followings?.length || 0}</Text>
             <Text style={styles.statLabel}>Takip</Text>
           </View>
         </View>
@@ -338,6 +458,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     padding: 8,
     borderRadius: 20,
+  },
+  followContainer: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: '#1DA1F2',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  unfollowContainer: {
+    backgroundColor: '#E0245E',
+  },
+  followButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   headerTextContainer: {
     marginTop: 50,
