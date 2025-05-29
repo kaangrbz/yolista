@@ -9,6 +9,7 @@ async getCategories(limit: number = 999) {
   const { data: categories, error } = await supabase
     .from('categories')
     .select('*')
+    .order('index', { ascending: true })
     .limit(limit);
 
   if (error) {

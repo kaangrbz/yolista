@@ -1,54 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  TextInput,
-  FlatList,
-  SafeAreaView,
-} from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, StyleSheet, SafeAreaView, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import RouteModel, { RouteWithProfile } from '../model/routes.model';
+import { RouteWithProfile } from '../model/routes.model';
 import { CityState, useCityStore } from '../store/cityStore';
-import { LoadingFloatingAction, AuthorInfo } from '../components';
+import GlobalFloatingAction from '../components/common/GlobalFloatingAction';
 import { navigate, PageName } from '../types/navigation';
 import { checkFirstTime } from '../utils/welcome';
-import { NoImage } from '../assets';
 import { supabase } from '../lib/supabase';
 import { HomeHeader } from '../components/header/Header';
+import RouteList from '../components/route/RouteList';
+import RouteModel from '../model/routes.model';
 
-import ContentLoader, { Rect, Circle } from 'react-content-loader/native'
-
-const MyLoader = () => (
-  <ContentLoader viewBox="0 0 380 70">
-    <Circle cx="50" cy="30" r="30" />
-    <Rect x="100" y="17" rx="4" ry="4" width="250" height="13" />
-    <Rect x="100" y="40" rx="3" ry="3" width="170" height="10" />
-  </ContentLoader>
-)
 
 export const HomeScreen = () => {
-  // return (
-  //   <View>
-  //     <MyLoader />
-  //   </View>
-  // )
-
   const [isLoading, setIsLoading] = useState(true);
   const [isReloading, setIsReloading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
-  const navigation = useNavigation();
+  const [expandedDescriptions, setExpandedDescriptions] = useState<{ [key: string]: boolean }>({});
   const [userId, setUserId] = useState<string | null>(null);
-
-  // Get selected city ID from store at the top level
+  const navigation = useNavigation();
   const selectedCityId = useCityStore((state: CityState) => state.selectedCityId);
 
   useEffect(() => {
@@ -56,7 +27,6 @@ export const HomeScreen = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          console.log('user', user);
           setUserId(user.id);
         }
       } catch (error) {
@@ -108,7 +78,7 @@ export const HomeScreen = () => {
 
       // console.log('data', data);
 
-      let data = await RouteModel.getRoutes(20, true);
+      let data = await RouteModel.getRoutes({ limit: 20, onlyMain: true });
 
       setRoutes(shuffleArray(data || []));
     } catch (error) {
@@ -135,153 +105,45 @@ export const HomeScreen = () => {
     }
   }, [selectedCityId]);
 
-  // New state for expanded descriptions
-  const [expandedDescriptions, setExpandedDescriptions] = useState<{ [key: string]: boolean }>({});
-  // New state for tracking which descriptions need 'See More'
+  // State for tracking which descriptions need 'See More'
   const [showSeeMore, setShowSeeMore] = useState<{ [key: string]: boolean }>({});
 
   // Helper to measure if description is longer than 3 lines (after first render)
   const handleTextLayout = (e: any, routeId: string | undefined) => {
     const key = String(routeId ?? '');
-    console.log('handleTextLayout', { key, lines: e.nativeEvent.lines.length });
     if (e.nativeEvent.lines.length > 3 && !showSeeMore[key]) {
       setShowSeeMore(prev => ({ ...prev, [key]: true }));
     }
   };
 
-  const renderRouteCard = (route: RouteWithProfile) => {
-    const routeKey = String(route.id ?? '');
-    return (
-      <TouchableOpacity
-        key={routeKey}
-        style={styles.routeCard}
-        onPress={() => navigate(navigation, PageName.RouteDetail, { routeId: route.id })}>
-        <AuthorInfo 
-          fullName={route.profiles?.full_name}
-          isVerified={route.profiles?.is_verified}
-          username={route.profiles?.username}
-          createdAt={route.created_at}
-          authorId={route.user_id}
-          callback={fetchRoutes}
-          loggedUserId={userId}
-          routeId={route.id || ''} 
-          cityName={route.cities?.name}
-        />
-        <Image
-          source={{ uri: route.image_url || 'https://picsum.photos/800/500' }}
-          style={styles.routeImage}
-          resizeMode="cover"
-        />
-        <View style={styles.routeInfo}>
-          <Text style={styles.routeTitle}>{route.title}</Text>
-          {route.description && (
-            <>
-              <Text
-                style={styles.routeDescription}
-                numberOfLines={expandedDescriptions[routeKey] ? undefined : 3}
-                onTextLayout={e => handleTextLayout(e, routeKey)}
-              >
-                {route.description}
-              </Text>
-              {/* Always show for debugging; revert to showSeeMore[routeKey] after testing */}
-              {expandedDescriptions[routeKey] && (
-                <Text
-                  style={styles.seeMoreText}
-                  onPress={() => setExpandedDescriptions(prev => ({ ...prev, [routeKey]: !prev[routeKey] }))}
-                >
-                  {expandedDescriptions[routeKey] ? 'daha az' : 'daha fazla'}
-                </Text>
-              )}
-            </>
-          )}
+  const handleRoutePress = useCallback((routeId: string) => {
+    navigate(navigation, PageName.RouteDetail, { routeId });
+  }, [navigation]);
 
-          <View style={styles.reactionContainer}>
-            <TouchableOpacity style={styles.reactionItem}>
-              <Icon name="comment-outline" size={18} color="#121" />
-              <Text style={styles.reactionText}>{0}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.reactionItem}>
-              <Icon name="heart-outline" size={18} color="#c00" />
-              <Text style={[styles.reactionText]}>{0}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.reactionItem}>
-              <Icon name="eye-outline" size={18} color="#121" />
-              <Text style={styles.reactionText}>{0}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.reactionItem}>
-              <Icon name="bookmark-outline" size={18} color="#121" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.reactionItem}>
-              <Icon name="share-variant" size={18} color="#121" />
-            </TouchableOpacity>
-          </View>
-          <View style={[styles.commentContainer, {display: 'none'}]}>
-            <View style={styles.commentInputContainer}>
-              <Image
-                source={{
-                  uri:
-                    route.image_url ||
-                    `https://picsum.photos/20/20`,
-                }}
-                style={styles.commentImage}
-              />
-              <TextInput
-                placeholder="Yorum yap"
-                placeholderTextColor="#666"
-                style={styles.commentInput}
-              />
-              <TouchableOpacity>
-                <Icon name="send" size={20} color="#121" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
-    )
-  }
-
-  const renderFooter = () => {
-    if (isLoading || isReloading) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#222" />
-        </View>
-      );
-    }
-    return null;
-  };
-
-  const renderEmptyComponent = () => (
-    <View style={styles.noRoutesContainer}>
-      <Text style={styles.noRoutesText}>
-        Rota bulunamadı, hemen aşağıdaki butona tıklayarak yeni bir rota oluştur!
-      </Text>
-    </View>
-  );
+  const handleToggleDescription = useCallback((routeId: string) => {
+    setExpandedDescriptions(prev => ({
+      ...prev,
+      [routeId]: !prev[routeId]
+    }));
+  }, []);
 
   return (
-    <SafeAreaView style={[styles.container]}>
-        <HomeHeader />
-        <FlatList
-          data={routes}
-          keyExtractor={(item, index) => index.toString()} // Adjust if your data has unique IDs
-          renderItem={({ item }) => renderRouteCard(item)}
-          contentContainerStyle={routes.length === 0 ? styles.noRoutesContainer : styles.routesContainer}
-          ListFooterComponent={renderFooter} // Shows the loading spinner at the bottom
-          ListEmptyComponent={renderEmptyComponent} // Shows when the list is empty
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          showsVerticalScrollIndicator={false}
-        />
-
-
-      <LoadingFloatingAction
-        backgroundColor='#121212'
-        iconName='plus'
-        onPress={() => navigate(navigation, PageName.CreateRoute)}
-
+    <SafeAreaView style={styles.container}>
+      <HomeHeader />
+      <RouteList
+        routes={routes}
+        loading={isLoading || isReloading}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        onRoutePress={handleRoutePress}
+        onRefreshRoutes={fetchRoutes}
+        expandedDescriptions={expandedDescriptions}
+        onToggleDescription={handleToggleDescription}
+        userId={userId}
       />
+
+
+      <GlobalFloatingAction />
     </SafeAreaView>
   );
 };
@@ -289,6 +151,7 @@ export const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
   },
   categoriesContainer: {
     paddingTop: 16,

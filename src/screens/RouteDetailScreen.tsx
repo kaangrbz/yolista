@@ -1,25 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  Image,
-  Dimensions,
   ActivityIndicator,
   FlatList,
   RefreshControl,
+  SafeAreaView,
 } from 'react-native';
 import RouteModel from '../model/routes.model';
 import { getRandomNumber } from '../utils/math';
-import { AuthorInfo, CommentSection, ReactionSection, SeperatorLine } from '../components';
+import { CommentSection, SeperatorLine } from '../components';
+import RouteCard from '../components/route/RouteCard';
+import { RouteWithProfile } from '../model/routes.model';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/alert';
 
-const { width } = Dimensions.get('window');
-
 export const RouteDetailScreen = ({ navigation, route }: { navigation: any, route: { params: { routeId: string } } }) => {
   const [isPageLoading, setIsPageLoading] = useState(true);
-  const [routes, setRoutes] = useState<any>([]);
+  const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
+  const [expandedDescriptions, setExpandedDescriptions] = useState<{ [key: string]: boolean }>({});
   const [userId, setUserId] = useState<string | null>(null);
   const [isRouteDeleted, setIsRouteDeleted] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,7 +49,7 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
         setIsRouteDeleted(true);
         return;
       }
-
+      console.log("🚀 ~ loadRoute ~ routes:", routes[0])
       setTimeout(() => {
         setRoutes(routes);
         setIsPageLoading(false)
@@ -127,41 +127,36 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
     }
   }, [routeId]);
 
-  const renderRoute = (route: any, index: number) => {
+  const handleRoutePress = useCallback((routeId: string) => {
+    // We're already on the detail screen, no need to navigate
+    console.log('Route pressed:', routeId);
+  }, []);
+
+  const handleToggleDescription = useCallback((routeId: string) => {
+    setExpandedDescriptions(prev => ({
+      ...prev,
+      [routeId]: !prev[routeId]
+    }));
+  }, []);
+
+  const renderRoute = (route: RouteWithProfile, index: number) => {
+    const isFirstItem = index === 0;
+    const isLastItem = index === routes.length - 1;
+    
     return (
-      <View key={route.id} style={styles.routeCard}>
-        <Image source={{ uri: route.image_url || 'https://picsum.photos/400/200?random=' + route.id }} style={styles.mainImage}
-          resizeMode="cover" />
-        <View style={styles.routeContent}>
-
-          {index === 0 && (
-            <AuthorInfo
-              fullName={route.profiles.full_name}
-              isVerified={route.profiles.isVerified}
-              username={route.profiles.username}
-              createdAt={route.created_at}
-              authorId={route.profiles.id}
-              loggedUserId={route.profiles.id}
-              cityName={route.cities.name}
-              routeId={routeId}
-            />
-          )}
-
-          <Text style={styles.routeTitle}>{route.title}</Text>
-          {route.description && <Text style={styles.description}>{route.description}</Text>}
-          <ReactionSection
-            likeCount={route.like_count}
-            commentCount={route.comment_count}
-            viewCount={route.view_count}
-            didLike={route.did_like}
-            routeId={route.id}
-            onLike={handleLike}
-          />
-          <SeperatorLine />
-          <CommentSection parentType="routeDetail" />
-
-        </View>
-      </View>)
+      <RouteCard
+        key={route.id}
+        route={route}
+        userId={userId}
+        onPress={handleRoutePress}
+        onRefresh={loadRoute}
+        expandedDescriptions={expandedDescriptions}
+        onToggleDescription={handleToggleDescription}
+        showAuthorHeader={isFirstItem}
+        showConnectingLine={!isFirstItem}
+        isLastItem={isLastItem}
+      />
+    );
   }
 
   if (isRouteDeleted) {
@@ -173,26 +168,46 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
   }
 
   return (
-    <View style={[styles.container]}>
-      {isPageLoading ?
-        <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><ActivityIndicator size='small' /></View>
-        : (<FlatList 
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          showsVerticalScrollIndicator={false} data={routes} renderItem={({ item, index }) => renderRoute(item, index)} />)
-      }
+    <SafeAreaView style={[styles.container]}>
+      {isPageLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size='small' />
+        </View>
+      ) : (
+        <FlatList 
+          data={routes}
+          keyExtractor={(item) => item.id || ''}
+          renderItem={({ item, index }) => renderRoute(item, index)}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh} 
+            />
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContainer}
+        />
+      )}
 
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
   },
-  mainImage: {
-    width: width,
-    height: width * 0.6,
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  listContainer: {
+    padding: 16,
+    paddingLeft: 8, // Add some left padding for the connecting line
+  },
+  // routeCard styles are now in the RouteCard component
   authorInfo: {
     flexDirection: 'row',
     alignItems: 'center',

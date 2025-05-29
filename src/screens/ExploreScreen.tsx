@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ActivityIndicator, ListRenderItem } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ActivityIndicator, ListRenderItem, RefreshControl } from 'react-native';
 import {
   View,
   Text,
@@ -15,7 +15,10 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { CategoryItem } from '../types/category.types';
 import CategoryModel from '../model/category.modal';
 import { ExploreHeader } from '../components/header/Header';
-import RouteModel, { RouteWithProfile } from '../model/routes.model';
+import GlobalFloatingAction from '../components/common/GlobalFloatingAction';
+import RouteModel, { RouteWithProfile, GetRoutesProps } from '../model/routes.model';
+import { navigate, PageName } from '../types/navigation';
+import { useNavigation } from '@react-navigation/native';
 
 const NUM_COLUMNS = 2;
 const { width } = Dimensions.get('window');
@@ -46,10 +49,13 @@ Array(15).fill(0).map((_, index) => ({
 const ExploreScreen = () => {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeCategory, setActiveCategory] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadTimeout, setLoadTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const navigation = useNavigation();
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -83,21 +89,23 @@ const ExploreScreen = () => {
     fetchCategories();
   }, []);
 
+  const fetchExploreItems = async () => {
+    if (loadTimeout) {
+      clearTimeout(loadTimeout);
+    }
+    setIsLoading(true);
+    try {
+      let props: GetRoutesProps = { limit: 20, onlyMain: true, categoryId: Number(activeCategory) }
+      const routes = await RouteModel.getRoutes(props);
+      setRoutes(routes);
+    } catch (error) {
+      console.error('Error fetching explore items:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchExploreItems = async () => {
-      if (loadTimeout) {
-        clearTimeout(loadTimeout);
-      }
-      setIsLoading(true);
-      try {
-        const routes = await RouteModel.getRoutes(20, true);
-        setRoutes(routes);
-      } catch (error) {
-        console.error('Error fetching explore items:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
 
     fetchExploreItems();
 
@@ -107,6 +115,14 @@ const ExploreScreen = () => {
       }
     }
   }, [activeCategory]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchExploreItems();
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
+  }, []);
 
   const renderCategoryItem: ListRenderItem<CategoryItem> = ({ item }) => (
     <TouchableOpacity
@@ -140,12 +156,13 @@ const ExploreScreen = () => {
         { marginRight: (index + 1) % 3 === 0 ? 0 : 2 },
       ]}
       activeOpacity={0.8}
+      onPress={() => navigate(navigation, PageName.RouteDetail, { routeId: item.id })}
     >
-      <Image source={{ uri: item.image_url }} style={styles.exploreImage} />
+      <Image source={{ uri: item.image_url || 'https://picsum.photos/300/300' }} style={styles.exploreImage} />
       <View style={styles.overlay}>
         <View style={styles.likeContainer}>
           <Icon name="heart" size={16} color="#fff" />
-          <Text style={styles.likeCount}>{item?.likes?.toLocaleString()}</Text>
+          <Text style={styles.likeCount}>{item?.like_count?.toLocaleString()}</Text>
         </View>
         <View style={styles.infoContainer}>
           <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
@@ -189,12 +206,27 @@ const ExploreScreen = () => {
 
       {/* Explore Grid */}
       {
-        isLoading ? (
+        isLoading &&  (
           <ActivityIndicator size="small" style={{ flex: 1 }} color="#000" />
-        ) : (
+        )
+      }
+
+      {
+        !isLoading && routes.length > 0 && (
           <FlatList
             data={routes}
             renderItem={renderExploreItem}
+            onRefresh={onRefresh}
+            refreshing={refreshing}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#333', '#121212']}
+                tintColor="#000000"
+                titleColor="#000000"
+              />
+            }
             keyExtractor={(item) => item.id}
             numColumns={NUM_COLUMNS}
             columnWrapperStyle={styles.columnWrapper}
@@ -203,6 +235,24 @@ const ExploreScreen = () => {
           />
         )
       }
+
+      {/* No Routes alert */}
+      {
+        routes.length === 0 && !isLoading && activeCategory === 0 && (
+          <View style={styles.noRoutesContainer}>
+            <Text style={styles.noRoutesText}>Hiç Rota Bulunamadı</Text>
+          </View>
+        )
+      }
+      
+      {
+        routes.length === 0 && !isLoading && activeCategory !== 0 && (
+          <View style={styles.noRoutesContainer}>
+            <Text style={styles.noRoutesText}>Bu kategoride hiç rota bulunamadı</Text>
+          </View>
+        )
+      }
+      <GlobalFloatingAction />
     </SafeAreaView>
   );
 };
@@ -229,6 +279,17 @@ const styles = StyleSheet.create({
     height: 44,
     color: '#000',
     fontSize: 16,
+  },
+  noRoutesContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  noRoutesText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
   categoriesContainer: {
     borderBottomWidth: 1,

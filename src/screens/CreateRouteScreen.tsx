@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, JSX } from 'react';
 import {
     View,
     Text,
@@ -17,7 +17,9 @@ import { LoadingFloatingAction } from '../components';
 import { showToast } from '../utils/alert';
 import { useCityStore, CityState } from '../store/cityStore';
 import { CreateRouteHeader } from '../components/header/Header';
-
+import CategoryModel from '../model/category.modal';
+import CityModel from '../model/cities.modal';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 
 export const CreateRouteScreen = () => {
@@ -26,15 +28,21 @@ export const CreateRouteScreen = () => {
     const defaultSelectedCityId = useCityStore((state: CityState) => state.selectedCityId);
     const [cities, setCities] = useState<{ label: string, value: number }[]>([]);
     const [selectedCityId, setSelectedCityId] = useState<number>(defaultSelectedCityId || 0);
-    const [open, setOpen] = useState(false);
+    const [categories, setCategories] = useState<{ label: string, value: number, icon: () => JSX.Element }[]>([]);
+    const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+    const [openCity, setOpenCity] = useState(false);
+    const [openCategory, setOpenCategory] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
     const [isLoadingCity, setIsLoadingCity] = useState(true);
+    const [isLoadingCategory, setIsLoadingCategory] = useState(true);
+
+    // Route points state
+    const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
 
     useEffect(() => {
         const fetchUser = async () => {
             try {
                 const { data, error } = await supabase.auth.getUser();
-                console.log('user', data.user);
                 if (error) throw error;
                 setUser(data.user);
             } catch (error) {
@@ -47,28 +55,48 @@ export const CreateRouteScreen = () => {
 
     useEffect(() => {
         fetchCities();
+        fetchCategories();
 
         // Initialize with one empty route point
         if (routePoints.length === 0) {
             addRoutePoint();
         }
     }, []);
+
+    const fetchCategories = async () => {
+        try {
+            setIsLoadingCategory(true);
+            const categories = await CategoryModel.getCategories()
+
+            if (categories) {
+                setCategories(categories.map((category) => ({
+                    label: category.name,
+                    value: Number(category.id),
+                    icon: () => <Icon name={category.icon_name} size={24} color="black" />
+                })));
+            }
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+        } finally {
+            setIsLoadingCategory(false);
+        }
+    };
+
     // Form state
     const [formErrors, setFormErrors] = useState({
         title: '',
         description: '',
         cityId: '',
+        categoryId: '',
         routes: ''
     });
     const [touched, setTouched] = useState({
         title: false,
         description: false,
         cityId: false,
+        categoryId: false,
         routes: false
     });
-
-    // Route points state
-    const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
 
     // Route management functions
     const addRoutePoint = async () => {
@@ -134,13 +162,11 @@ export const CreateRouteScreen = () => {
     const fetchCities = async () => {
         try {
             setIsLoadingCity(true);
-            const { data, error } = await supabase
-                .from('cities')
-                .select('*')
-                .order('name');
+            const cities = await CityModel.getCities()
 
-            if (error) throw error;
-            setCities(data.map((city) => ({ label: city.name, value: city.id })));
+            if (cities) {
+                setCities(cities.map((city) => ({ label: city.name, value: city.id })));
+            }
         } catch (error) {
             console.error('Error fetching cities:', error);
         } finally {
@@ -154,6 +180,7 @@ export const CreateRouteScreen = () => {
             title: '',
             description: '',
             cityId: '',
+            categoryId: '',
             routes: ''
         };
         let isValid = true;
@@ -205,6 +232,7 @@ export const CreateRouteScreen = () => {
             title: '',
             description: '',
             cityId: '',
+            categoryId: '',
             routes: ''
         });
 
@@ -212,6 +240,7 @@ export const CreateRouteScreen = () => {
             title: false,
             description: false,
             cityId: false,
+            categoryId: false,
             routes: false
         });
 
@@ -231,7 +260,7 @@ export const CreateRouteScreen = () => {
         setIsPublishing(true);
 
         try {
-            const { data, error } = await RouteModel.createRoute(routePoints, selectedCityId);
+            const { data, error } = await RouteModel.createRoute(routePoints, selectedCityId, selectedCategoryId);
 
             if (error) {
                 showToast('error', 'Rota eklenirken bir hata oluştu', 'Hata');
@@ -255,7 +284,7 @@ export const CreateRouteScreen = () => {
             <CreateRouteHeader navigation={navigation} />
             <ScrollView style={[styles.container]}>
                 <View style={styles.form}>
-                    <View style={styles.inputContainer}>
+                    <View style={[styles.inputContainer, { zIndex: 1000 }]}>
                         <Text style={[styles.label, { color: '#222' }]}>
                             Şehir seç <Text style={{ color: 'red' }}>*</Text>
                         </Text>
@@ -265,10 +294,10 @@ export const CreateRouteScreen = () => {
                         )}
                         {!isLoadingCity && (
                             <DropDownPicker
-                                open={open}
+                                open={openCity}
                                 value={selectedCityId}
                                 items={cities}
-                                setOpen={setOpen}
+                                setOpen={setOpenCity}
                                 setValue={setSelectedCityId}
                                 searchable
                                 onChangeValue={(value) => {
@@ -295,6 +324,50 @@ export const CreateRouteScreen = () => {
                         )}
                         {formErrors.cityId && touched.cityId && (
                             <Text style={styles.errorText}>{formErrors.cityId}</Text>
+                        )}
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                        <Text style={[styles.label, { color: '#222' }]}>
+                            Kategori seç <Text style={{ color: '#66666660', fontSize: 12 }}>(opsiyonel)</Text>
+                        </Text>
+
+                        {isLoadingCategory && (
+                            <ActivityIndicator size="small" color="#000" />
+                        )}
+                        {!isLoadingCategory && !openCity && (
+                            <DropDownPicker
+                                open={openCategory}
+                                value={selectedCategoryId}
+                                items={categories}
+
+                                setOpen={setOpenCategory}
+                                setValue={setSelectedCategoryId}
+                                searchable
+                                onChangeValue={(value) => {
+                                    if (value !== null) {
+                                        handleInputBlur('categoryId');
+                                    }
+                                }}
+                                setItems={setCategories}
+                                placeholder="Kategori seçin"
+                                style={{
+                                    borderColor: '#ddd',
+                                    backgroundColor: '#fff',
+                                }}
+                                textStyle={{
+                                    color: '#000',
+                                }}
+                                dropDownContainerStyle={{
+                                    borderColor: '#ddd',
+                                    backgroundColor: '#fff',
+                                }}
+                                zIndex={1000}
+                                onClose={() => handleInputBlur('categoryId')}
+                            />
+                        )}
+                        {formErrors.categoryId && touched.categoryId && (
+                            <Text style={styles.errorText}>{formErrors.categoryId}</Text>
                         )}
                     </View>
 

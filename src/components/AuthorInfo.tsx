@@ -25,7 +25,7 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
     const navigation = useNavigation();
 
     const screenName = useNavigationState((state) => state.routes[state.index].name)
-    console.log('screenName', screenName);
+
     const handleDeleteRoute = async () => {
       try {
         const { data, error } = await RouteModel.deleteRoute(routeId);

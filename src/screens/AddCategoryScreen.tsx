@@ -49,7 +49,6 @@ const colorOptions = [
 export const AddCategoryScreen = ({navigation}: any) => {
   const handleSubmit = (values: any) => {
     // TODO: Save category to storage/state
-    console.log('Form values:', values);
     navigation.goBack();
   };
 

@@ -7,6 +7,7 @@ export interface RoutePoint {
   client_id?: string; // Make client_id optional
   parent_id?: string;
   city_id?: number;
+  category_id?: number;
   user_id?: string;
   title: string;
   description?: string;
@@ -36,10 +37,21 @@ export interface RouteWithProfile extends RoutePoint {
   cities: {
     name: string;
   };
+  categories: {
+    name: string;
+  };
+  like_count: number;
+}
+
+export interface GetRoutesProps {
+  limit?: number;
+  onlyMain?: boolean;
+  userId?: string;
+  categoryId?: number;
 }
 
 const RouteModel = {
-  async getRoutes(limit?: number, onlyMain?: boolean): Promise<RouteWithProfile[]> {
+  async getRoutes({ limit = 20, onlyMain = false, userId, categoryId }: GetRoutesProps): Promise<RouteWithProfile[]> {
     const query = supabase
       .from('routes')
       .select(`
@@ -49,13 +61,27 @@ const RouteModel = {
           ),
           cities (
             *
-          )
+          ),
+          categories (
+            *
+          ),  
+          likes(count)
       `)
       .eq('is_deleted', false)
       .order('created_at', { ascending: false });
 
+    //* Filter routes by user_id if userId is provided
+    if (userId) {
+      query.eq('user_id', userId);
+    }
+
+    if (categoryId) {
+      query.eq('category_id', categoryId);
+    }
+
     //* Fetch only main routes when `onlyMain` is true
-    const { data, error } = await (onlyMain ? query.eq('order_index', 0).limit(limit || 20) : query.limit(limit || 20));
+    const { data, error } = await (onlyMain ? query.eq('order_index', 0).limit(limit) : query.limit(limit));
+
 
     if (error) throw new Error(`Failed to fetch routes: ${error.message}`);
     if (!data) return [];
@@ -64,6 +90,8 @@ const RouteModel = {
       ...route,
       profiles: Array.isArray(route.profiles) ? route.profiles[0] : route.profiles,
       cities: Array.isArray(route.cities) ? route.cities[0] : route.cities,
+      categories: Array.isArray(route.categories) ? route.categories[0] : route.categories,
+      like_count: route.likes?.[0].count || 0,
     })) as RouteWithProfile[];
   },
 
@@ -74,7 +102,9 @@ const RouteModel = {
       .select(`
         *,
         profiles (*),
-        cities (*)
+        cities (*),
+        categories (*),
+        likes(count)
       `)
       .or(`id.eq.${routeId},parent_id.eq.${routeId}`)
       .order('order_index', { ascending: true });
@@ -112,7 +142,6 @@ const RouteModel = {
     let userLikesMap: Record<string, boolean> = {};
     if (userId) {
       userLikesMap = likesData?.reduce((acc: Record<string, boolean>, like: any) => {
-        console.log("like", acc)
         if (like.user_id === userId) {
           acc[like.entity_id] = true;
         }
@@ -123,6 +152,7 @@ const RouteModel = {
     // Step 5: Format and Return Routes
     const formattedRoutes = routes.map((route: any) => ({
       ...route,
+      categories: Array.isArray(route.categories) ? route.categories[0] : route.categories,
       like_count: likesCountMap?.[route.id] || 0,
       did_like: userId ? !!userLikesMap[route.id] : false,
     }));
@@ -133,26 +163,30 @@ const RouteModel = {
 
 
 
-  async createRoute(routeData: RoutePoint[], cityId: number) {
+  async createRoute(routeData: RoutePoint[], cityId: number, categoryId: number | null) {
     // Remove client_id from each route object
     const cleanedRouteData: ServerRoutePoint[] = routeData.map(({ client_id, ...rest }) => rest);
 
     // Önce ana rotayı bul
 
-    const mainRouteData: ServerRoutePoint | undefined = cleanedRouteData.find((route) => route.order_index === 0);
+    const mainRoute: ServerRoutePoint | undefined = cleanedRouteData.find((route) => route.order_index === 0);
 
-    if (!mainRouteData) {
+    if (!mainRoute) {
       showToast('error', 'Ana rotayı bulamadım', 'Hata');
       return { data: null, error: true, message: 'Ana rota bulunamadı.', type: 'find-main-route' };
     }
 
-    console.log('cityId', cityId);
-    mainRouteData.city_id = cityId;
+    mainRoute.city_id = cityId;
+    
+    console.log("🚀 ~ createRoute ~ categoryId:", categoryId)
+    if (categoryId) {
+      mainRoute.category_id = categoryId;
+    }
 
     // Önce ana rotayı ekle
     const { data: route, error } = await supabase
       .from('routes')
-      .insert(mainRouteData)
+      .insert(mainRoute)
       .select();
 
     let mainRouteId = null;
@@ -165,20 +199,24 @@ const RouteModel = {
     }
 
     if (!mainRouteId) {
-      showToast('error', 'Ana rotayı bulamadım', 'Hata');
+      showToast('error', 'Ana rota ekleneemedi, lütfen tekrar deneyin', 'Hata');
       return { data: null, error: true, message: 'Ana rota bulunamadı.', type: 'find-main-route' };
     }
 
+    const otherRoutes = cleanedRouteData.filter((route) => route.order_index !== 0);
+    console.log("🚀 ~ createRoute ~ otherRoutes:", otherRoutes)
+
     // Diğer rotaların parent_id'sini ana rotanın id'si ile güncelle
-    cleanedRouteData.forEach((route) => {
+    otherRoutes.forEach((route) => {
       route.parent_id = mainRouteId;
-      route.city_id = cityId;
+      route.city_id = undefined;
+      route.category_id = undefined;
     });
 
     // Diğer rotaları ekle
     const { data: routes, error: routesError } = await supabase
       .from('routes')
-      .insert(cleanedRouteData.filter((route) => route.order_index !== 0))
+      .insert(otherRoutes)
       .select();
 
     if (routesError || !routes) {

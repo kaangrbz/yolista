@@ -19,6 +19,21 @@ async getFollowers(userId: string) {
   return followers;
 },
 
+// Function to get followers count of a user
+async getFollowersCount(userId: string) {
+  const { data: followers, error } = await supabase
+    .from('follows')
+    .select('follower_id', { count: 'exact' })
+    .eq('following_id', userId);
+
+  if (error) {
+    console.error("Error fetching followers:", error);
+    throw error;
+  }
+
+  return followers;
+},
+
 // Function to get followings of a user
 async getFollowings(userId: string) {
   const { data: followings, error } = await supabase
@@ -26,6 +41,21 @@ async getFollowings(userId: string) {
     .select('following_id, profiles(username)')
     .eq('follower_id', userId)
     .join('profiles', 'following_id', 'profiles.id');
+
+  if (error) {
+    console.error("Error fetching followings:", error);
+    throw error;
+  }
+
+  return followings;
+},
+
+// Function to get followings count of a user
+async getFollowingsCount(userId: string) {
+  const { data: followings, error } = await supabase
+    .from('follows')
+    .select('following_id', { count: 'exact' })
+    .eq('follower_id', userId);
 
   if (error) {
     console.error("Error fetching followings:", error);

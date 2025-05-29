@@ -37,7 +37,7 @@ export const BaseHeader = ({
 // components/headers/HomeHeader.tsx
 export const HomeHeader = () => (
   <BaseHeader
-    title="Yolista"
+    title="Yolista Kaan gürbüz"
     centerTitle
   />
 );
@@ -66,7 +66,7 @@ export const CreateRouteHeader = () => {
 export const NotificationsHeader = () => {
   return (
     <BaseHeader
-      title="Bildirimler"
+      title="Bildirimler Deneme"
       rightComponent={
         <TouchableOpacity>
           <Icon name="dots-horizontal" size={24} color="#000" />

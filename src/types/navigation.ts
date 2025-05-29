@@ -18,7 +18,7 @@ export type NavigationParams = {
 };
 
 export const navigate = (navigation: any, page: PageName, params?: NavigationParams) => {
-  console.log('Navigating to:', page, params);
+  console.info('Navigating to:', page, params);
   navigation.navigate(page, params);
 };
 

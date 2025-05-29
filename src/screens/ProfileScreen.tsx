@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,20 @@ import {
   ActivityIndicator,
   FlatList,
   SafeAreaView,
+  RefreshControl,
+  ScrollView,
 } from 'react-native';
 import { Tabs } from 'react-native-collapsible-tab-view';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useCityStore, CityState } from '../store/cityStore';
+import RouteModel, { RouteWithProfile } from '../model/routes.model';
+import RouteList from '../components/route/RouteList';
+import { useNavigation } from '@react-navigation/native';
+import { supabase } from '../lib/supabase';
+import { showToast } from '../utils/alert';
+import { navigate, PageName } from '../types/navigation';
+import UserModel from '../model/user.model';
 
 const { width } = Dimensions.get('window');
 
@@ -24,18 +33,6 @@ interface ProfilePageProps {
 
 const HEADER_HEIGHT = 300;
 
-// Tab Content Components
-const PostsTab = () => {
-  return (
-    <Tabs.ScrollView>
-      <View style={styles.tabContent}>
-        <View style={styles.postContainer}>
-          <Text style={styles.noContentText}>Henüz gönderi yok</Text>
-        </View>
-      </View>
-    </Tabs.ScrollView>
-  );
-};
 
 const SavedTab = () => {
   return (
@@ -61,34 +58,163 @@ const TaggedTab = () => {
   );
 };
 
-const ProfileScreen = ({ userId, currentUserId }: ProfilePageProps) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [profileData, setProfileData] = useState(null);
-  const selectedCity = useCityStore((state: CityState) => state.selectedCityName);
+const ProfileScreen = () => {
+    const [isLoading, setIsLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
+    const [expandedDescriptions, setExpandedDescriptions] = useState<{ [key: string]: boolean }>({});
+    const [userId, setUserId] = useState<string | null>(null);
+    const [user, setUser] = useState<any>(null);
+    const [followers, setFollowers] = useState<any>(null);
+    const [followings, setFollowings] = useState<any>(null);
+    const navigation = useNavigation();
+    const selectedCityId = useCityStore((state: CityState) => state.selectedCityId);
+  
+    useEffect(() => {
+      const fetchUserId = async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            setUser(user);
+            setUserId(user.id);
+                      }
+        } catch (error) {
+          console.error('Error fetching user ID:', error);
+        }
+      };
+  
+      onRefresh();
+    }, []);
+
+  const fetchRoutes = async () => {
+    try {
+      setIsLoading(true);
+      const routes = await RouteModel.getRoutes({ limit: 20, onlyMain: true, userId: userId || undefined });
+      setRoutes(routes);
+    } catch (error) {
+      console.error('Error fetching routes:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchFollowers = async () => {
+    try {
+      setIsLoading(true);
+      const followers = await UserModel.getFollowers(userId || '');
+      setFollowers(followers);
+    } catch (error) {
+      console.error('Error fetching followers:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchFollowings = async () => {
+    try {
+      setIsLoading(true);
+      const followings = await UserModel.getFollowings(userId || '');
+      setFollowings(followings);
+    } catch (error) {
+      console.error('Error fetching followings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simulate loading
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    fetchRoutes();
+    // fetchFollowers();
+    // fetchFollowings();
+  }, [userId]);
+
+
+  const onRefresh = React.useCallback(async () => {
+    try {
+      setRefreshing(true);
+      // fetchRoutes will now use the correct selectedCityId from component scope
+      await fetchRoutes();
+      // await fetchFollowers();
+      // await fetchFollowings();
+
+      setTimeout(() => {
+        setRefreshing(false);
+      }, 1000);
+    } catch (error) {
+      console.error('Error refreshing routes:', error);
+      showToast('error', 'Rotalar yenilenirken bir hata oluştu');
+      setRefreshing(false);
+    }
+  }, [userId]);
+
+    const onRoutePress = useCallback((routeId: string) => {
+      navigate(navigation, PageName.RouteDetail, { routeId });
+    }, [navigation]); 
+
+    const onToggleDescription = useCallback((routeId: string) => {
+    setExpandedDescriptions(prev => ({
+      ...prev,
+      [routeId]: !prev[routeId],
+    }));
   }, []);
+
+  // Tab Content Components
+  const PostsTab = () => {
+    return (
+      <Tabs.ScrollView
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={['#333', '#1DA1F2']}
+            tintColor="#000000"
+          />
+        }
+      >
+        <RouteList
+          routes={routes}
+          loading={isLoading}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          onRoutePress={(routeId) => onRoutePress(routeId)}
+          expandedDescriptions={expandedDescriptions}
+          onToggleDescription={(routeId) => onToggleDescription(routeId)}
+          userId={userId}
+          onRefreshRoutes={fetchRoutes}
+        />
+      </Tabs.ScrollView>
+    );
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate(navigation, PageName.Login);
+    } catch (error) {
+      console.error('Error logging out:', error);
+      showToast('error', 'Çıkış yapılırken bir hata oluştu');
+    }
+  };
 
   const renderHeader = () => {
     return (
       <View style={styles.headerContainer}>
         <View style={{ width: '100%' }}>
           <View style={styles.headerImageContainer}>
-            <Image 
-              source={{ uri: 'https://picsum.photos/800/300' }} 
-              style={styles.headerImage} 
+            <Image
+              source={{ uri: 'https://picsum.photos/800/300' }}
+              style={styles.headerImage}
             />
             <View style={styles.profilePhotoContainer}>
-              <Image 
-                source={{ uri: 'https://picsum.photos/200' }} 
-                style={styles.profilePhoto} 
+              <Image
+                source={{ uri: 'https://picsum.photos/200' }}
+                style={styles.profilePhoto}
               />
             </View>
           </View>
+          <TouchableOpacity style={styles.logoutContainer} onPress={handleLogout}>
+            <Icon name="logout" size={24} color="#fff" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.profileSettingContainer}>
             <Icon name="cog" size={24} color="#fff" />
           </TouchableOpacity>
@@ -99,26 +225,25 @@ const ProfileScreen = ({ userId, currentUserId }: ProfilePageProps) => {
 
         <View style={styles.headerTextContainer}>
           <Text style={styles.headerName}>
-            Kaan Gürbüz <MaterialIcons name="verified" size={16} color="#1DA1F2" />
+            Test <MaterialIcons name="verified" size={16} color="#1DA1F2" />
           </Text>
-          
+
           <View style={styles.row}>
-            <Text style={styles.headerUsername}>@kaangurbuz</Text>
-            <Text style={styles.headerUsername}>{selectedCity}</Text>
+            <Text style={styles.headerUsername}>@test</Text>
           </View>
         </View>
 
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>120</Text>
+            <Text style={styles.statValue}>{routes.length}</Text>
             <Text style={styles.statLabel}>Gönderi</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>458</Text>
+            <Text style={styles.statValue}>0</Text>
             <Text style={styles.statLabel}>Takipçi</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>285</Text>
+            <Text style={styles.statValue}>0</Text>
             <Text style={styles.statLabel}>Takip</Text>
           </View>
         </View>
@@ -126,7 +251,7 @@ const ProfileScreen = ({ userId, currentUserId }: ProfilePageProps) => {
     );
   };
 
-  if (isLoading) {
+  if (isLoading || refreshing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#000" />
@@ -185,6 +310,14 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#fff',
     overflow: 'hidden',
+  },
+  logoutContainer: {
+    position: 'absolute',
+    top: 10,
+    right: 100,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 8,
+    borderRadius: 20,
   },
   profilePhoto: {
     width: '100%',

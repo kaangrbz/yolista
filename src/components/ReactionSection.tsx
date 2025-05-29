@@ -22,7 +22,6 @@ const ReactionSection = ({
   onLike
 }: ReactionSectionProps) => {
   // Local state to handle optimistic UI updates
-  console.log("like", didLike)
   const [isLiked, setIsLiked] = useState(didLike);
   const [localLikeCount, setLocalLikeCount] = useState(likeCount);
   
