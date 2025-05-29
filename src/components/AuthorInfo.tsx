@@ -21,38 +21,38 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
   routeId: string;
   cityName?: string;
 }) => {
-  const [visibleDropdown, setVisibleDropdown] = useState(false);  
-    const navigation = useNavigation();
+  const [visibleDropdown, setVisibleDropdown] = useState(false);
+  const navigation = useNavigation();
 
-    const screenName = useNavigationState((state) => state.routes[state.index].name)
+  const screenName = useNavigationState((state) => state.routes[state.index].name)
 
-    const handleDeleteRoute = async () => {
+  const handleDeleteRoute = async () => {
+    try {
+      const { data, error } = await RouteModel.deleteRoute(routeId);
+      if (error) {
+        console.error('Error deleting route:', error);
+        showToast('error', 'Rota silme işlemi sırasında bir hata oluştu');
+        return;
+      }
+
+      showToast('success', 'Rota silme işlemi başarılı');
+
       try {
-        const { data, error } = await RouteModel.deleteRoute(routeId);
-        if (error) {
-          console.error('Error deleting route:', error);
-          showToast('error', 'Rota silme işlemi sırasında bir hata oluştu');
-          return;
-        }
-
-        showToast('success', 'Rota silme işlemi başarılı');
-        
-        try {
-          if (callback && typeof callback === 'function') {
-            callback();
-            if(screenName !== 'HomeMain') {
-              navigation.goBack();
-            }
+        if (callback && typeof callback === 'function') {
+          callback();
+          if (screenName !== 'HomeMain') {
+            navigation.goBack();
           }
-        } catch (error) {
-          console.error('Error deleting route:', error);
-          showToast('error', 'Rota silme işlemi sırasında bir hata oluştu');
         }
       } catch (error) {
         console.error('Error deleting route:', error);
         showToast('error', 'Rota silme işlemi sırasında bir hata oluştu');
       }
-    };
+    } catch (error) {
+      console.error('Error deleting route:', error);
+      showToast('error', 'Rota silme işlemi sırasında bir hata oluştu');
+    }
+  };
 
 
   return (
@@ -60,28 +60,27 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
 
     <View style={styles.authorContainer}>
       <View style={styles.authorInfo}>
-        <Image
-          source={{uri: 'https://picsum.photos/200/200'}}
-          style={styles.authorImage}
-          resizeMode="cover"
-        />
-        <TouchableOpacity onPress={() => navigation.navigate('Profile', { userId: authorId })}>
+        <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('Profile', { userId: authorId })}>
+          <Image
+            source={{ uri: 'https://picsum.photos/200/200' }}
+            style={styles.authorImage}
+            resizeMode="cover"
+          />
           <Text style={styles.authorName}>
             {fullName}
           </Text>
-        </TouchableOpacity>
-        {(isVerified || false) && (
-          <Icon
-            name="check-decagram"
-            size={16}
-            color="#1DA1F2"
-            style={styles.verifiedIcon}
-          />
-        )}
-        <TouchableOpacity onPress={() => navigation.navigate('Profile', { userId: authorId })}>
+          {(isVerified || false) && (
+            <Icon
+              name="check-decagram"
+              size={16}
+              color="#1DA1F2"
+              style={styles.verifiedIcon}
+            />
+          )}
           <Text style={styles.authorUsername}>
             @{username}
           </Text>
+
         </TouchableOpacity>
         <Seperator />
         <Text style={styles.timeAgo}>{getTimeAgo(createdAt)}</Text>
@@ -104,12 +103,18 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
             <Text style={[styles.menuText, { color: '#c00' }]}>Sil</Text>
           </TouchableOpacity>
         )}
+
+
+        <TouchableOpacity style={styles.menuOption} onPress={() => showToast('warning', 'Raporlama özelliği henüz aktif değil')}>
+          <Icon name="alert-octagon" size={20} color="#c00" style={styles.menuItemIcon} />
+          <Text style={styles.menuText}>Raporla</Text>
+        </TouchableOpacity>
       </DropdownMenu>
     </View>
   )
 };
 
-export default AuthorInfo; 
+export default AuthorInfo;
 
 const styles = StyleSheet.create({
   authorContainer: {
@@ -117,6 +122,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 10,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2
   },
   authorInfo: {
     flexDirection: 'row',
@@ -126,7 +136,7 @@ const styles = StyleSheet.create({
   authorImage: {
     width: 40,
     height: 40,
-    borderRadius: 999, // Do not use borderRadius: string, it is not supported on android i guess
+    borderRadius: 999, // Do not use borderRadius: string, it is not supported on andriod i guess
     marginRight: 5,
   },
   authorName: {
@@ -144,7 +154,7 @@ const styles = StyleSheet.create({
   },
   moreButton: {
     padding: 4,
-  },  
+  },
   timeAgo: {
     fontSize: 12,
     color: '#999',
@@ -172,4 +182,3 @@ const styles = StyleSheet.create({
     gap: 4,
   },
 });
-    
