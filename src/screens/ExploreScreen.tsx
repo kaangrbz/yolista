@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ActivityIndicator, ListRenderItem, RefreshControl } from 'react-native';
+import { ActivityIndicator, ListRenderItem, RefreshControl, ScrollView } from 'react-native';
 import {
   View,
   Text,
@@ -59,35 +59,26 @@ const ExploreScreen = () => {
 
   console.log(route.params?.categoryId);
 
+  const fetchCategories = async () => {
+    try {
+      const categories: CategoryItem[] = await CategoryModel.getCategories();
+
+      categories.unshift({
+        id: 'all',
+        name: 'Popüler',
+        icon_name: 'trending-up',
+        description: 'Popüler Rotalar',
+        index: 0,
+      });
+      
+
+      setCategories(categories.sort((a, b) => a.index - b.index));
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const _categories = await CategoryModel.getCategories();
-        let categories: CategoryItem[] = [];
-
-        categories.push({
-          id: 'all',
-          name: 'Popüler',
-          icon_name: 'trending-up',
-          description: 'Popüler Rotalar',
-          index: 0,
-        });
-
-        _categories.forEach((category) => {
-          categories.push({
-            id: category.id,
-            name: category.name,
-            icon_name: category.icon_name,
-            description: category.description,
-            index: category.index,
-          });
-        });
-
-        setCategories(categories.sort((a, b) => a.index - b.index));
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-      }
-    };
     fetchCategories();
   }, []);
 
@@ -121,6 +112,7 @@ const ExploreScreen = () => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    fetchCategories();
     fetchExploreItems();
     setTimeout(() => {
       setRefreshing(false);
@@ -249,17 +241,37 @@ const ExploreScreen = () => {
       {/* No Routes alert */}
       {
         routes.length === 0 && !isLoading && activeCategory === 0 && (
-          <View style={styles.noRoutesContainer}>
-            <Text style={styles.noRoutesText}>Hiç Rota Bulunamadı</Text>
-          </View>
+          <ScrollView contentContainerStyle={{flex: 1, justifyContent: 'center', alignItems: 'center' }} refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#333', '#121212']}
+              tintColor="#000000"
+              titleColor="#000000"
+            />
+          }>
+            <View style={styles.noRoutesContainer}>
+              <Text style={styles.noRoutesText}>Hiç Rota Bulunamadı</Text>
+            </View>
+          </ScrollView>
         )
       }
       
       {
         routes.length === 0 && !isLoading && activeCategory !== 0 && (
-          <View style={styles.noRoutesContainer}>
-            <Text style={styles.noRoutesText}>Bu kategoride hiç rota bulunamadı</Text>
-          </View>
+          <ScrollView contentContainerStyle={{flex: 1, justifyContent: 'center', alignItems: 'center' }} refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#333', '#121212']}
+              tintColor="#000000"
+              titleColor="#000000"
+            />
+          }>
+            <View style={styles.noRoutesContainer}>
+              <Text style={styles.noRoutesText}>Bu kategoride hiç rota bulunamadı</Text>
+            </View>
+          </ScrollView>
         )
       }
       <GlobalFloatingAction />

@@ -76,7 +76,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
           <Text style={styles.routeTitle}>{route.title}</Text>
           {route.categories?.name && (
             <TouchableOpacity 
-              style={styles.row} 
+              style={[styles.row, styles.categoryContainer]} 
               onPress={(e) => {
                 e.stopPropagation();
                 console.log('Category tapped:', route.categories?.name);
@@ -166,6 +166,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  categoryContainer: {
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
+    paddingRight: 8,
   },
   withConnectingLine: {
     paddingLeft: 16,

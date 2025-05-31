@@ -23,7 +23,6 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
 }) => {
   const [visibleDropdown, setVisibleDropdown] = useState(false);
   const navigation = useNavigation();
-
   const screenName = useNavigationState((state) => state.routes[state.index].name)
 
   const handleDeleteRoute = async () => {
@@ -54,13 +53,47 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
     }
   };
 
+  const handleHideRoute = async () => {
+    try {
+      const { data, error } = await RouteModel.hideRoute(routeId);
+      if (error) {
+        console.error('Error hiding route:', error);
+        showToast('error', 'Rota gizleme işlemi sırasında bir hata oluştu');
+        return;
+      }
+
+      showToast('success', 'Rota gizleme işlemi başarılı');
+
+      try {
+        if (callback && typeof callback === 'function') {
+          callback();
+          if (screenName !== 'HomeMain') {
+            navigation.goBack();
+          }
+        }
+      } catch (error) {
+        console.error('Error hiding route:', error);
+        showToast('error', 'Rota gizleme işlemi sırasında bir hata oluştu');
+      }
+    } catch (error) {
+      console.error('Error hiding route:', error);
+      showToast('error', 'Rota gizleme işlemi sırasında bir hata oluştu');
+    }
+  }
+
+  const handleEditRoute = async () => {
+    showToast('warning', 'Düzenleme özelliği henüz aktif değil')
+  }
+
+  const handleReportRoute = async () => {
+    showToast('warning', 'Raporlama özelliği henüz aktif değil')
+  }
+
 
   return (
-
-
     <View style={styles.authorContainer}>
       <View style={styles.authorInfo}>
-        <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('Profile', { userId: authorId })}>
+        <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('ProfileMain', { userId: authorId })}>
           <Image
             source={{ uri: 'https://picsum.photos/200/200' }}
             style={styles.authorImage}
@@ -104,12 +137,12 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
               <Text style={[styles.menuText, { color: '#c00' }]}>Sil</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.menuOption} onPress={() => showToast('warning', 'Arşivleme özelliği henüz aktif değil')}>
+            <TouchableOpacity style={styles.menuOption} onPress={handleHideRoute}>
               <Icon name="archive" size={20} color="#333" style={styles.menuItemIcon} />
               <Text style={styles.menuText}>Arşivle</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.menuOption} onPress={() => showToast('warning', 'Düzenleme özelliği henüz aktif değil')}>
+            <TouchableOpacity style={styles.menuOption} onPress={handleEditRoute}>
               <Icon name="lock" size={20} color="#333" style={styles.menuItemIcon} />
               <Text style={styles.menuText}>Düzenle</Text>
             </TouchableOpacity>
@@ -117,7 +150,7 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
         )}
 
         {loggedUserId !== authorId &&
-        <TouchableOpacity style={styles.menuOption} onPress={() => showToast('warning', 'Raporlama özelliği henüz aktif değil')}>
+        <TouchableOpacity style={styles.menuOption} onPress={handleReportRoute}>
           <Icon name="alert-octagon" size={20} color="#c00" style={styles.menuItemIcon} />
           <Text style={styles.menuText}>Raporla</Text>
         </TouchableOpacity>

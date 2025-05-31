@@ -1,94 +1,14 @@
-import React, {useEffect, useState} from 'react';
-import {DefaultTheme, NavigationContainer, ThemeContext} from '@react-navigation/native';
+import React from 'react';
+import {DefaultTheme, NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useAuth} from '../context/AuthContext';
 import {LoginScreen} from '../screens/LoginScreen';
 import {RegisterScreen} from '../screens/RegisterScreen';
-import {TouchableOpacity, StyleSheet, Text, Alert, View} from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {cities, City} from '../data/cities';
+import {StyleSheet, Text, View} from 'react-native';
 import {Logo} from '../components/Logo';
-import { useCityStore, CityState } from '../store/cityStore';
 import MainTabNavigator from './MainTabNavigator';
 
 const Stack = createNativeStackNavigator();
-
-const LocationHeader = () => {
-  const selectedCityId = useCityStore((state: CityState) => state.selectedCityId);
-  const setSelectedCityId = useCityStore((state: CityState) => state.setSelectedCityId);
-
-  useEffect(() => {
-    const getCityId = async () => {
-      try {
-        const savedCityId = await AsyncStorage.getItem('city_id');
-        if (savedCityId) {
-          const city = cities.find(c => c.id === parseInt(savedCityId, 10));
-          if (city) {
-            setSelectedCityId(city.id, city.name);
-          } else {
-            setSelectedCityId(null);
-          }
-        } else {
-          setSelectedCityId(null);
-        }
-      } catch (error) {
-        console.error('Şehir ID okuma hatası:', error);
-      }
-    };
-    getCityId();
-  }, []);
-
-  const handlePress = () => {
-    Alert.alert(
-      'Şehir Seç',
-      'Bir şehir seçin:',
-      [
-        ...cities.map(city => ({
-          text: city.name,
-          onPress: async () => {
-            try {
-              await AsyncStorage.setItem('city_id', city.id.toString());
-              setSelectedCityId(city.id, city.name);
-            } catch (error) {
-              console.error('Şehir kaydetme hatası:', error);
-              Alert.alert('Hata', 'Şehir seçimi kaydedilemedi');
-            }
-          },
-        })),
-        {text: 'İptal', style: 'cancel'},
-      ],
-      {cancelable: true},
-    );
-  };
-
-  const selectedCity = cities.find(c => c.id === selectedCityId);
-
-  if (!selectedCity) {
-    return (
-      <TouchableOpacity onPress={handlePress} style={styles.locationHeader}>
-        <Icon name="map-marker" size={20} color="#cc0000" />
-        <Text style={styles.cityText}>Sehir Seç</Text>
-      </TouchableOpacity>
-    );
-  }
-
-  return (
-    <TouchableOpacity onPress={handlePress} style={styles.locationHeader}>
-      <Icon name="map-marker" size={20} color="#cc0000" />
-      <Text style={styles.cityText}>{selectedCity?.name || 'Sehir Seç'}</Text>
-    </TouchableOpacity>
-  );
-};
-
-const LogoutButton = () => {
-  const {logout} = useAuth();
-  return (
-    <TouchableOpacity onPress={logout} style={styles.logoutButton}>
-      <Icon name="logout" size={24} color="#333" />
-    </TouchableOpacity>
-  );
-};
 
 const LightTheme = {
   ...DefaultTheme,

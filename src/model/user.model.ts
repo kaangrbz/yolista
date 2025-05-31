@@ -12,7 +12,6 @@ async getFollowers(userId: string) {
     .from('follows')
     .select('follower_id, profiles(username)')
     .eq('following_id', userId)
-    .join('profiles', 'follower_id', 'profiles.id');
 
   if (error) {
     console.error("Error fetching followers:", error);
@@ -43,8 +42,7 @@ async getFollowings(userId: string) {
     .from('follows')
     .select('following_id, profiles(username)')
     .eq('follower_id', userId)
-    .join('profiles', 'following_id', 'profiles.id');
-
+  
   if (error) {
     console.error("Error fetching followings:", error);
     throw error;

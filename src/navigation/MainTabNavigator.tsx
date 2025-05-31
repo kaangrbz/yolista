@@ -1,8 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RouteProp } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 // Import your screens
@@ -19,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 type ProfileStackParamList = {
   ProfileMain: { userId: string; currentUserId: string };
   RouteDetail: { routeId: string };
+  Explore: { categoryId?: number };
 };
 
 type HomeStackParamList = {
@@ -26,10 +25,11 @@ type HomeStackParamList = {
   RouteDetail: { routeId: string };
   AddCategory: undefined;
   Explore: { categoryId?: number };
+  ProfileMain: { userId: string; currentUserId: string };
 };
 
 type ExploreStackParamList = {
-  ExploreMain: undefined;
+  ExploreMain: { categoryId?: number };
   RouteDetail: { routeId: string };
 };
 
@@ -58,6 +58,11 @@ const ProfileStackScreen = () => {
         component={RouteDetailScreen} 
         options={{ headerShown: false }}
       />
+      <ProfileStack.Screen 
+        name="Explore" 
+        component={ExploreScreen} 
+        options={{ headerShown: false }}
+      />
     </ProfileStack.Navigator>
   );
 };
@@ -82,6 +87,10 @@ const HomeStackScreen = () => {
         name="Explore" 
         component={ExploreScreen} 
       />
+      <HomeStack.Screen 
+        name="ProfileMain" 
+        component={ProfileScreen} 
+      />
     </HomeStack.Navigator>
   );
 };
@@ -97,6 +106,11 @@ const ExploreStackScreen = () => {
       <ExploreStack.Screen 
         name="RouteDetail" 
         component={RouteDetailScreen} 
+        options={{ headerShown: false }}
+      />
+      <ExploreStack.Screen 
+        name="Explore" 
+        component={ExploreScreen} 
         options={{ headerShown: false }}
       />
     </ExploreStack.Navigator>

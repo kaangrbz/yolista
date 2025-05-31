@@ -16,6 +16,7 @@ export interface RoutePoint {
   longitude?: number;
   order_index: number;
   is_deleted?: boolean;
+  is_hidden?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -38,7 +39,9 @@ export interface RouteWithProfile extends RoutePoint {
     name: string;
   };
   categories: {
+    id: number;
     name: string;
+    icon_name: string;
   };
   like_count: number;
 }
@@ -68,6 +71,8 @@ const RouteModel = {
           likes(count)
       `)
       .eq('is_deleted', false)
+      .eq('is_hidden', false)
+      // .eq('order_index', -1) // Todo: bunu kaldir
       .order('created_at', { ascending: false });
 
     //* Filter routes by user_id if userId is provided
@@ -260,6 +265,17 @@ const RouteModel = {
       .select()
 
     if (error) throw new Error(`Failed to delete route: ${error.message}`);
+    return { data, error }
+  },
+
+  async hideRoute(routeId: string): Promise<{ data: any, error: any }> {
+    const { data, error } = await supabase
+      .from('routes')
+      .update({ is_hidden: true })
+      .eq('id', routeId)
+      .select()
+
+    if (error) throw new Error(`Failed to hide route: ${error.message}`);
     return { data, error }
   },
 };

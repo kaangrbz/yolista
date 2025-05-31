@@ -34,51 +34,68 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
   const [user, setUser] = useState<any | null>(null);
 
   useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({data: {session}}) => {
+    const fetchSessionAndProfile = async () => {
+      try {
+        // Fetch session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+  
+        setIsAuthenticated(!!session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+  
+        if (session?.user) {
+          // Fetch profile data
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('full_name, username, image_url')
+            .eq('id', session.user.id)
+            .single();
+  
+          if (profileError) {
+            console.error('Profile fetch error:', profileError);
+          } else {
+            console.log('Profile data:', profileData);
+            setUser((prevUser) => ({
+              ...prevUser,
+              profile: profileData,
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching session or profile:', error);
+      }
+    };
+  
+    fetchSessionAndProfile();
+  
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
       setIsAuthenticated(!!session);
       setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
-
-    // Listen for auth changes
-    const {
-      data: {subscription},
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setIsAuthenticated(!!session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-
-      if (event === 'SIGNED_IN' && session?.user) {
-        // Check if profile exists
-        const {data: existingProfile} = await supabase
+  
+      if (session?.user) {
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('id')
+          .select('full_name, username, image_url, is_verified')
           .eq('id', session.user.id)
           .single();
-
-        if (!existingProfile) {
-          // Create profile if it doesn't exist
-          const {error: profileError} = await supabase.from('profiles').insert([
-            {
-              id: session.user.id,
-              username: session.user.email?.split('@')[0],
-              full_name: session.user.user_metadata?.full_name,
-              image_url: session.user.user_metadata?.image_url,
-            },
-          ]);
-
-          if (profileError) {
-            console.error('Profile creation error:', profileError);
-          }
+  
+        if (profileError) {
+          console.error('Profile fetch error on state change:', profileError);
+        } else {
+          setUser((prevUser) => ({
+            ...prevUser,
+            profile: profileData,
+          }));
         }
       }
     });
-
+  
     return () => {
       subscription.unsubscribe();
     };
   }, []);
+  
 
   const signIn = async (email: string, password: string) => {
     try {
