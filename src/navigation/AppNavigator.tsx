@@ -33,7 +33,7 @@ export const AppNavigator = () => {
 
   return (
     <NavigationContainer theme={LightTheme}>
-      <Stack.Navigator>
+      <Stack.Navigator screenOptions={{headerShown: false}}>
         {!isAuthenticated || !user ? (
           <>
             <Stack.Screen

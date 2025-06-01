@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Logo } from '../components/Logo';
 import { showToast } from '../utils/alert';
+import { useNavigation } from '@react-navigation/native';
 
 export const RegisterScreen = () => {
   const [email, setEmail] = useState('');
@@ -20,7 +21,7 @@ export const RegisterScreen = () => {
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { signUp } = useAuth();
-
+  const navigation = useNavigation();
   const handleRegister = async () => {
     if (!email || !password || !name || !username) {
       showToast(
@@ -59,7 +60,7 @@ export const RegisterScreen = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Logo size="large" color="#1DA1F2" />
-        <Text style={styles.subtitle}>Seyahat rotalarını keşfet</Text>
+        <Text style={styles.subtitle}>Seyahat tutkunları için en özel rotaları keşfet ve unutulmaz bir deneyime adım at!</Text>
       </View>
 
       <View style={styles.form}>
@@ -135,6 +136,10 @@ export const RegisterScreen = () => {
             <Text style={styles.buttonText}>Kayıt Ol</Text>
           )}
         </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <Text style={styles.loginText}>Zaten bir hesabınız var mı? Giriş yap</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -147,7 +152,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   header: {
-    flex: 1,
+    flex: 1 / 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -185,5 +190,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+
+  loginText: {
+    color: '#1DA1F2',
+    textAlign: 'center',
+    marginTop: 16,
   },
 });

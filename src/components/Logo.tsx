@@ -27,7 +27,7 @@ export const Logo: React.FC<LogoProps> = ({
 
   return (
     <View style={styles.container}>
-      <Image source={YolistaIcon} style={{width: sizes.icon, height: sizes.icon}} />
+      <Image source={YolistaIcon} style={{width: sizes.icon, height: sizes.icon}} resizeMode="contain" />
       <Text style={[styles.text, {fontSize: sizes.text, color}]}>Yolista</Text>
     </View>
   );

@@ -10,7 +10,7 @@
 		0C80B921A6F3F58F76C31292 /* libPods-yolista.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-yolista.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
-		8CF664BC2DECA18C00A271E2 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8CF664BB2DECA18C00A271E2 /* Launch Screen.storyboard */; };
+		8CF664BE2DECD3AC00A271E2 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8CF664BD2DECD3AC00A271E2 /* Launch Screen.storyboard */; };
 		E96E1C62E11BB079CB8243CD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -23,7 +23,7 @@
 		5709B34CF0A7D63546082F79 /* Pods-yolista.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-yolista.release.xcconfig"; path = "Target Support Files/Pods-yolista/Pods-yolista.release.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-yolista.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-yolista.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = yolista/AppDelegate.swift; sourceTree = "<group>"; };
-		8CF664BB2DECA18C00A271E2 /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
+		8CF664BD2DECD3AC00A271E2 /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -46,7 +46,7 @@
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
-				8CF664BB2DECA18C00A271E2 /* Launch Screen.storyboard */,
+				8CF664BD2DECD3AC00A271E2 /* Launch Screen.storyboard */,
 			);
 			name = yolista;
 			sourceTree = "<group>";
@@ -158,7 +158,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8CF664BC2DECA18C00A271E2 /* Launch Screen.storyboard in Resources */,
+				8CF664BE2DECD3AC00A271E2 /* Launch Screen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				E96E1C62E11BB079CB8243CD /* PrivacyInfo.xcprivacy in Resources */,
 			);

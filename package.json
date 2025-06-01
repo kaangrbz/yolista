@@ -9,6 +9,7 @@
     "start": "react-native start",
     "pod": "cd ios && pod install && cd ..",
     "test": "jest",
+    "release": "cd android && ./gradlew assembleRelease",
     "build": "react-native run-android",
     "build:ios": "react-native run-ios",
     "clean": "rm -rf node_modules && rm -rf ios/Pods && rm -rf ios/build && rm -rf android/build && rm -rf android/app/build",
