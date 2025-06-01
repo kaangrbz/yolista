@@ -1,6 +1,7 @@
 import React from 'react';
-import {View, Text, StyleSheet} from 'react-native';
+import {View, Text, StyleSheet, Image} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {Icon as YolistaIcon} from '../assets';
 
 interface LogoProps {
   size?: 'small' | 'medium' | 'large';
@@ -26,7 +27,7 @@ export const Logo: React.FC<LogoProps> = ({
 
   return (
     <View style={styles.container}>
-      <Icon name="map-marker-path" size={sizes.icon} color={color} />
+      <Image source={YolistaIcon} style={{width: sizes.icon, height: sizes.icon}} />
       <Text style={[styles.text, {fontSize: sizes.text, color}]}>Yolista</Text>
     </View>
   );
