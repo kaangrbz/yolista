@@ -80,6 +80,7 @@ const RouteModel = {
       query.eq('user_id', userId);
     }
 
+    console.log("🚀 ~ createRoute ~ categoryId:", categoryId)
     if (categoryId) {
       query.eq('category_id', categoryId);
     }
@@ -183,7 +184,6 @@ const RouteModel = {
 
     mainRoute.city_id = cityId;
     
-    console.log("🚀 ~ createRoute ~ categoryId:", categoryId)
     if (categoryId) {
       mainRoute.category_id = categoryId;
     }

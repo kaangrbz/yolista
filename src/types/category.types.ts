@@ -1,6 +1,6 @@
 
 export interface CategoryItem {
-    id: string;
+    id: number;
     name: string;
     icon_name: string;
     description: string;

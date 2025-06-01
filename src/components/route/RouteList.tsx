@@ -60,7 +60,7 @@ const RouteList: React.FC<RouteListProps> = ({
           onToggleDescription={onToggleDescription}
         />
       )}
-      contentContainerStyle={routes.length === 0 ? styles.noRoutesContainer : styles.routesContainer}
+      contentContainerStyle={styles.routesContainer}
       ListFooterComponent={renderFooter}
       ListEmptyComponent={renderEmptyComponent}
       refreshControl={

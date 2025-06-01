@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import {useAuth} from '../context/AuthContext';
-import {Logo} from '../components/Logo';
+import { useAuth } from '../context/AuthContext';
+import { Logo } from '../components/Logo';
+import { showToast } from '../utils/alert';
 
 export const RegisterScreen = () => {
   const [email, setEmail] = useState('');
@@ -18,28 +19,37 @@ export const RegisterScreen = () => {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const {signUp} = useAuth();
+  const { signUp } = useAuth();
 
   const handleRegister = async () => {
     if (!email || !password || !name || !username) {
-      Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
+      showToast(
+        'error',
+        'Lütfen tüm alanları doldurun',
+      );
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Hata', 'Şifre en az 6 karakter olmalıdır');
+      showToast(
+        'error',
+        'Şifre en az 6 karakter olmalıdır',
+      );
       return;
     }
 
     try {
       setIsLoading(true);
       await signUp(email, password, name, username);
-      Alert.alert(
-        'Başarılı',
-        'Hesabınız oluşturuldu. Lütfen e-posta adresinizi doğrulayın.',
+      showToast(
+        'success',
+        'Hesabınız oluşturuldu.',
       );
     } catch (error: any) {
-      Alert.alert('Hata', error.message || 'Kayıt olurken bir hata oluştu');
+      showToast(
+        'error',
+        error.message || 'Kayıt olurken bir hata oluştu',
+      );
     } finally {
       setIsLoading(false);
     }

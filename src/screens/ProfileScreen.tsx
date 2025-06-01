@@ -23,6 +23,7 @@ import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/alert';
 import { navigate, PageName } from '../types/navigation';
 import UserModel from '../model/user.model';
+import GlobalFloatingAction from '../components/common/GlobalFloatingAction';
 
 const { width } = Dimensions.get('window');
 
@@ -398,6 +399,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           <TaggedTab />
         </Tabs.Tab>
       </Tabs.Container>
+
+      <GlobalFloatingAction />
     </SafeAreaView>
   );
 };

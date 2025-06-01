@@ -1,5 +1,5 @@
 import React from 'react';
-import {DefaultTheme, NavigationContainer} from '@react-navigation/native';
+import {DefaultTheme,  NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useAuth} from '../context/AuthContext';
 import {LoginScreen} from '../screens/LoginScreen';

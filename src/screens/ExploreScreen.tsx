@@ -57,14 +57,13 @@ const ExploreScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
 
-  console.log(route.params?.categoryId);
 
   const fetchCategories = async () => {
     try {
       const categories: CategoryItem[] = await CategoryModel.getCategories();
 
       categories.unshift({
-        id: 'all',
+        id: 0,
         name: 'Popüler',
         icon_name: 'trending-up',
         description: 'Popüler Rotalar',
@@ -88,7 +87,7 @@ const ExploreScreen = () => {
     }
     setIsLoading(true);
     try {
-      let props: GetRoutesProps = { limit: 20, onlyMain: true, categoryId: Number(activeCategory) }
+      let props: GetRoutesProps = { limit: 20, onlyMain: true, categoryId:  activeCategory }
       const routes = await RouteModel.getRoutes(props);
       setRoutes(routes);
     } catch (error) {
@@ -112,7 +111,7 @@ const ExploreScreen = () => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchCategories();
+    // fetchCategories();
     fetchExploreItems();
     setTimeout(() => {
       setRefreshing(false);
@@ -231,6 +230,11 @@ const ExploreScreen = () => {
             }
             keyExtractor={(item) => item.id}
             numColumns={NUM_COLUMNS}
+            ListEmptyComponent={() => (
+              <View style={styles.noRoutesContainer}>
+                <Text style={styles.noRoutesText}>Bu kategoride hiç rota bulunamadı</Text>
+              </View>
+            )}
             columnWrapperStyle={styles.columnWrapper}
             contentContainerStyle={styles.exploreList}
             showsVerticalScrollIndicator={false}

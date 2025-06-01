@@ -1,11 +1,26 @@
 import React, {createContext, useContext, useState, useEffect} from 'react';
 import {supabase} from '../lib/supabase';
-import {Session} from '@supabase/supabase-js';
+import {Session, User} from '@supabase/supabase-js';
+
+interface Profile {
+  id: string;
+  username: string;
+  full_name: string;
+  email?: string;
+  created_at?: string;
+  updated_at?: string;
+  image_url?: string;
+  is_verified?: boolean;
+}
+
+interface UserWithProfile extends User {
+  profile?: Profile;
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: any | null;
+  user: UserWithProfile | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (
     email: string,
@@ -31,12 +46,11 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<UserWithProfile | null>(null);
 
   useEffect(() => {
     const fetchSessionAndProfile = async () => {
       try {
-        // Fetch session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
   
@@ -45,20 +59,19 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
         setIsLoading(false);
   
         if (session?.user) {
-          // Fetch profile data
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('full_name, username, image_url')
+            .select('id, username, full_name, image_url')
             .eq('id', session.user.id)
             .single();
   
           if (profileError) {
             console.error('Profile fetch error:', profileError);
-          } else {
+          } else if (profileData) {
             console.log('Profile data:', profileData);
-            setUser((prevUser) => ({
-              ...prevUser,
-              profile: profileData,
+            setUser((prevUser: UserWithProfile | null) => ({
+              ...prevUser!,
+              profile: profileData as Profile,
             }));
           }
         }
@@ -69,23 +82,23 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
   
     fetchSessionAndProfile();
   
-    const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setIsAuthenticated(!!session);
       setUser(session?.user ?? null);
   
       if (session?.user) {
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('full_name, username, image_url, is_verified')
+          .select('id, username, full_name, image_url, is_verified')
           .eq('id', session.user.id)
           .single();
   
         if (profileError) {
           console.error('Profile fetch error on state change:', profileError);
-        } else {
-          setUser((prevUser) => ({
-            ...prevUser,
-            profile: profileData,
+        } else if (profileData) {
+          setUser((prevUser: UserWithProfile | null) => ({
+            ...prevUser!,
+            profile: profileData as Profile,
           }));
         }
       }
@@ -117,7 +130,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
     username: string,
   ) => {
     try {
-      const {error: signUpError} = await supabase.auth.signUp({
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -127,7 +140,38 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
           },
         },
       });
-      if (signUpError) throw signUpError;
+
+      if (signUpError) {
+        console.error('Sign up error:', signUpError);
+        throw signUpError;
+      }
+
+      if (!authData.user) {
+        throw new Error('No user data returned from signup');
+      }
+
+      // The trigger will handle profile creation
+      // We just need to wait a moment for it to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Verify profile was created
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (profileError || !profileData) {
+        console.error('Profile verification error:', profileError);
+        throw new Error('Failed to verify profile creation');
+      }
+
+      // Update local user state
+      setUser({
+        ...authData.user,
+        profile: profileData,
+      });
+
     } catch (error) {
       console.error('Sign up error:', error);
       throw error;
