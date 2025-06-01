@@ -80,7 +80,6 @@ const RouteModel = {
       query.eq('user_id', userId);
     }
 
-    console.log("🚀 ~ createRoute ~ categoryId:", categoryId)
     if (categoryId) {
       query.eq('category_id', categoryId);
     }
@@ -174,7 +173,6 @@ const RouteModel = {
     const cleanedRouteData: ServerRoutePoint[] = routeData.map(({ client_id, ...rest }) => rest);
 
     // Önce ana rotayı bul
-
     const mainRoute: ServerRoutePoint | undefined = cleanedRouteData.find((route) => route.order_index === 0);
 
     if (!mainRoute) {
@@ -216,6 +214,8 @@ const RouteModel = {
       route.parent_id = mainRouteId;
       route.city_id = undefined;
       route.category_id = undefined;
+      route.title = route.title.trim();
+      route.description = route.description?.trim();
     });
 
     // Diğer rotaları ekle

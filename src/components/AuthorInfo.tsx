@@ -10,8 +10,9 @@ import { showToast } from '../utils/alert';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { NoImage } from '../assets';
 
-const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId, cityName }: {
+const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId, cityName }: {
   fullName: string;
+  image_url?: string;
   isVerified: boolean;
   username: string;
   createdAt: string;
@@ -95,7 +96,7 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
       <View style={styles.authorInfo}>
         <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('ProfileMain', { userId: authorId })}>
           <Image
-            source={{ uri: 'https://picsum.photos/200/200' }}
+            source={{ uri: image_url || 'https://picsum.photos/200/200' }}
             style={styles.authorImage}
             resizeMode="cover"
           />
@@ -117,13 +118,6 @@ const AuthorInfo = ({ fullName, isVerified, username, createdAt, authorId, callb
         </TouchableOpacity>
         <Seperator />
         <Text style={styles.timeAgo}>{getTimeAgo(createdAt)}</Text>
-        <Seperator />
-        {cityName && (
-          <View style={styles.cityContainer}>
-            <Icon name="map-marker" size={16} color="#666" />
-            <Text style={styles.cityName}>{cityName}</Text>
-          </View>
-        )}
       </View>
       <DropdownMenu visible={visibleDropdown} handleOpen={() => setVisibleDropdown(true)} handleClose={() => setVisibleDropdown(false)} trigger={<Icon name="dots-vertical" size={20} color="#666" />}>
         {/* <TouchableOpacity style={styles.menuOption}>
@@ -205,10 +199,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
   },
-  cityName: {
-    fontSize: 12,
-    color: '#333',
-  },
   menuText: {
     fontSize: 16,
     color: '#222',
@@ -221,10 +211,5 @@ const styles = StyleSheet.create({
   },
   menuItemIcon: {
     marginRight: 10,
-  },
-  cityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
   },
 });

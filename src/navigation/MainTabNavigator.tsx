@@ -31,6 +31,7 @@ type HomeStackParamList = {
 type ExploreStackParamList = {
   ExploreMain: { categoryId?: number };
   RouteDetail: { routeId: string };
+  ProfileMain: { userId: string; currentUserId: string };
 };
 
 const Tab = createBottomTabNavigator();
@@ -112,6 +113,10 @@ const ExploreStackScreen = () => {
         name="Explore" 
         component={ExploreScreen} 
         options={{ headerShown: false }}
+      />
+      <ExploreStack.Screen 
+        name="ProfileMain" 
+        component={ProfileScreen} 
       />
     </ExploreStack.Navigator>
   );

@@ -167,10 +167,10 @@ const ExploreScreen = () => {
         <View style={styles.infoContainer}>
           <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
           
-          <View style={styles.userContainer}>
+          <TouchableOpacity style={styles.userContainer} onPress={() => navigation.navigate('ProfileMain', { userId: item.profiles.id })}>
             <Text style={styles.userName}>{item.profiles.full_name}</Text>
             <Text style={styles.userUsername}>@{item.profiles.username}</Text>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
     </TouchableOpacity>

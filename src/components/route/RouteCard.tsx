@@ -5,6 +5,7 @@ import AuthorInfo from '../AuthorInfo';
 import { RouteWithProfile } from '../../model/routes.model';
 import { navigate, PageName } from '../../types/navigation';
 import { useNavigation } from '@react-navigation/native';
+import Seperator from '../Seperator';
 
 interface RouteCardProps {
   route: RouteWithProfile;
@@ -30,6 +31,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
   isLastItem = false,
 }) => {
   const routeKey = String(route.id ?? '');
+  const isMainRoute = route.order_index === 0;
   const [isExpanded, setIsExpanded] = useState(expandedDescriptions[routeKey] || false);
   const navigation = useNavigation();
 
@@ -45,6 +47,8 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const safeAuthorId = route.user_id || '';
   const safeRouteId = route.id || ''; // Ensure we have a valid route ID
 
+  console.log('route', route);
+
   return (
     <View style={[styles.cardContainer, showConnectingLine && styles.withConnectingLine]}>
       {showConnectingLine && (
@@ -53,10 +57,12 @@ const RouteCard: React.FC<RouteCardProps> = ({
       <TouchableOpacity
         style={styles.routeCard}
         onPress={() => onPress(route.id || '')}
-        pointerEvents="box-none">
+        disabled={!isMainRoute}
+      >
         {showAuthorHeader && (
           <AuthorInfo
             fullName={safeFullName}
+            image_url={route.profiles?.image_url}
             isVerified={route.profiles?.is_verified || false}
             username={safeUsername}
             createdAt={safeCreatedAt}
@@ -74,22 +80,34 @@ const RouteCard: React.FC<RouteCardProps> = ({
         />
         <View style={styles.routeInfo}>
           <Text style={styles.routeTitle}>{route.title}</Text>
-          {route.categories?.name && (
-            <TouchableOpacity 
-              style={[styles.row, styles.categoryContainer]} 
-              onPress={(e) => {
-                e.stopPropagation();
-                console.log('Category tapped:', route.categories?.name);
-                navigate(navigation, PageName.Explore, { categoryId: route.category_id });
-              }}
-              activeOpacity={0.7}
-            >
-              <Icon name={route.categories?.icon_name} size={18} color="#666" />
-              <Text style={styles.routeCategory}>
-                {route.categories?.name}
-              </Text>
-            </TouchableOpacity>
-          )}
+
+          {/* Category and city should be hidden for not main routes */}
+          <View style={[styles.row, !isMainRoute && {display: 'none'}]}>
+            {route.categories?.name && (
+              <TouchableOpacity
+                style={[styles.row, styles.categoryContainer]}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  console.log('Category tapped:', route.categories?.name);
+                  navigate(navigation, PageName.Explore, { categoryId: route.category_id });
+                }}
+                activeOpacity={0.7}
+              >
+                <Icon name={route.categories?.icon_name} size={18} color="#666" />
+                <Text style={styles.routeCategory}>
+                  {route.categories?.name}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <Seperator />
+            {route.cities?.name && (
+              <View style={styles.cityContainer}>
+                <Icon name="map-marker" size={16} color="#666" />
+                <Text style={styles.cityName}>{route.cities?.name}</Text>
+              </View>
+            )}
+          </View>
           {route.description && (
             <>
               <Text
@@ -170,7 +188,6 @@ const styles = StyleSheet.create({
   categoryContainer: {
     alignSelf: 'flex-start',
     paddingVertical: 2,
-    paddingRight: 8,
   },
   withConnectingLine: {
     paddingLeft: 16,
@@ -223,6 +240,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 4,
     lineHeight: 20,
+  },
+
+  cityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cityName: {
+    fontSize: 12,
+    color: '#333',
   },
   seeMoreText: {
     color: '#007AFF',

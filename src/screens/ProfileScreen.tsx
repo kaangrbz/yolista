@@ -79,6 +79,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const [followings, setFollowings] = useState<any[]>([]);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
   const [isFollowLoading, setIsFollowLoading] = useState<boolean>(false);
+  const [fetchingUser, setFetchingUser] = useState(false);
   const navigation = useNavigation();
   const selectedCityId = useCityStore((state: CityState) => state.selectedCityId);
 
@@ -89,11 +90,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
+        setFetchingUser(true);
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         if (currentUser) {
           setCurrentUserId(currentUser.id);
 
-          console.log('123',route?.params?.userId, currentUser.id);
+          console.log('123', route?.params?.userId, currentUser.id);
           // If no userId is provided in route params, use the current user's ID
           const targetUserId = route?.params?.userId || currentUser.id;
           setProfileUserId(targetUserId);
@@ -117,7 +119,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
       } catch (error) {
         console.error('Error fetching user data:', error);
       } finally {
-        setIsLoading(false);
+        setFetchingUser(false);
       }
     };
 
@@ -214,6 +216,15 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
   // Tab Content Components
   const PostsTab = () => {
+    
+    if (isLoading || refreshing) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#000" />
+        </View>
+      );
+    }
+
     return (
       <Tabs.ScrollView
         refreshControl={
@@ -279,7 +290,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
         const result = await UserModel.followUser(currentUserId, profileUserId);
         if (result.success) {
           setIsFollowing(true);
-          showToast('success', result.message);
+          // showToast('success', result.message);
           fetchFollowers(); // Refresh followers count
         } else {
           showToast('error', result.message);
@@ -293,6 +304,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     }
   };
 
+  console.log('user', user);
+
   const renderHeader = () => {
     return (
       <View style={styles.headerContainer}>
@@ -304,7 +317,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
             />
             <View style={styles.profilePhotoContainer}>
               <Image
-                source={{ uri: user?.avatar_url || 'https://picsum.photos/200' }}
+                source={{ uri: user?.image_url || 'https://picsum.photos/200' }}
                 style={styles.profilePhoto}
               />
             </View>
@@ -324,30 +337,37 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
               </TouchableOpacity>
             </>
           )}
-
-          {/* Show follow/unfollow button for other users' profiles */}
-          {!isCurrentUserProfile && currentUserId && profileUserId && (
-            <TouchableOpacity
-              style={[styles.followContainer, isFollowing ? styles.unfollowContainer : {}]}
-              onPress={handleFollowToggle}
-              disabled={isFollowLoading}
-            >
-              {isFollowLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.followButtonText}>
-                  {isFollowing ? 'Takibi Bırak' : 'Takip Et'}
-                </Text>
-              )}
-            </TouchableOpacity>
-          )}
         </View>
 
         <View style={styles.headerTextContainer}>
-          <Text style={styles.headerName}>
-            {user?.full_name || 'Kullanıcı'}
-            {user?.verified && <MaterialIcons name="verified" size={16} color="#1DA1F2" />}
-          </Text>
+          <View style={styles.headerNameContainer}>
+            <Text style={styles.headerName}>
+              {user?.full_name || 'Kullanıcı'}
+              {user?.verified && <MaterialIcons name="verified" size={16} color="#1DA1F2" />}
+
+            </Text>
+
+
+            {/* Show follow/unfollow button for other users' profiles */}
+            {!isCurrentUserProfile && currentUserId && profileUserId && (
+              <TouchableOpacity
+                style={[styles.followContainer, isFollowing ? styles.unfollowContainer : {}]}
+                onPress={handleFollowToggle}
+                disabled={isFollowLoading}
+              >
+                {isFollowLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.followButtonText}>
+                    {isFollowing ? <Icon name="account-minus" size={18} color="#fff" /> : <Icon name="account-plus" size={18} color="#fff" />}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
+
+
 
           <View style={styles.row}>
             <Text style={styles.headerUsername}>@{user?.username || 'kullanici'}</Text>
@@ -372,7 +392,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     );
   };
 
-  if (isLoading || refreshing) {
+
+    
+  if (fetchingUser) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#000" />
@@ -419,6 +441,11 @@ const styles = StyleSheet.create({
     height: 150,
     position: 'relative',
   },
+  headerNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
   headerImage: {
     width: '100%',
     height: '100%',
@@ -437,7 +464,7 @@ const styles = StyleSheet.create({
   logoutContainer: {
     position: 'absolute',
     top: 10,
-    right: 100,
+    right: 110,
     backgroundColor: 'rgba(0,0,0,0.5)',
     padding: 8,
     borderRadius: 20,
@@ -467,10 +494,9 @@ const styles = StyleSheet.create({
     top: 10,
     right: 10,
     backgroundColor: '#1DA1F2',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 20,
-    minWidth: 100,
     alignItems: 'center',
   },
   unfollowContainer: {
@@ -480,6 +506,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 14,
+    paddingHorizontal: 0,
   },
   headerTextContainer: {
     marginTop: 50,

@@ -5,8 +5,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   FlatList,
-  RefreshControl,
   SafeAreaView,
+  TouchableOpacity,
 } from 'react-native';
 import RouteModel from '../model/routes.model';
 import { getRandomNumber } from '../utils/math';
@@ -15,6 +15,9 @@ import RouteCard from '../components/route/RouteCard';
 import { RouteWithProfile } from '../model/routes.model';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/alert';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { RouteDetailHeader } from '../components/header/Header';
+import { RefreshControlComponent } from '../components/common/RefreshControl';
 
 export const RouteDetailScreen = ({ navigation, route }: { navigation: any, route: { params: { routeId: string } } }) => {
   const [isPageLoading, setIsPageLoading] = useState(true);
@@ -142,7 +145,7 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
   const renderRoute = (route: RouteWithProfile, index: number) => {
     const isFirstItem = index === 0;
     const isLastItem = index === routes.length - 1;
-    
+
     return (
       <RouteCard
         key={route.id}
@@ -174,19 +177,24 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
           <ActivityIndicator size='small' />
         </View>
       ) : (
-        <FlatList 
-          data={routes}
-          keyExtractor={(item) => item.id || ''}
-          renderItem={({ item, index }) => renderRoute(item, index)}
-          refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={onRefresh} 
-            />
-          }
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContainer}
-        />
+        <>
+          <RouteDetailHeader
+            navigation={navigation}
+          />
+          <FlatList
+            data={routes}
+            keyExtractor={(item) => item.id || ''}
+            renderItem={({ item, index }) => renderRoute(item, index)}
+            refreshControl={
+              <RefreshControlComponent
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+              />
+            }
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContainer}
+          />
+        </>
       )}
 
     </SafeAreaView>

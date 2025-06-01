@@ -19,12 +19,12 @@ export const BaseHeader = ({
   centerTitle = false,
   style = { }
 }: HeaderProps) => (
-  <View style={[styles.header, centerTitle && styles.centered, style]}>
+  <View style={[styles.header, style]}>
     {leftComponent && (<View style={styles.leftSection}>
       {leftComponent}
     </View>)}
 
-    <Text style={styles.title} numberOfLines={1}>
+    <Text style={[styles.title, centerTitle && styles.centered]} numberOfLines={1}>
       {title}
     </Text>
 
@@ -42,15 +42,23 @@ export const HomeHeader = () => (
   />
 );
 
+// components/headers/RouteDetailHeader.tsx
+export const RouteDetailHeader = ({ navigation }: { navigation?: any }) => (
+  <BaseHeader
+    title={'Rota Detayı'}
+    style={{ justifyContent: 'flex-start' }}
+    leftComponent={
+      <TouchableOpacity onPress={() => navigation.goBack()}>
+        <Icon name="arrow-left" size={24} color="#000" />
+      </TouchableOpacity>
+    }
+  />
+);
+
 // components/headers/ExploreHeader.tsx
 export const ExploreHeader = ({ onSearch }) => (
   <BaseHeader
     title="Keşfet"
-    rightComponent={
-      <TouchableOpacity onPress={onSearch}>
-        <Icon name="magnify" size={18} color="#000" />
-      </TouchableOpacity>
-    }
   />
 );
 
@@ -109,8 +117,8 @@ const styles = StyleSheet.create({
     width: '10%',
   },
   centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    textAlign: 'center',
+    width: '100%',
   },
   placeholder: {
     width: 24,

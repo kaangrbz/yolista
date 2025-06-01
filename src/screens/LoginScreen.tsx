@@ -12,6 +12,7 @@ import {
 import {useAuth} from '../context/AuthContext';
 import {Link, useNavigation} from '@react-navigation/native';
 import {Logo} from '../components/Logo';
+import { showToast } from '../utils/alert';
 
 export const LoginScreen = () => {
   const navigation = useNavigation();
@@ -22,7 +23,7 @@ export const LoginScreen = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
+      showToast('error', 'Lütfen tüm alanları doldurun');
       return;
     }
 
@@ -30,7 +31,7 @@ export const LoginScreen = () => {
       setIsLoading(true);
       await signIn(email, password);
     } catch (error: any) {
-      Alert.alert('Hata', error.message || 'Giriş yaparken bir hata oluştu');
+      showToast('error', error.message || 'Giriş yaparken bir hata oluştu');
     } finally {
       setIsLoading(false);
     }
