@@ -78,6 +78,7 @@ const RouteList: React.FC<RouteListProps> = ({
 
 const styles = StyleSheet.create({
   routesContainer: {
+    flex: 1,
     padding: 16,
     paddingBottom: 80,
   },
