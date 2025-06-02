@@ -65,7 +65,6 @@ export const ExploreHeader = ({ onSearch }) => (
 export const CreateRouteHeader = () => {
   return (
     <BaseHeader
-
       title="Yeni Rota Oluştur"
     />
   );
@@ -84,6 +83,34 @@ export const NotificationsHeader = () => {
   );
 }
 
+export const FollowersHeader = ({ navigation }: { navigation: any }) => {
+  return (
+    <BaseHeader
+      title="Takipçiler"
+      style={{ justifyContent: 'flex-start', gap: 16 }}
+      leftComponent={
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Icon name="arrow-left" size={24} color="#121212" />
+        </TouchableOpacity>
+      }
+    />
+  );
+};
+
+export const FollowingHeader = ({ navigation }: { navigation: any }) => {
+  return (
+    <BaseHeader
+      title="Takip Edilenler"
+          style={{ justifyContent: 'flex-start', gap: 16 }}
+      leftComponent={
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Icon name="arrow-left" size={24} color="#121212" />
+        </TouchableOpacity>
+      }
+    />
+  );
+};
+
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
@@ -92,11 +119,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000',
   },
   searchButton: {
     padding: 8,
@@ -128,5 +150,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#000',
+  },
+  backButton: {
+    padding: 8,
+  },
+  rightPlaceholder: {
+    width: 24,
+    height: 24,
   },
 });

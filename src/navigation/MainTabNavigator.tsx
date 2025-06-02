@@ -12,12 +12,16 @@ import { AddCategoryScreen } from '../screens/AddCategoryScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ExploreScreen from '../screens/ExploreScreen';
 import { useAuth } from '../context/AuthContext';
+import { FollowingScreen } from '../screens/FollowingScreen';
+import { FollowersScreen } from '../screens/FollowersScreen';
 
 // Define the parameter lists for each stack
 type ProfileStackParamList = {
   ProfileMain: { userId: string; currentUserId: string };
   RouteDetail: { routeId: string };
   Explore: { categoryId?: number };
+  Followers: { userId: string };
+  Following: { userId: string };
 };
 
 type HomeStackParamList = {
@@ -57,13 +61,19 @@ const ProfileStackScreen = () => {
       <ProfileStack.Screen 
         name="RouteDetail" 
         component={RouteDetailScreen} 
-        options={{ headerShown: false }}
       />
       <ProfileStack.Screen 
         name="Explore" 
         component={ExploreScreen} 
-        options={{ headerShown: false }}
       />
+      <ProfileStack.Screen 
+        name="Followers" 
+        component={FollowersScreen} 
+      />
+      <ProfileStack.Screen 
+        name="Following" 
+        component={FollowingScreen} 
+      />  
     </ProfileStack.Navigator>
   );
 };
@@ -107,12 +117,6 @@ const ExploreStackScreen = () => {
       <ExploreStack.Screen 
         name="RouteDetail" 
         component={RouteDetailScreen} 
-        options={{ headerShown: false }}
-      />
-      <ExploreStack.Screen 
-        name="Explore" 
-        component={ExploreScreen} 
-        options={{ headerShown: false }}
       />
       <ExploreStack.Screen 
         name="ProfileMain" 

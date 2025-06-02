@@ -7,6 +7,8 @@ export enum PageName {
   CreateRoute = 'CreateRoute',
   Login = 'Login',
   Register = 'Register',
+  Followers = 'Followers',
+  Following = 'Following',
 }
 
 export type NavigationParams = {
@@ -17,6 +19,8 @@ export type NavigationParams = {
   [PageName.CreateRoute]: undefined;
   [PageName.Login]: undefined;
   [PageName.Register]: undefined;
+  [PageName.Followers]: { userId: string };
+  [PageName.Following]: { userId: string };
 };
 
 export const navigate = (navigation: any, page: PageName, params?: NavigationParams) => {

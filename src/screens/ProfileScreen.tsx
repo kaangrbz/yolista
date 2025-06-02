@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   RefreshControl,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { Tabs } from 'react-native-collapsible-tab-view';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -24,6 +25,7 @@ import { showToast } from '../utils/alert';
 import { navigate, PageName } from '../types/navigation';
 import UserModel from '../model/user.model';
 import GlobalFloatingAction from '../components/common/GlobalFloatingAction';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 const { width } = Dimensions.get('window');
 
@@ -40,7 +42,9 @@ interface ProfileScreenProps {
   };
 }
 
-const HEADER_HEIGHT = 300;
+type ProfileScreenNavigationProp = NativeStackNavigationProp<any>;
+
+const HEADER_HEIGHT = Platform.OS === 'ios' ? 300 : 320;
 
 
 const SavedTab = () => {
@@ -80,7 +84,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
   const [isFollowLoading, setIsFollowLoading] = useState<boolean>(false);
   const [fetchingUser, setFetchingUser] = useState(false);
-  const navigation = useNavigation();
+  const navigation = useNavigation<ProfileScreenNavigationProp>();
   const selectedCityId = useCityStore((state: CityState) => state.selectedCityId);
 
   // Check if the current profile belongs to the logged-in user
@@ -379,14 +383,36 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
             <Text style={styles.statValue}>{routes.length}</Text>
             <Text style={styles.statLabel}>Gönderi</Text>
           </View>
-          <View style={styles.statItem}>
+          <TouchableOpacity 
+            style={styles.statItem} 
+            onPress={() => {
+              if (profileUserId) {
+                try {
+                  navigate(navigation, PageName.Followers, { userId: profileUserId });
+                } catch (error) {
+                  showToast('error', 'Takipçi sayfasına geçiş yapılırken bir hata oluştu');
+                }
+              }
+            }}
+          >
             <Text style={styles.statValue}>{followers?.length || 0}</Text>
             <Text style={styles.statLabel}>Takipçi</Text>
-          </View>
-          <View style={styles.statItem}>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.statItem} 
+            onPress={() => {
+              if (profileUserId) {
+                try {
+                  navigate(navigation, PageName.Following, { userId: profileUserId });
+                } catch (error) {
+                  showToast('error', 'Takip edilenler sayfasına geçiş yapılırken bir hata oluştu');
+                }
+              }
+            }}
+          >
             <Text style={styles.statValue}>{followings?.length || 0}</Text>
             <Text style={styles.statLabel}>Takip</Text>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -541,7 +567,7 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
   },
   tabsHeaderContainer: {

@@ -1,0 +1,9 @@
+export interface Profile {
+  id: string;
+  username: string;
+  full_name: string;
+  image_url?: string;
+  is_verified: boolean;
+  created_at?: string;
+  updated_at?: string;
+} 
