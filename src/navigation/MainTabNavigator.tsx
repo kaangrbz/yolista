@@ -30,12 +30,16 @@ type HomeStackParamList = {
   AddCategory: undefined;
   Explore: { categoryId?: number };
   ProfileMain: { userId: string; currentUserId: string };
+  Followers: { userId: string };
+  Following: { userId: string };
 };
 
 type ExploreStackParamList = {
   ExploreMain: { categoryId?: number };
   RouteDetail: { routeId: string };
   ProfileMain: { userId: string; currentUserId: string };
+  Followers: { userId: string };
+  Following: { userId: string };
 };
 
 const Tab = createBottomTabNavigator();
@@ -102,6 +106,14 @@ const HomeStackScreen = () => {
         name="ProfileMain" 
         component={ProfileScreen} 
       />
+      <HomeStack.Screen 
+        name="Followers" 
+        component={FollowersScreen} 
+      />
+      <HomeStack.Screen 
+        name="Following" 
+        component={FollowingScreen} 
+      />  
     </HomeStack.Navigator>
   );
 };
@@ -122,6 +134,14 @@ const ExploreStackScreen = () => {
         name="ProfileMain" 
         component={ProfileScreen} 
       />
+      <ExploreStack.Screen 
+        name="Followers" 
+        component={FollowersScreen} 
+      />
+      <ExploreStack.Screen 
+        name="Following" 
+        component={FollowingScreen} 
+      />  
     </ExploreStack.Navigator>
   );
 };

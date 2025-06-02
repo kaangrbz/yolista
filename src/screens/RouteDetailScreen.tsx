@@ -182,18 +182,18 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
           <RouteDetailHeader
             navigation={navigation}
           />
-          
+
           <RouteList
-          routes={routes}
-          loading={isPageLoading}
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          onRoutePress={(routeId) => handleRoutePress(routeId)}
-          expandedDescriptions={expandedDescriptions}
-          onToggleDescription={(routeId) => handleToggleDescription(routeId)}
-          userId={userId}
-          onRefreshRoutes={loadRoute}
-        />
+            routes={routes}
+            loading={isPageLoading}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            onRoutePress={(routeId) => handleRoutePress(routeId)}
+            expandedDescriptions={expandedDescriptions}
+            onToggleDescription={(routeId) => handleToggleDescription(routeId)}
+            userId={userId}
+            onRefreshRoutes={loadRoute}
+          />
         </>
       )}
 
