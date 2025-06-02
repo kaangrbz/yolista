@@ -1,0 +1,73 @@
+import React from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Profile } from '../../model/profile.model';
+
+interface UserCardProps {
+  user: Profile;
+  onPress: () => void;
+}
+
+const UserCard: React.FC<UserCardProps> = ({ user, onPress }) => {
+  return (
+    <TouchableOpacity style={styles.container} onPress={onPress}>
+      <Image
+        source={{ uri: user.image_url || 'https://picsum.photos/200?random=' + user.id }}
+        style={styles.avatar}
+      />
+      <View style={styles.userInfo}>
+        <View style={styles.nameContainer}>
+          <Text style={styles.fullName}>{user.full_name}</Text>
+          {user.is_verified && (
+            <Icon name="check-decagram" size={16} color="#1DA1F2" style={styles.verifiedIcon} />
+          )}
+        </View>
+        <Text style={styles.username}>@{user.username}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  nameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  fullName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#121212',
+  },
+  verifiedIcon: {
+    marginLeft: 4,
+  },
+  username: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+});
+
+export default UserCard; 

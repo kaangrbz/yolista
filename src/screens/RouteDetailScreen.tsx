@@ -18,6 +18,7 @@ import { showToast } from '../utils/alert';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteDetailHeader } from '../components/header/Header';
 import { RefreshControlComponent } from '../components/common/RefreshControl';
+import RouteList from '../components/route/RouteList';
 
 export const RouteDetailScreen = ({ navigation, route }: { navigation: any, route: { params: { routeId: string } } }) => {
   const [isPageLoading, setIsPageLoading] = useState(true);
@@ -181,19 +182,18 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
           <RouteDetailHeader
             navigation={navigation}
           />
-          <FlatList
-            data={routes}
-            keyExtractor={(item) => item.id || ''}
-            renderItem={({ item, index }) => renderRoute(item, index)}
-            refreshControl={
-              <RefreshControlComponent
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-              />
-            }
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContainer}
-          />
+          
+          <RouteList
+          routes={routes}
+          loading={isPageLoading}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          onRoutePress={(routeId) => handleRoutePress(routeId)}
+          expandedDescriptions={expandedDescriptions}
+          onToggleDescription={(routeId) => handleToggleDescription(routeId)}
+          userId={userId}
+          onRefreshRoutes={loadRoute}
+        />
         </>
       )}
 

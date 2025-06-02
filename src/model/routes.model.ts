@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/alert';
+import { Profile } from './profile.model';
 
 // Route interface
 export interface RoutePoint {
@@ -24,13 +25,6 @@ export interface RoutePoint {
 // Interface for server-side route data (without client_id)
 interface ServerRoutePoint extends Omit<RoutePoint, 'client_id'> {
   // All properties from RoutePoint except client_id
-}
-
-export interface Profile {
-  username: string;
-  full_name: string;
-  image_url: string;
-  is_verified: boolean;
 }
 
 export interface RouteWithProfile extends RoutePoint {

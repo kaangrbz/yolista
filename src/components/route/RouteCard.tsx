@@ -84,23 +84,25 @@ const RouteCard: React.FC<RouteCardProps> = ({
           {/* Category and city should be hidden for not main routes */}
           <View style={[styles.row, !isMainRoute && {display: 'none'}]}>
             {route.categories?.name && (
-              <TouchableOpacity
-                style={[styles.row, styles.categoryContainer]}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  console.log('Category tapped:', route.categories?.name);
-                  navigate(navigation, PageName.Explore, { categoryId: route.category_id });
-                }}
-                activeOpacity={0.7}
-              >
-                <Icon name={route.categories?.icon_name} size={18} color="#666" />
-                <Text style={styles.routeCategory}>
-                  {route.categories?.name}
-                </Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  style={[styles.row, styles.categoryContainer]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    console.log('Category tapped:', route.categories?.name);
+                    navigate(navigation, PageName.Explore, { categoryId: route.category_id });
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Icon name={route.categories?.icon_name} size={18} color="#666" />
+                  <Text style={styles.routeCategory}>
+                    {route.categories?.name}
+                  </Text>
+                </TouchableOpacity>
+                <Seperator />
+              </>
             )}
 
-            <Seperator />
             {route.cities?.name && (
               <View style={styles.cityContainer}>
                 <Icon name="map-marker" size={16} color="#666" />
