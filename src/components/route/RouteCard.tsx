@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AuthorInfo from '../AuthorInfo';
-import { RouteWithProfile } from '../../model/routes.model';
+import RouteModel, { RouteWithProfile } from '../../model/routes.model';
 import { navigate, PageName } from '../../types/navigation';
 import { useNavigation } from '@react-navigation/native';
 import Seperator from '../Seperator';
@@ -10,7 +10,6 @@ import Seperator from '../Seperator';
 interface RouteCardProps {
   route: RouteWithProfile;
   userId: string | null;
-  onPress: (routeId: string) => void;
   onRefresh: () => void;
   expandedDescriptions: { [key: string]: boolean };
   onToggleDescription: (routeId: string) => void;
@@ -22,7 +21,6 @@ interface RouteCardProps {
 const RouteCard: React.FC<RouteCardProps> = ({
   route,
   userId,
-  onPress,
   onRefresh,
   expandedDescriptions,
   onToggleDescription,
@@ -33,6 +31,8 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const routeKey = String(route.id ?? '');
   const isMainRoute = route.order_index === 0;
   const [isExpanded, setIsExpanded] = useState(expandedDescriptions[routeKey] || false);
+  const [localLikeCount, setLocalLikeCount] = useState(route.like_count || 0);
+  const [localDidLike, setLocalDidLike] = useState(route.did_like || false);
   const navigation = useNavigation();
 
   // Handle text layout if needed
@@ -54,7 +54,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
       )}
       <TouchableOpacity
         style={styles.routeCard}
-        onPress={() => onPress(route.id || '')}
+        onPress={() => navigate(navigation, PageName.RouteDetail, { routeId: route.id || '' })}
         disabled={!isMainRoute}
       >
         {showAuthorHeader && (
@@ -137,9 +137,25 @@ const RouteCard: React.FC<RouteCardProps> = ({
               <Icon name="comment-outline" size={18} color="#121" />
               <Text style={styles.reactionText}>{0}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.reactionItem}>
-              <Icon name="heart-outline" size={18} color="#c00" />
-              <Text style={styles.reactionText}>{route.like_count}</Text>
+            <TouchableOpacity style={styles.reactionItem} onPress={async () => {
+              if (!userId || !route.id) return;
+              
+              // Optimistically update UI
+              setLocalLikeCount(prev => localDidLike ? prev - 1 : prev + 1);
+              setLocalDidLike(prev => !prev);
+              
+              const result = localDidLike 
+                ? await RouteModel.unlikeRoute(route.id, userId) 
+                : await RouteModel.likeRoute(route.id, route.user_id || '', userId);
+
+              if (!result.success) {
+                // Revert on failure
+                setLocalLikeCount(prev => localDidLike ? prev + 1 : prev - 1);
+                setLocalDidLike(prev => !prev);
+              }
+            }}>
+              <Icon name={localDidLike ? "heart" : "heart-outline"} size={18} color="#c00" />
+              <Text style={styles.reactionText}>{localLikeCount}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.reactionItem}>
               <Icon name="eye-outline" size={18} color="#121" />

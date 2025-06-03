@@ -10,7 +10,6 @@ interface RouteListProps {
   loading: boolean;
   refreshing: boolean;
   onRefresh: () => void;
-  onRoutePress: (routeId: string) => void;
   onRefreshRoutes: () => void;
   expandedDescriptions: { [key: string]: boolean };
   onToggleDescription: (routeId: string) => void;
@@ -22,7 +21,6 @@ const RouteList: React.FC<RouteListProps> = ({
   loading,
   refreshing,
   onRefresh,
-  onRoutePress,
   onRefreshRoutes,
   expandedDescriptions,
   onToggleDescription,
@@ -71,7 +69,6 @@ const RouteList: React.FC<RouteListProps> = ({
         <RouteCard
           route={item}
           userId={userId}
-          onPress={onRoutePress}
           onRefresh={onRefreshRoutes}
           expandedDescriptions={expandedDescriptions}
           onToggleDescription={onToggleDescription}

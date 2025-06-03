@@ -125,11 +125,6 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
     }
   }, [routeId]);
 
-  const handleRoutePress = useCallback((routeId: string) => {
-    // We're already on the detail screen, no need to navigate
-    console.log('Route pressed:', routeId);
-  }, []);
-
   const handleToggleDescription = useCallback((routeId: string) => {
     setExpandedDescriptions(prev => ({
       ...prev,
@@ -162,7 +157,6 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
             loading={isPageLoading}
             refreshing={refreshing}
             onRefresh={onRefresh}
-            onRoutePress={(routeId) => handleRoutePress(routeId)}
             expandedDescriptions={expandedDescriptions}
             onToggleDescription={(routeId) => handleToggleDescription(routeId)}
             userId={userId}

@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/alert';
+import NotificationModel from './notifications.model';
 import { Profile } from './profile.model';
 
 // Route interface
@@ -38,17 +39,20 @@ export interface RouteWithProfile extends RoutePoint {
     icon_name: string;
   };
   like_count: number;
+  did_like: boolean;
 }
 
 export interface GetRoutesProps {
   limit?: number;
   onlyMain?: boolean;
+  loggedUserId?: string | null;
   userId?: string;
   categoryId?: number;
 }
 
 const RouteModel = {
-  async getRoutes({ limit = 20, onlyMain = false, userId, categoryId }: GetRoutesProps): Promise<RouteWithProfile[]> {
+  async getRoutes({ limit = 10, onlyMain = false, loggedUserId, userId, categoryId }: GetRoutesProps): Promise<RouteWithProfile[]> {
+    // First, get the routes with basic info
     const query = supabase
       .from('routes')
       .select(`
@@ -61,12 +65,10 @@ const RouteModel = {
           ),
           categories (
             *
-          ),  
-          likes(count)
+          )
       `)
       .eq('is_deleted', false)
       .eq('is_hidden', false)
-      // .eq('order_index', -1) // Todo: bunu kaldir
       .order('created_at', { ascending: false });
 
     //* Filter routes by user_id if userId is provided
@@ -79,18 +81,58 @@ const RouteModel = {
     }
 
     //* Fetch only main routes when `onlyMain` is true
-    const { data, error } = await (onlyMain ? query.eq('order_index', 0).limit(limit) : query.limit(limit));
-
+    const { data: routes, error } = await (onlyMain ? query.eq('order_index', 0).limit(limit) : query.limit(limit));
 
     if (error) throw new Error(`Failed to fetch routes: ${error.message}`);
-    if (!data) return [];
-    // Ensure author is always a single object, not array
-    return data.map((route: any) => ({
+    if (!routes) return [];
+
+    // Get all route IDs (including parent IDs) for the likes query
+    const routeIds = routes.map((route: any) => route.id);
+    const parentIds = routes
+      .filter((route: any) => route.parent_id)
+      .map((route: any) => route.parent_id);
+    const allIds = [...new Set([...routeIds, ...parentIds])];
+
+    // Fetch likes count and user likes in a single query
+    const { data: likesData, error: likesError } = await supabase
+      .from('likes')
+      .select('entity_id, user_id')
+      .eq('entity_type', 'route')
+      .in('entity_id', allIds);
+
+    if (likesError) {
+      console.error('Error fetching likes:', likesError);
+      return routes.map((route: any) => ({
+        ...route,
+        profiles: Array.isArray(route.profiles) ? route.profiles[0] : route.profiles,
+        cities: Array.isArray(route.cities) ? route.cities[0] : route.cities,
+        categories: Array.isArray(route.categories) ? route.categories[0] : route.categories,
+        like_count: 0,
+        did_like: false,
+      })) as RouteWithProfile[];
+    }
+
+    // Create maps for like counts and user likes
+    const likeCountMap = likesData.reduce((acc: Record<string, number>, like: any) => {
+      acc[like.entity_id] = (acc[like.entity_id] || 0) + 1;
+      return acc;
+    }, {});
+
+    const userLikesMap = loggedUserId ? likesData.reduce((acc: Record<string, boolean>, like: any) => {
+      if (like.user_id === loggedUserId) {
+        acc[like.entity_id] = true;
+      }
+      return acc;
+    }, {}) : {};
+
+    // Process the data to include like count and did_like status
+    return routes.map((route: any) => ({
       ...route,
       profiles: Array.isArray(route.profiles) ? route.profiles[0] : route.profiles,
       cities: Array.isArray(route.cities) ? route.cities[0] : route.cities,
       categories: Array.isArray(route.categories) ? route.categories[0] : route.categories,
-      like_count: route.likes?.[0].count || 0,
+      like_count: likeCountMap[route.id] || 0,
+      did_like: loggedUserId ? !!userLikesMap[route.id] : false,
     })) as RouteWithProfile[];
   },
 
@@ -109,12 +151,12 @@ const RouteModel = {
       .eq('is_deleted', false)
       .eq('is_hidden', false)
       .order('order_index', { ascending: true });
-  
+
     if (routesError) {
       console.error("Error fetching routes:", routesError);
       throw routesError;
     }
-  
+
     if (!routes || routes.length === 0) {
       return [];
     }
@@ -147,7 +189,7 @@ const RouteModel = {
         if (!foundMainRoute) {
           return [];
         }
-        
+
         // Update routes for the rest of the function
         routes = combinedRoutes;
         mainRoute = foundMainRoute;
@@ -155,27 +197,27 @@ const RouteModel = {
         return [];
       }
     }
-    
+
     // Step 2: Fetch Likes
     const routeIds = routes.map((route: any) => route.id);
-  
+
     const { data: likesData, error: likesError } = await supabase
       .from('likes')
       .select('entity_id, user_id')
       .eq('entity_type', 'route')
       .in('entity_id', routeIds);
-  
+
     if (likesError) {
       console.error("Error fetching likes data:", likesError);
       throw likesError;
     }
-  
+
     // Step 3: Aggregate Likes Count
     const likesCountMap = likesData?.reduce((acc: Record<string, number>, like: any) => {
       acc[like.entity_id] = (acc[like.entity_id] || 0) + 1;
       return acc;
     }, {});
-    
+
     // Step 4: Check if user has liked each route
     let userLikesMap: Record<string, boolean> = {};
     if (userId) {
@@ -186,7 +228,7 @@ const RouteModel = {
         return acc;
       }, {});
     }
-  
+
     // Step 5: Format and Return Routes
     const formattedRoutes = routes.map((route: any) => ({
       ...route,
@@ -194,12 +236,9 @@ const RouteModel = {
       like_count: likesCountMap?.[route.id] || 0,
       did_like: userId ? !!userLikesMap[route.id] : false,
     }));
-  
+
     return formattedRoutes;
   },
-
-
-
 
   async createRoute(routeData: RoutePoint[], cityId: number, categoryId: number | null) {
     // Remove client_id from each route object
@@ -216,7 +255,7 @@ const RouteModel = {
     if (cityId) {
       mainRoute.city_id = cityId;
     }
-    
+
     if (categoryId) {
       mainRoute.category_id = categoryId;
     }
@@ -312,6 +351,95 @@ const RouteModel = {
 
     if (error) throw new Error(`Failed to hide route: ${error.message}`);
     return { data, error }
+  },
+
+  async likeRoute(routeId: string | undefined, routeOwnerId: string, userId: string | undefined): Promise<{ success: boolean; error?: any; like_count?: number; did_like?: boolean }> {
+    if (!routeId) {
+      showToast('error', 'Rota bulunamadı', 'Hata');
+      return { success: false, error: 'Rota bulunamadı' };
+    }
+
+    if (!userId) {
+      showToast('error', 'Kullanıcı bulunamadı', 'Hata');
+      return { success: false, error: 'Kullanıcı bulunamadı' };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('likes')
+        .insert({
+          entity_id: routeId,
+          user_id: userId,
+          entity_type: 'route'
+        });
+
+      if (error) throw error;
+
+      //* Send notification to the user
+      NotificationModel.createNotification({
+        recipientId: routeOwnerId,
+        senderId: userId,
+        entityType: 'like',
+        entityId: routeId,
+      });
+
+      // Get updated like count
+      const { count } = await supabase
+        .from('likes')
+        .select('*', { count: 'exact' })
+        .eq('entity_id', routeId)
+        .eq('entity_type', 'route');
+
+      return { 
+        success: true, 
+        like_count: count || 0,
+        did_like: true
+      };
+    } catch (error) {
+      console.error('Error liking route:', error);
+      return { success: false, error };
+    }
+  },
+
+  async unlikeRoute(routeId: string | undefined, userId: string | undefined): Promise<{ success: boolean; error?: any; like_count?: number; did_like?: boolean }> {
+    if (!routeId) {
+      showToast('error', 'Rota bulunamadı', 'Hata');
+      return { success: false, error: 'Rota bulunamadı' };
+    }
+
+    if (!userId) {
+      showToast('error', 'Kullanıcı bulunamadı', 'Hata');
+      return { success: false, error: 'Kullanıcı bulunamadı' };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('likes')
+        .delete()
+        .match({
+          entity_id: routeId,
+          user_id: userId,
+          entity_type: 'route'
+        });
+
+      if (error) throw error;
+
+      // Get updated like count
+      const { count } = await supabase
+        .from('likes')
+        .select('*', { count: 'exact' })
+        .eq('entity_id', routeId)
+        .eq('entity_type', 'route');
+
+      return { 
+        success: true, 
+        like_count: count || 0,
+        did_like: false
+      };
+    } catch (error) {
+      console.error('Error unliking route:', error);
+      return { success: false, error };
+    }
   },
 };
 

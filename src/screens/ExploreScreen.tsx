@@ -87,7 +87,7 @@ const ExploreScreen = () => {
     }
     setIsLoading(true);
     try {
-      let props: GetRoutesProps = { limit: 20, onlyMain: true, categoryId:  activeCategory }
+      let props: GetRoutesProps = { onlyMain: true, categoryId:  activeCategory }
       const routes = await RouteModel.getRoutes(props);
       setRoutes(routes);
     } catch (error) {

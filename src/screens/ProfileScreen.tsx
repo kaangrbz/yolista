@@ -136,7 +136,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     try {
       setIsLoading(true);
       const routes = await RouteModel.getRoutes({
-        limit: 20,
+       
         onlyMain: true,
         userId: profileUserId,
       });
@@ -206,10 +206,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     }
   }, [profileUserId, currentUserId, isCurrentUserProfile]);
 
-  const onRoutePress = useCallback((routeId: string) => {
-    navigate(navigation, PageName.RouteDetail, { routeId });
-  }, [navigation]);
-
   const onToggleDescription = useCallback((routeId: string) => {
     setExpandedDescriptions((prev) => ({
       ...prev,
@@ -245,7 +241,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           loading={isLoading}
           refreshing={refreshing}
           onRefresh={onRefresh}
-          onRoutePress={(routeId) => onRoutePress(routeId)}
           expandedDescriptions={expandedDescriptions}
           onToggleDescription={(routeId) => onToggleDescription(routeId)}
           userId={currentUserId}

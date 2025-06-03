@@ -1,16 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, SafeAreaView, Alert } from 'react-native';
+import {  StyleSheet, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { RouteWithProfile } from '../model/routes.model';
 import { CityState, useCityStore } from '../store/cityStore';
 import GlobalFloatingAction from '../components/common/GlobalFloatingAction';
-import { navigate, PageName } from '../types/navigation';
 import { checkFirstTime } from '../utils/welcome';
 import { supabase } from '../lib/supabase';
 import { HomeHeader } from '../components/header/Header';
 import RouteList from '../components/route/RouteList';
 import RouteModel from '../model/routes.model';
 import {useRoute} from '@react-navigation/native';
+import { showToast } from '../utils/alert';
 
 
 export const HomeScreen = () => {
@@ -80,18 +80,19 @@ export const HomeScreen = () => {
 
       // console.log('data', data);
 
-      let data = await RouteModel.getRoutes({ limit: 20, onlyMain: true });
+      let data = await RouteModel.getRoutes({ onlyMain: true, loggedUserId: userId });
+      console.log('data', data);
 
       setRoutes(shuffleArray(data || []));
     } catch (error) {
       console.error('Error fetching routes:', error);
-      Alert.alert('Hata', 'Rotalar yüklenirken bir hata oluştu');
+      showToast('error', 'Rotalar yüklenirken bir hata oluştu');
     } finally {
       setIsLoading(false);
     }
   };
-
-  const onRefresh = React.useCallback(async () => {
+  
+  const onRefresh = useCallback(async () => {
     try {
       setIsReloading(true);
       setRefreshing(true);
@@ -101,15 +102,12 @@ export const HomeScreen = () => {
       setIsReloading(false);
     } catch (error) {
       console.error('Error refreshing routes:', error);
-      Alert.alert('Hata', 'Rotalar yenilenirken bir hata oluştu');
+      showToast('error', 'Rotalar yenilenirken bir hata oluştu');
       setIsReloading(false);
       setRefreshing(false);
     }
   }, [selectedCityId]);
 
-  const handleRoutePress = useCallback((routeId: string) => {
-    navigate(navigation, PageName.RouteDetail, { routeId });
-  }, [navigation]);
 
   const handleToggleDescription = useCallback((routeId: string) => {
     setExpandedDescriptions(prev => ({
@@ -123,11 +121,9 @@ export const HomeScreen = () => {
       <HomeHeader />
       <RouteList
         routes={routes}
-        routeId={route.params?.routeId || ''} 
         loading={isLoading || isReloading}
         refreshing={refreshing}
         onRefresh={onRefresh}
-        onRoutePress={handleRoutePress}
         onRefreshRoutes={fetchRoutes}
         expandedDescriptions={expandedDescriptions}
         onToggleDescription={handleToggleDescription}
