@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { FlatList, View, StyleSheet, ActivityIndicator, Text } from 'react-native';
 import { RefreshControl } from 'react-native-gesture-handler';
 import RouteCard from './RouteCard';
 import { RouteWithProfile } from '../../model/routes.model';
+import { useRoute } from '@react-navigation/native';
 
 interface RouteListProps {
   routes: RouteWithProfile[];
@@ -27,6 +28,21 @@ const RouteList: React.FC<RouteListProps> = ({
   onToggleDescription,
   userId,
 }) => {
+  const route: { params?: { routeId?: string } } = useRoute();
+  const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    const mainRoute = routes.find(item => item.order_index === 0);
+    const selectedRoute = routes.find(item => item.id === route.params?.routeId);
+
+    if (selectedRoute && mainRoute && selectedRoute.id !== mainRoute.id) {
+      const index = routes.findIndex(item => item.id === selectedRoute.id);
+      if (index !== -1) {
+        flatListRef.current?.scrollToIndex({ index, animated: true });
+      }
+    }
+  }, [routes, route.params?.routeId]);
+
   const renderFooter = () => {
     if (loading) {
       return (
@@ -46,6 +62,7 @@ const RouteList: React.FC<RouteListProps> = ({
     </View>
   );
 
+
   return (
     <FlatList
       data={routes}
@@ -64,21 +81,27 @@ const RouteList: React.FC<RouteListProps> = ({
       ListFooterComponent={renderFooter}
       ListEmptyComponent={renderEmptyComponent}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} 
-        colors={['#333', '#121212']}
-        tintColor="#000000"
-        titleColor="#000000"
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh}
+          colors={['#333', '#121212']}
+          tintColor="#000000"
+          titleColor="#000000"
 
         />
-      }
+      } 
+      getItemLayout={(data, index) => ({
+        length: 400, // Öğe yüksekliği (örneğin 80 piksel)
+        offset: 400 * index, // Her öğenin başlangıç noktası
+        index,
+      })}
+
       showsVerticalScrollIndicator={false}
+      ref={flatListRef}
     />
   );
 };
 
 const styles = StyleSheet.create({
   routesContainer: {
-    flex: 1,
     padding: 16,
     paddingBottom: 80,
   },

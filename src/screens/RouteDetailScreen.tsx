@@ -4,9 +4,7 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
-  FlatList,
   SafeAreaView,
-  TouchableOpacity,
 } from 'react-native';
 import RouteModel from '../model/routes.model';
 import { getRandomNumber } from '../utils/math';
@@ -15,9 +13,7 @@ import RouteCard from '../components/route/RouteCard';
 import { RouteWithProfile } from '../model/routes.model';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/alert';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteDetailHeader } from '../components/header/Header';
-import { RefreshControlComponent } from '../components/common/RefreshControl';
 import RouteList from '../components/route/RouteList';
 
 export const RouteDetailScreen = ({ navigation, route }: { navigation: any, route: { params: { routeId: string } } }) => {
@@ -53,9 +49,9 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
         setIsRouteDeleted(true);
         return;
       }
-      console.log("🚀 ~ loadRoute ~ routes:", routes[0])
       setTimeout(() => {
         setRoutes(routes);
+
         setIsPageLoading(false)
       }, getRandomNumber(200, 500));
 
@@ -143,26 +139,6 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
     }));
   }, []);
 
-  const renderRoute = (route: RouteWithProfile, index: number) => {
-    const isFirstItem = index === 0;
-    const isLastItem = index === routes.length - 1;
-
-    return (
-      <RouteCard
-        key={route.id}
-        route={route}
-        userId={userId}
-        onPress={handleRoutePress}
-        onRefresh={loadRoute}
-        expandedDescriptions={expandedDescriptions}
-        onToggleDescription={handleToggleDescription}
-        showAuthorHeader={isFirstItem}
-        showConnectingLine={!isFirstItem}
-        isLastItem={isLastItem}
-      />
-    );
-  }
-
   if (isRouteDeleted) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -172,13 +148,13 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
   }
 
   return (
-    <SafeAreaView style={[styles.container]}>
+    <SafeAreaView style={styles.container}>
       {isPageLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size='small' />
         </View>
       ) : (
-        <>
+        <View style={styles.contentContainer}>
           <RouteDetailHeader
             navigation={navigation}
           />
@@ -194,9 +170,8 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
             userId={userId}
             onRefreshRoutes={loadRoute}
           />
-        </>
+        </View>
       )}
-
     </SafeAreaView>
   );
 };
@@ -205,6 +180,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  contentContainer: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,

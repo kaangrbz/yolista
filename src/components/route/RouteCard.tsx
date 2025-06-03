@@ -27,7 +27,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
   expandedDescriptions,
   onToggleDescription,
   showAuthorHeader = true,
-  showConnectingLine = false,
+  showConnectingLine = true,
   isLastItem = false,
 }) => {
   const routeKey = String(route.id ?? '');
@@ -47,10 +47,8 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const safeAuthorId = route.user_id || '';
   const safeRouteId = route.id || ''; // Ensure we have a valid route ID
 
-  console.log('route', route);
-
   return (
-    <View style={[styles.cardContainer, showConnectingLine && styles.withConnectingLine]}>
+    <View style={[styles.cardContainer, (showConnectingLine && !isMainRoute) && styles.withConnectingLine]}>
       {showConnectingLine && (
         <View style={[styles.connectingLine, isLastItem && styles.connectingLineLast]} />
       )}
@@ -120,7 +118,10 @@ const RouteCard: React.FC<RouteCardProps> = ({
                 {route.description}
               </Text>
               {route.description?.length > 140 && (
-                <TouchableOpacity style={styles.seeMoreText} onPress={() => onToggleDescription(routeKey)}>
+                <TouchableOpacity style={styles.seeMoreText} onPress={() => {
+                  // onToggleDescription(routeKey);
+                  setIsExpanded(!isExpanded);
+                }}>
                   <Text
                     style={styles.seeMoreText}
                   >
@@ -181,6 +182,7 @@ const CONNECTING_LINE_COLOR = '#e1e8ed';
 const styles = StyleSheet.create({
   cardContainer: {
     position: 'relative',
+    minHeight: 400,
   },
   row: {
     flexDirection: 'row',

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import NotificationModel from './notifications.model';
 
 interface FollowResponse {
   success: boolean;
@@ -121,6 +122,12 @@ const UserModel = {
         message: 'Takip edilirken bir hata oluştu'
       };
     }
+
+    await NotificationModel.createNotification({
+      senderId: followerId,
+      recipientId: followingId,
+      entityType: 'follow',
+    });
 
     return {
       success: true,

@@ -99,7 +99,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
         if (currentUser) {
           setCurrentUserId(currentUser.id);
 
-          console.log('123', route?.params?.userId, currentUser.id);
           // If no userId is provided in route params, use the current user's ID
           const targetUserId = route?.params?.userId || currentUser.id;
           setProfileUserId(targetUserId);
@@ -230,7 +229,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     }
 
     return (
-      <Tabs.ScrollView
+      <SafeAreaView style={styles.container}>
+        <Tabs.ScrollView
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -252,6 +252,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           onRefreshRoutes={fetchRoutes}
         />
       </Tabs.ScrollView>
+      </SafeAreaView>
     );
   };
 

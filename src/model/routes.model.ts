@@ -96,7 +96,7 @@ const RouteModel = {
 
   async getRoutesById(routeId: string, userId?: string): Promise<any> {
     // Step 1: Fetch Routes
-    const { data: routes, error: routesError } = await supabase
+    let { data: routes, error: routesError } = await supabase
       .from('routes')
       .select(`
         *,
@@ -106,6 +106,8 @@ const RouteModel = {
         likes(count)
       `)
       .or(`id.eq.${routeId},parent_id.eq.${routeId}`)
+      .eq('is_deleted', false)
+      .eq('is_hidden', false)
       .order('order_index', { ascending: true });
   
     if (routesError) {
@@ -116,7 +118,44 @@ const RouteModel = {
     if (!routes || routes.length === 0) {
       return [];
     }
-  
+
+    let mainRoute = routes.find((route: any) => route.order_index === 0);
+    if (!mainRoute) {
+      // If no main route found, try to find the parent route
+      const parentRouteId = routes[0]?.parent_id;
+      if (parentRouteId) {
+        const { data: parentRoutes, error: parentError } = await supabase
+          .from('routes')
+          .select(`
+            *,
+            profiles (*),
+            cities (*),
+            categories (*),
+            likes(count)
+          `)
+          .or(`id.eq.${parentRouteId},parent_id.eq.${parentRouteId}`)
+          .eq('is_deleted', false)
+          .eq('is_hidden', false)
+          .order('order_index', { ascending: true });
+
+        if (parentError) throw new Error(`Failed to fetch parent route: ${parentError.message}`);
+        if (!parentRoutes) return [];
+
+        // Combine the parent routes with the original routes
+        const combinedRoutes = [...parentRoutes, ...routes];
+        const foundMainRoute = combinedRoutes.find((route: any) => route.order_index === 0);
+        if (!foundMainRoute) {
+          return [];
+        }
+        
+        // Update routes for the rest of the function
+        routes = combinedRoutes;
+        mainRoute = foundMainRoute;
+      } else {
+        return [];
+      }
+    }
+    
     // Step 2: Fetch Likes
     const routeIds = routes.map((route: any) => route.id);
   
@@ -174,7 +213,9 @@ const RouteModel = {
       return { data: null, error: true, message: 'Ana rota bulunamadı.', type: 'find-main-route' };
     }
 
-    mainRoute.city_id = cityId;
+    if (cityId) {
+      mainRoute.city_id = cityId;
+    }
     
     if (categoryId) {
       mainRoute.category_id = categoryId;

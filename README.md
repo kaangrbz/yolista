@@ -66,7 +66,7 @@ This is one way to run your app — you can also build it directly from Android 
 
 Now that you have successfully run the app, let's make changes!
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
 
 When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
 
@@ -95,3 +95,76 @@ To learn more about React Native, take a look at the following resources:
 - [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
 - [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
 - [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+
+# Feature Checklist
+
+## Authentication
+- [x] User registration
+- [x] User login
+- [x] User logout
+- [ ] Password reset
+- [ ] Email verification
+
+## Profile
+- [x] View profile
+- [x] Follow/Unfollow users
+- [x] View followers
+- [x] View following
+- [x] Profile statistics (posts, followers, following)
+- [ ] Edit profile
+- [ ] Profile image upload
+- [ ] Header image upload
+
+## Routes
+- [x] Create route
+- [x] Delete route
+- [x] View route details
+- [x] Route categories
+- [x] Route cities
+- [x] Route images
+- [x] Route descriptions
+- [ ] Route comments
+- [ ] Share routes
+- [ ] Edit route
+- [ ] Like/Unlike routes
+- [ ] Save/Unsave routes
+
+## Social Features
+- [x] Follow/Unfollow users
+- [x] View followers list
+- [x] View following list
+- [ ] Like/Unlike routes
+- [ ] Comment on routes
+
+## Navigation
+- [x] Bottom tab navigation
+- [x] Stack navigation
+- [x] Profile navigation
+- [x] Route detail navigation
+- [x] Followers/Following navigation
+
+## UI/UX
+- [x] Pull to refresh
+- [x] Loading states
+- [x] Error handling
+- [x] Toast notifications
+- [x] Responsive design
+- [/] Image loading states
+- [ ] Dark/Light theme support
+
+## Performance
+- [ ] Image optimization
+- [ ] Lazy loading
+- [ ] Caching
+- [ ] Pagination
+
+## Future Features
+- [ ] Push notifications
+- [ ] Direct messaging
+- [ ] Route recommendations
+- [ ] Advanced search
+- [ ] Route analytics
+- [ ] User achievements
+- [ ] Route collections
+- [ ] Offline support
+- [ ] Multi-language support

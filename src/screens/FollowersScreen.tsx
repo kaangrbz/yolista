@@ -55,7 +55,7 @@ export const FollowersScreen = ({ navigation, route }: { navigation: any, route:
             onPress={() => navigation.navigate('ProfileMain', { userId: item.id })}
           />
         )}
-        ListEmptyComponent={<Text style={styles.emptyText}>Kullanıcı kimseyi takip etmiyor</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>Bu kullanıcı henüz kimse tarafından takip edilmiyor</Text>}
         contentContainerStyle={styles.listContainer}
       />
     </SafeAreaView>

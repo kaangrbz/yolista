@@ -203,10 +203,10 @@ export const CreateRouteScreen = () => {
         // }
 
         // City validation
-        if (!selectedCityId) {
-            errors.cityId = 'Şehir seçimi zorunludur';
-            isValid = false;
-        }
+        // if (!selectedCityId) {
+        //     errors.cityId = 'Şehir seçimi zorunludur';
+        //     isValid = false;
+        // }
 
         setFormErrors(errors);
         return isValid;

@@ -42,10 +42,19 @@ type ExploreStackParamList = {
   Following: { userId: string };
 };
 
+type NotificationStackParamList = {
+  NotificationMain: undefined,
+  RouteDetail: { routeId: string },
+  ProfileMain: { userId: string; currentUserId: string },
+  Followers: { userId: string },
+  Following: { userId: string },
+};
+
 const Tab = createBottomTabNavigator();
 const ProfileStack = createStackNavigator<ProfileStackParamList>();
 const HomeStack = createStackNavigator<HomeStackParamList>();
 const ExploreStack = createStackNavigator<ExploreStackParamList>();
+const NotificationStack = createStackNavigator<NotificationStackParamList>();
 
 // Create a stack navigator for the Profile tab to handle its own navigation
 const ProfileStackScreen = () => {
@@ -146,6 +155,34 @@ const ExploreStackScreen = () => {
   );
 };
 
+// Create a stack navigator for the Explore tab
+const NotificationStackScreen = () => {
+  return (
+    <NotificationStack.Navigator screenOptions={{ headerShown: false }}>
+      <NotificationStack.Screen 
+        name="NotificationMain" 
+        component={NotificationsScreen} 
+      />
+      <NotificationStack.Screen 
+        name="RouteDetail" 
+        component={RouteDetailScreen} 
+      />
+      <NotificationStack.Screen 
+        name="ProfileMain" 
+        component={ProfileScreen} 
+      />
+      <NotificationStack.Screen 
+        name="Followers" 
+        component={FollowersScreen} 
+      />
+      <NotificationStack.Screen 
+        name="Following" 
+        component={FollowingScreen} 
+      />  
+    </NotificationStack.Navigator>
+  );
+};
+
 const MainTabNavigator = () => {
   return (
     <Tab.Navigator
@@ -195,7 +232,7 @@ const MainTabNavigator = () => {
       />
       <Tab.Screen
         name="NotificationScreen"
-        component={NotificationsScreen}
+        component={NotificationStackScreen}
         options={{
           tabBarShowLabel: false,
           tabBarIcon: ({ color, size }) => (

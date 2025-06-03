@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 import { HomeHeader } from '../components/header/Header';
 import RouteList from '../components/route/RouteList';
 import RouteModel from '../model/routes.model';
+import {useRoute} from '@react-navigation/native';
 
 
 export const HomeScreen = () => {
@@ -21,6 +22,7 @@ export const HomeScreen = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const navigation = useNavigation();
   const selectedCityId = useCityStore((state: CityState) => state.selectedCityId);
+  const route = useRoute();
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -105,17 +107,6 @@ export const HomeScreen = () => {
     }
   }, [selectedCityId]);
 
-  // State for tracking which descriptions need 'See More'
-  const [showSeeMore, setShowSeeMore] = useState<{ [key: string]: boolean }>({});
-
-  // Helper to measure if description is longer than 3 lines (after first render)
-  const handleTextLayout = (e: any, routeId: string | undefined) => {
-    const key = String(routeId ?? '');
-    if (e.nativeEvent.lines.length > 3 && !showSeeMore[key]) {
-      setShowSeeMore(prev => ({ ...prev, [key]: true }));
-    }
-  };
-
   const handleRoutePress = useCallback((routeId: string) => {
     navigate(navigation, PageName.RouteDetail, { routeId });
   }, [navigation]);
@@ -132,6 +123,7 @@ export const HomeScreen = () => {
       <HomeHeader />
       <RouteList
         routes={routes}
+        routeId={route.params?.routeId || ''} 
         loading={isLoading || isReloading}
         refreshing={refreshing}
         onRefresh={onRefresh}

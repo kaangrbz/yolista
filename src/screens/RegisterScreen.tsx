@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { Logo } from '../components/Logo';
@@ -57,7 +58,8 @@ export const RegisterScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <View style={styles.header}>
         <Logo size="large" color="#1DA1F2" />
         <Text style={styles.subtitle}>Seyahat tutkunları için en özel rotaları keşfet ve unutulmaz bir deneyime adım at!</Text>
@@ -141,7 +143,7 @@ export const RegisterScreen = () => {
           <Text style={styles.loginText}>Zaten bir hesabınız var mı? Giriş yap</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

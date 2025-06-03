@@ -5,7 +5,7 @@ import { PageName } from '../../types/navigation';
 
 // components/headers/BaseHeader.tsx
 type HeaderProps = {
-  title: string;
+  title?: string;
   leftComponent?: React.ReactNode;
   rightComponent?: React.ReactNode;
   centerTitle?: boolean;
@@ -17,20 +17,24 @@ export const BaseHeader = ({
   leftComponent,
   rightComponent,
   centerTitle = false,
-  style = { }
+  style = {}
 }: HeaderProps) => (
   <View style={[styles.header, style]}>
     {leftComponent && (<View style={styles.leftSection}>
       {leftComponent}
     </View>)}
 
-    <Text style={[styles.title, centerTitle && styles.centered]} numberOfLines={1}>
-      {title}
-    </Text>
+    {title &&
+      (<Text style={[styles.title, centerTitle && styles.centered]} numberOfLines={1}>
+        {title}
+      </Text>)
+    }
 
-    {rightComponent && (<View style={styles.rightSection}>
-      {rightComponent}
-    </View>)}
+    {rightComponent 
+        ? (<View style={styles.rightSection}>
+            {rightComponent}
+          </View>) 
+        : <Text style={styles.rightPlaceholder}>&nbsp;</Text>}
   </View>
 );
 
@@ -45,8 +49,8 @@ export const HomeHeader = () => (
 // components/headers/RouteDetailHeader.tsx
 export const RouteDetailHeader = ({ navigation }: { navigation?: any }) => (
   <BaseHeader
-    title={'Rota Detayı'}
-    style={{ justifyContent: 'flex-start' }}
+    title="Rota Detayı"
+    style={{ justifyContent: 'space-between' }}
     leftComponent={
       <TouchableOpacity onPress={() => navigation.goBack()}>
         <Icon name="arrow-left" size={24} color="#000" />
@@ -101,7 +105,7 @@ export const FollowingHeader = ({ navigation }: { navigation: any }) => {
   return (
     <BaseHeader
       title="Takip Edilenler"
-          style={{ justifyContent: 'flex-start', gap: 16 }}
+      style={{ justifyContent: 'flex-start', gap: 16 }}
       leftComponent={
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Icon name="arrow-left" size={24} color="#121212" />
