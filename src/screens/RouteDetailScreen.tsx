@@ -8,8 +8,6 @@ import {
 } from 'react-native';
 import RouteModel from '../model/routes.model';
 import { getRandomNumber } from '../utils/math';
-import { CommentSection, SeperatorLine } from '../components';
-import RouteCard from '../components/route/RouteCard';
 import { RouteWithProfile } from '../model/routes.model';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/alert';
