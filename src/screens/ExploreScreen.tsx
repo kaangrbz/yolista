@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ActivityIndicator, ListRenderItem, RefreshControl, ScrollView } from 'react-native';
 import {
   View,
@@ -18,7 +18,8 @@ import { ExploreHeader } from '../components/header/Header';
 import GlobalFloatingAction from '../components/common/GlobalFloatingAction';
 import RouteModel, { RouteWithProfile, GetRoutesProps } from '../model/routes.model';
 import { navigate, PageName } from '../types/navigation';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
+import UserModel, { User } from '../model/user.model';
 
 const NUM_COLUMNS = 2;
 const { width } = Dimensions.get('window');
@@ -47,15 +48,44 @@ Array(15).fill(0).map((_, index) => ({
 */
 
 const ExploreScreen = () => {
+  const isFocused = useIsFocused();
+
   const route = useRoute();
   const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
   const [activeCategory, setActiveCategory] = useState(route.params?.categoryId || 0);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [loadTimeout, setLoadTimeout] = useState<NodeJS.Timeout | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
+
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [isFocused]);
+
+  const handleSearch = () => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    setIsLoading(true);
+    searchTimeout.current = setTimeout(async () => {
+
+      if (searchQuery.length > 0) {
+        let users = await UserModel.getUsers(searchQuery);
+        console.log('users', users);
+        setUsers(users);
+      } else {
+        setUsers([]);
+      }
+
+      await fetchExploreItems();
+      setIsLoading(false);
+    }, 1000);
+  };
 
 
   const fetchCategories = async () => {
@@ -64,12 +94,12 @@ const ExploreScreen = () => {
 
       categories.unshift({
         id: 0,
-        name: 'Popüler',
-        icon_name: 'trending-up',
-        description: 'Popüler Rotalar',
+        name: 'Tümü',
+        icon_name: 'routes',
+        description: 'Tüm Rotalar',
         index: 0,
       });
-      
+
 
       setCategories(categories.sort((a, b) => a.index - b.index));
     } catch (error) {
@@ -78,16 +108,17 @@ const ExploreScreen = () => {
   };
 
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    handleSearch();
+  }, [searchQuery, activeCategory]);
 
   const fetchExploreItems = async () => {
-    if (loadTimeout) {
-      clearTimeout(loadTimeout);
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
     }
+
     setIsLoading(true);
     try {
-      let props: GetRoutesProps = { onlyMain: true, categoryId:  activeCategory }
+      let props: GetRoutesProps = { onlyMain: true, categoryId: activeCategory, searchQuery: searchQuery }
       const routes = await RouteModel.getRoutes(props);
       setRoutes(routes);
     } catch (error) {
@@ -96,18 +127,6 @@ const ExploreScreen = () => {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-
-    fetchExploreItems();
-    
-
-    return () => {
-      if (loadTimeout) {
-        clearTimeout(loadTimeout);
-      }
-    }
-  }, [activeCategory]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -166,10 +185,30 @@ const ExploreScreen = () => {
         </View>
         <View style={styles.infoContainer}>
           <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
-          
+
           <TouchableOpacity style={styles.userContainer} onPress={() => navigation.navigate('ProfileMain', { userId: item.profiles.id })}>
             <Text style={styles.userName}>{item.profiles.full_name}</Text>
             <Text style={styles.userUsername}>@{item.profiles.username}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderUserItem: ListRenderItem<User> = ({ user }: { user: User }) => (
+    <TouchableOpacity
+      style={styles.userItem}
+      activeOpacity={0.8}
+      onPress={() => navigation.navigate('ProfileMain', { userId: user.id })}
+    >
+      <Image source={{ uri: user.image_url || 'https://picsum.photos/300/300?random=' + user.id }} style={styles.userImage} />
+      <View style={styles.overlay}>
+        <View style={styles.infoContainer}>
+          <Text style={styles.itemTitle} numberOfLines={1}>{user.full_name}</Text>
+
+          <TouchableOpacity style={styles.userContainer}>
+            <Text style={styles.userName}>{user.full_name}</Text>
+            <Text style={styles.userUsername}>@{user.username}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -190,15 +229,32 @@ const ExploreScreen = () => {
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor="#999"
+          autoFocus={false}
         />
       </View>
+
+      {
+        users.length > 0 && (
+        <>
+          <Text style={styles.usersTitle}>Kullanıcılar</Text>
+          <FlatList
+            data={users}
+            renderItem={renderUserItem}
+            keyExtractor={(item) => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.usersList}
+          />
+        </>
+        )
+      }
 
       {/* Categories */}
       <View style={styles.categoriesContainer}>
         <FlatList
           data={categories}
           renderItem={renderCategoryItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesList}
@@ -207,7 +263,7 @@ const ExploreScreen = () => {
 
       {/* Explore Grid */}
       {
-        isLoading &&  (
+        isLoading && (
           <ActivityIndicator size="small" style={{ flex: 1 }} color="#000" />
         )
       }
@@ -245,7 +301,7 @@ const ExploreScreen = () => {
       {/* No Routes alert */}
       {
         routes.length === 0 && !isLoading && activeCategory === 0 && (
-          <ScrollView contentContainerStyle={{flex: 1, justifyContent: 'center', alignItems: 'center' }} refreshControl={
+          <ScrollView contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
@@ -260,10 +316,10 @@ const ExploreScreen = () => {
           </ScrollView>
         )
       }
-      
+
       {
         routes.length === 0 && !isLoading && activeCategory !== 0 && (
-          <ScrollView contentContainerStyle={{flex: 1, justifyContent: 'center', alignItems: 'center' }} refreshControl={
+          <ScrollView contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
@@ -325,6 +381,35 @@ const styles = StyleSheet.create({
   categoriesContainer: {
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+  },
+  usersList: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  userItem: {
+    width: ITEM_WIDTH,
+    height: ITEM_WIDTH,
+    backgroundColor: '#F5F5F5',
+  },
+  userImage: {
+    width: ITEM_WIDTH,
+    height: ITEM_WIDTH,
+  },
+  usersTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginHorizontal: 16,
+    marginVertical: 8,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   categoriesList: {
     paddingHorizontal: 12,

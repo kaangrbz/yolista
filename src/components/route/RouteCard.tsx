@@ -77,102 +77,104 @@ const RouteCard: React.FC<RouteCardProps> = ({
           resizeMode="cover"
         />
         <View style={styles.routeInfo}>
-          <Text style={styles.routeTitle}>{route.title}</Text>
+          <View style={{padding: 16}}>
+            <Text style={styles.routeTitle}>{route.title}</Text>
 
-          {/* Category and city should be hidden for not main routes */}
-          <View style={[styles.row, !isMainRoute && { display: 'none' }]}>
-            {route.categories?.name && (
+            {/* Category and city should be hidden for not main routes */}
+            <View style={[styles.row, !isMainRoute && { display: 'none' }]}>
+              {route.categories?.name && (
+                <>
+                  <TouchableOpacity
+                    style={[styles.row, styles.categoryContainer]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      console.log('Category tapped:', route.categories?.name);
+                      navigate(navigation, PageName.Explore, { categoryId: route.category_id });
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Icon name={route.categories?.icon_name} size={18} color="#666" />
+                    <Text style={styles.routeCategory}>
+                      {route.categories?.name}
+                    </Text>
+                  </TouchableOpacity>
+                  <Seperator />
+                </>
+              )}
+
+              {route.cities?.name && (
+                <View style={styles.cityContainer}>
+                  <Icon name="map-marker" size={16} color="#666" />
+                  <Text style={styles.cityName}>{route.cities?.name}</Text>
+                </View>
+              )}
+            </View>
+            {route.description && (
               <>
-                <TouchableOpacity
-                  style={[styles.row, styles.categoryContainer]}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    console.log('Category tapped:', route.categories?.name);
-                    navigate(navigation, PageName.Explore, { categoryId: route.category_id });
-                  }}
-                  activeOpacity={0.7}
+                <Text
+                  style={styles.routeDescription}
+                  numberOfLines={isExpanded ? undefined : 3}
+                  onTextLayout={e => handleTextLayout(e, routeKey)}
                 >
-                  <Icon name={route.categories?.icon_name} size={18} color="#666" />
-                  <Text style={styles.routeCategory}>
-                    {route.categories?.name}
-                  </Text>
-                </TouchableOpacity>
-                <Seperator />
+                  {route.description}
+                </Text>
+                {route.description?.length > 140 && (
+                  <TouchableOpacity style={styles.seeMoreText} onPress={() => {
+                    // onToggleDescription(routeKey);
+                    setIsExpanded(!isExpanded);
+                  }}>
+                    <Text
+                      style={styles.seeMoreText}
+                    >
+                      {isExpanded ? 'daha az' : 'daha fazla'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </>
             )}
 
-            {route.cities?.name && (
-              <View style={styles.cityContainer}>
-                <Icon name="map-marker" size={16} color="#666" />
-                <Text style={styles.cityName}>{route.cities?.name}</Text>
-              </View>
-            )}
-          </View>
-          {route.description && (
-            <>
-              <Text
-                style={styles.routeDescription}
-                numberOfLines={isExpanded ? undefined : 3}
-                onTextLayout={e => handleTextLayout(e, routeKey)}
-              >
-                {route.description}
-              </Text>
-              {route.description?.length > 140 && (
-                <TouchableOpacity style={styles.seeMoreText} onPress={() => {
-                  // onToggleDescription(routeKey);
-                  setIsExpanded(!isExpanded);
-                }}>
-                  <Text
-                    style={styles.seeMoreText}
-                  >
-                    {isExpanded ? 'daha az' : 'daha fazla'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
+            <View style={styles.reactionContainer}>
+              <TouchableOpacity style={styles.reactionItem}>
+                <Icon name="comment-outline" size={18} color="#121" />
+                <Text style={styles.reactionText}>{0}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.reactionItem} onPress={async () => {
+                if (!userId || !route.id) return;
 
-          <View style={styles.reactionContainer}>
-            <TouchableOpacity style={styles.reactionItem}>
-              <Icon name="comment-outline" size={18} color="#121" />
-              <Text style={styles.reactionText}>{0}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.reactionItem} onPress={async () => {
-              if (!userId || !route.id) return;
-              
-              // Optimistically update UI
-              setLocalLikeCount(prev => localDidLike ? prev - 1 : prev + 1);
-              setLocalDidLike(prev => !prev);
-              
-              const result = localDidLike 
-                ? await RouteModel.unlikeRoute(route.id, userId) 
-                : await RouteModel.likeRoute(route.id, route.user_id || '', userId);
-
-              if (!result.success) {
-                // Revert on failure
-                setLocalLikeCount(prev => localDidLike ? prev + 1 : prev - 1);
+                // Optimistically update UI
+                setLocalLikeCount(prev => localDidLike ? prev - 1 : prev + 1);
                 setLocalDidLike(prev => !prev);
-              }
-            }}>
-              <Icon name={localDidLike ? "heart" : "heart-outline"} size={18} color="#c00" />
-              <Text style={styles.reactionText}>{localLikeCount}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.reactionItem}>
-              <Icon name="eye-outline" size={18} color="#121" />
-              <Text style={styles.reactionText}>{0}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.reactionItem}>
-              <Icon name="bookmark-outline" size={18} color="#121" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.reactionItem}>
-              <Icon name="share-variant" size={18} color="#121" />
-            </TouchableOpacity>
+
+                const result = localDidLike
+                  ? await RouteModel.unlikeRoute(route.id, userId)
+                  : await RouteModel.likeRoute(route.id, route.user_id || '', userId);
+
+                if (!result.success) {
+                  // Revert on failure
+                  setLocalLikeCount(prev => localDidLike ? prev + 1 : prev - 1);
+                  setLocalDidLike(prev => !prev);
+                }
+              }}>
+                <Icon name={localDidLike ? "heart" : "heart-outline"} size={18} color="#c00" />
+                <Text style={styles.reactionText}>{localLikeCount}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.reactionItem}>
+                <Icon name="eye-outline" size={18} color="#121" />
+                <Text style={styles.reactionText}>{0}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.reactionItem}>
+                <Icon name="bookmark-outline" size={18} color="#121" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.reactionItem}>
+                <Icon name="share-variant" size={18} color="#121" />
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={[styles.commentContainer, { display: 'none' }]}>
+          <View style={[styles.commentContainer]}>
             <View style={styles.commentInputContainer}>
               <Image
                 source={{
-                  uri: route.image_url || 'https://picsum.photos/20/20',
+                  uri: route.image_url || `https://picsum.photos/seed/${route.profiles?.id}/20/20`,
                 }}
                 style={styles.commentImage}
               />
@@ -225,7 +227,8 @@ const styles = StyleSheet.create({
   },
   routeCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
     marginBottom: 16,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -239,7 +242,7 @@ const styles = StyleSheet.create({
     height: 200,
   },
   routeInfo: {
-    padding: 16,
+    paddingBottom: 0,
   },
   routeTitle: {
     fontSize: 18,
@@ -274,7 +277,7 @@ const styles = StyleSheet.create({
   seeMoreText: {
     color: '#007AFF',
     fontSize: 14,
-    marginBottom: 12,
+    marginBottom: 4,
   },
   reactionContainer: {
     flexDirection: 'row',
@@ -298,7 +301,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
-    borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },

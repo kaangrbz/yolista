@@ -10,7 +10,7 @@ export interface Comment {
   updated_at: string;
   profiles?: {
     username: string;
-    avatar_url?: string;
+    image_url?: string;
     full_name?: string;
   };
 }
@@ -18,7 +18,7 @@ export interface Comment {
 export interface CommentWithProfile extends Comment {
   profiles: {
     username: string;
-    avatar_url?: string;
+    image_url?: string;
     full_name?: string;
   };
 }
@@ -28,7 +28,7 @@ const CommentModel = {
   async getRouteComments(routeId: string): Promise<CommentWithProfile[]> {
     const { data, error } = await supabase
       .from('comments')
-      .select('*, profiles(username, avatar_url, full_name)')
+      .select('*, profiles(username, image_url, full_name)')
       .eq('route_id', routeId)
       .order('created_at', { ascending: false });
 
@@ -44,7 +44,7 @@ const CommentModel = {
   async getBookmarkComments(bookmarkId: string): Promise<CommentWithProfile[]> {
     const { data, error } = await supabase
       .from('comments')
-      .select('*, profiles(username, avatar_url, full_name)')
+      .select('*, profiles(username, image_url, full_name)')
       .eq('bookmark_id', bookmarkId)
       .order('created_at', { ascending: false });
 

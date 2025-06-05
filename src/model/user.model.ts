@@ -1,6 +1,13 @@
 import { supabase } from '../lib/supabase';
 import NotificationModel from './notifications.model';
 
+export interface User {
+  id: string;
+  username: string;
+  full_name: string;
+  image_url: string;
+}
+
 interface FollowResponse {
   success: boolean;
   message: string;
@@ -13,6 +20,28 @@ interface FollowType {
 }
 
 const UserModel = {
+  //* Get users by username
+  async getUsers(searchQuery?: string, limit: number = 10) {
+    const { data: users, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('is_deleted', false)
+      .ilike('username', `%${searchQuery}%`)
+      .ilike('full_name', `%${searchQuery}%`)
+      .limit(limit);
+
+    if (error) throw error;
+    return users as User[];
+  },
+
+
+  //* Get logged user
+  async getLoggedUser() {
+    const { data: user, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    return user?.user;
+  },
+
   // Function to get followers of a user
   async getFollowers(userId: string) {
     const { data: followers, error } = await supabase

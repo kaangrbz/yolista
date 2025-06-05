@@ -48,10 +48,11 @@ export interface GetRoutesProps {
   loggedUserId?: string | null;
   userId?: string;
   categoryId?: number;
+  searchQuery?: string;
 }
 
 const RouteModel = {
-  async getRoutes({ limit = 10, onlyMain = false, loggedUserId, userId, categoryId }: GetRoutesProps): Promise<RouteWithProfile[]> {
+  async getRoutes({ limit = 10, onlyMain = false, loggedUserId, userId, categoryId, searchQuery }: GetRoutesProps): Promise<RouteWithProfile[]> {
     // First, get the routes with basic info
     const query = supabase
       .from('routes')
@@ -78,6 +79,10 @@ const RouteModel = {
 
     if (categoryId) {
       query.eq('category_id', categoryId);
+    }
+
+    if (searchQuery) {
+      query.ilike('title', `%${searchQuery}%`).ilike('description', `%${searchQuery}%`);
     }
 
     //* Fetch only main routes when `onlyMain` is true
@@ -390,8 +395,8 @@ const RouteModel = {
         .eq('entity_id', routeId)
         .eq('entity_type', 'route');
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         like_count: count || 0,
         did_like: true
       };
@@ -431,8 +436,8 @@ const RouteModel = {
         .eq('entity_id', routeId)
         .eq('entity_type', 'route');
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         like_count: count || 0,
         did_like: false
       };
