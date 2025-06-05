@@ -20,6 +20,7 @@ import RouteModel, { RouteWithProfile, GetRoutesProps } from '../model/routes.mo
 import { navigate, PageName } from '../types/navigation';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import UserModel, { User } from '../model/user.model';
+import UserCard from '../components/user/UserCard';
 
 const NUM_COLUMNS = 2;
 const { width } = Dimensions.get('window');
@@ -67,6 +68,7 @@ const ExploreScreen = () => {
   }, [isFocused]);
 
   const handleSearch = () => {
+    setUsers([]);
     if (searchTimeout.current) {
       clearTimeout(searchTimeout.current);
     }
@@ -195,25 +197,22 @@ const ExploreScreen = () => {
     </TouchableOpacity>
   );
 
-  const renderUserItem: ListRenderItem<User> = ({ user }: { user: User }) => (
-    <TouchableOpacity
-      style={styles.userItem}
-      activeOpacity={0.8}
-      onPress={() => navigation.navigate('ProfileMain', { userId: user.id })}
-    >
-      <Image source={{ uri: user.image_url || 'https://picsum.photos/300/300?random=' + user.id }} style={styles.userImage} />
-      <View style={styles.overlay}>
-        <View style={styles.infoContainer}>
-          <Text style={styles.itemTitle} numberOfLines={1}>{user.full_name}</Text>
+  const renderUserItem: ListRenderItem<User> = ({ item }: { item: User }): React.JSX.Element | undefined => {
 
-          <TouchableOpacity style={styles.userContainer}>
-            <Text style={styles.userName}>{user.full_name}</Text>
-            <Text style={styles.userUsername}>@{user.username}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+    if (!item) {
+      return;
+    }
+    
+    return (
+      <TouchableOpacity
+        style={styles.userItem}
+        activeOpacity={0.8}
+        onPress={() => navigation.navigate('ProfileMain', { userId: item?.id })}
+      >
+        <UserCard user={item} onPress={() => navigation.navigate('ProfileMain', { userId: item?.id })} />
+      </TouchableOpacity>
+    )
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -233,22 +232,33 @@ const ExploreScreen = () => {
         />
       </View>
 
+      <ScrollView refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#333', '#121212']}
+              tintColor="#000000"
+              titleColor="#000000"
+            />
+          }>
+
       {
         users.length > 0 && (
-        <>
-          <Text style={styles.usersTitle}>Kullanıcılar</Text>
-          <FlatList
-            data={users}
-            renderItem={renderUserItem}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.usersList}
-          />
-        </>
+          <>
+            <Text style={styles.title}>Kullanıcılar</Text>
+            <FlatList
+              data={users}
+              renderItem={renderUserItem}
+              keyExtractor={(item) => item.id}
+              
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.usersList}
+            />
+          </>
         )
       }
 
+<Text style={styles.title}>Rotalar</Text>
       {/* Categories */}
       <View style={styles.categoriesContainer}>
         <FlatList
@@ -264,7 +274,9 @@ const ExploreScreen = () => {
       {/* Explore Grid */}
       {
         isLoading && (
-          <ActivityIndicator size="small" style={{ flex: 1 }} color="#000" />
+          <View style={{paddingTop: 20}}>
+            <ActivityIndicator size="small" color="#000" />
+          </View>
         )
       }
 
@@ -301,39 +313,22 @@ const ExploreScreen = () => {
       {/* No Routes alert */}
       {
         routes.length === 0 && !isLoading && activeCategory === 0 && (
-          <ScrollView contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#333', '#121212']}
-              tintColor="#000000"
-              titleColor="#000000"
-            />
-          }>
             <View style={styles.noRoutesContainer}>
               <Text style={styles.noRoutesText}>Hiç Rota Bulunamadı</Text>
             </View>
-          </ScrollView>
         )
       }
 
       {
         routes.length === 0 && !isLoading && activeCategory !== 0 && (
-          <ScrollView contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#333', '#121212']}
-              tintColor="#000000"
-              titleColor="#000000"
-            />
-          }>
             <View style={styles.noRoutesContainer}>
               <Text style={styles.noRoutesText}>Bu kategoride hiç rota bulunamadı</Text>
             </View>
-          </ScrollView>
         )
       }
+
+        <View style={{height: 200}}></View>
+          </ScrollView>
       <GlobalFloatingAction />
     </SafeAreaView>
   );
@@ -387,15 +382,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   userItem: {
-    width: ITEM_WIDTH,
-    height: ITEM_WIDTH,
     backgroundColor: '#F5F5F5',
   },
   userImage: {
     width: ITEM_WIDTH,
     height: ITEM_WIDTH,
   },
-  usersTitle: {
+  title: {
     fontSize: 16,
     fontWeight: '500',
     marginHorizontal: 16,

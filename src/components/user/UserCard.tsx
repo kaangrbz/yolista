@@ -43,10 +43,12 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   avatar: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 40,
     borderRadius: 24,
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#ccc',
   },
   userInfo: {
     flex: 1,
@@ -56,7 +58,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   fullName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#121212',
   },

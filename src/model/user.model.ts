@@ -19,18 +19,21 @@ interface FollowType {
   followed_type: 'profile' | 'group' | 'event';
 }
 
+const unaccent = (text: string) => {
+  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+};
+
 const UserModel = {
   //* Get users by username
   async getUsers(searchQuery?: string, limit: number = 10) {
     const { data: users, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('is_deleted', false)
-      .ilike('username', `%${searchQuery}%`)
-      .ilike('full_name', `%${searchQuery}%`)
-      .limit(limit);
+    .rpc('search_profiles', { term: `%${searchQuery}%`, lim: limit });        
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching users:', error);
+      return [];
+    }
+
     return users as User[];
   },
 
@@ -195,12 +198,12 @@ const UserModel = {
       .limit(1);
 
     console.log(data);
-  
+
     if (error) {
       console.error('Error checking username:', error);
       return false;
     }
-  
+
     return data.length === 0; // Returns true if the username is available
   }
 
