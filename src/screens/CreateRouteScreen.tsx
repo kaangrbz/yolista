@@ -8,8 +8,8 @@ import {
   ScrollView,
   SafeAreaView,
   ActivityIndicator,
-  Image,
   Alert,
+  Image,
 } from 'react-native';
 import {supabase} from '../lib/supabase';
 import {useNavigation} from '@react-navigation/native';
@@ -22,6 +22,7 @@ import {CreateRouteHeader} from '../components/header/Header';
 import CategoryModel from '../model/category.modal';
 import CityModel from '../model/cities.modal';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import ImageResizer from 'react-native-image-resizer';
 import {launchImageLibrary} from 'react-native-image-picker';
 
 export const CreateRouteScreen = () => {
@@ -48,10 +49,6 @@ export const CreateRouteScreen = () => {
 
   // Route points state
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
-  const [title, setTitle] = useState('');
-  const [location, setLocation] = useState('');
-  const [distance, setDistance] = useState('');
-  const [imageUri, setImageUri] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -75,6 +72,19 @@ export const CreateRouteScreen = () => {
       addRoutePoint();
     }
   }, []);
+
+  const randomString = (length: number) => {
+    let result = '';
+    const characters =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const charactersLength = characters.length;
+    let counter = 0;
+    while (counter < length) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+      counter += 1;
+    }
+    return result;
+  };
 
   const fetchCategories = async () => {
     try {
@@ -118,9 +128,10 @@ export const CreateRouteScreen = () => {
   // Route management functions
   const addRoutePoint = async () => {
     const newRoutePoint: RoutePoint = {
-      client_id: new Date().getTime().toString(),
+      client_id: randomString(16).toString(),
       title: '',
       description: '',
+      image_url: '',
       order_index: routePoints.length,
       is_deleted: false,
       city_id: selectedCityId,
@@ -130,15 +141,16 @@ export const CreateRouteScreen = () => {
   };
 
   const updateRoutePoint = (
-    id: string,
+    client_id: string,
     field: keyof RoutePoint,
     value: any,
   ) => {
     setRoutePoints(
       routePoints.map(point =>
-        point.client_id === id ? {...point, [field]: value} : point,
+        point.client_id === client_id ? {...point, [field]: value} : point,
       ),
     );
+    
   };
 
   const removeRoutePoint = (id: string) => {
@@ -174,9 +186,26 @@ export const CreateRouteScreen = () => {
     setRoutePoints(reorderedPoints);
   };
 
-  const handleRouteImageSelect = (pointId: string) => {
+  const handleRouteImageSelect = (client_id: string) => {
     // Disabled image handling functionality
-    showToast('info', 'Resim ekleme ozelligi cok yakinda aktif edilecektir.');
+    // showToast('info', 'Resim ekleme ozelligi cok yakinda aktif edilecektir.');
+
+    launchImageLibrary(
+      {
+        mediaType: 'photo',
+        quality: 0.8,
+      },
+      response => {
+        if (response.didCancel) return;
+        if (response.errorCode) {
+          Alert.alert('Hata', response.errorMessage || 'Bir hata oluştu');
+          return;
+        }
+        if (response.assets && response.assets.length > 0) {
+          updateRoutePoint(client_id, 'image_url', response.assets[0].uri);
+        }
+      },
+    );
   };
 
   // Bookmark functionality removed
@@ -272,6 +301,39 @@ export const CreateRouteScreen = () => {
     addRoutePoint();
   };
 
+  async function resizeAllRoutePointImages(routePoints: RoutePoint[]) {
+    // Map over routePoints, creating an array of promises
+    const resizedImages = await Promise.all(
+      routePoints.map(async (point) => {
+        try {
+          if (!point.image_url) return null;
+
+          const resized = await ImageResizer.createResizedImage(
+            point.image_url,
+            350,
+            122,
+            'JPEG',
+            80,
+            0,
+            '',
+            false,
+            {
+              mode: 'contain',
+              onlyScaleDown: true,
+            },
+          );
+          return {uri: resized.uri, client_id: point.client_id}; // return resized image URI
+        } catch (error) {
+          console.error('Error resizing image:', error);
+          return null; // or handle error accordingly
+        }
+      })
+    );
+  
+    // Filter out any failed results (nulls)
+    return resizedImages.filter((uri) => uri !== null);
+  }
+
   const handleSubmit = async (): Promise<void> => {
     // Validate form fields
     const isValid = validateForm();
@@ -282,7 +344,13 @@ export const CreateRouteScreen = () => {
     }
 
     setIsPublishing(true);
+    console.log(routePoints);
 
+    const resizedImages = await resizeAllRoutePointImages(routePoints);
+    console.log(resizedImages);
+    setIsPublishing(false);
+    
+return;
     try {
       const {data, error} = await RouteModel.createRoute(
         routePoints,
@@ -307,28 +375,9 @@ export const CreateRouteScreen = () => {
     }
   };
 
-  const handlePickImage = () => {
-    launchImageLibrary(
-      {
-        mediaType: 'photo',
-        quality: 0.8,
-      },
-      response => {
-        if (response.didCancel) return;
-        if (response.errorCode) {
-          Alert.alert('Hata', response.errorMessage || 'Bir hata oluştu');
-          return;
-        }
-        if (response.assets && response.assets.length > 0) {
-          setImageUri(response.assets[0].uri || null);
-        }
-      },
-    );
-  };
-
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: '#fff'}]}>
-      <CreateRouteHeader navigation={navigation} />
+      <CreateRouteHeader />
       <ScrollView style={[styles.container]}>
         <View style={styles.form}>
           <View style={[styles.inputContainer, {zIndex: 1000}]}>
@@ -463,7 +512,14 @@ export const CreateRouteScreen = () => {
                 <TouchableOpacity
                   style={styles.imagePicker}
                   onPress={() => handleRouteImageSelect(point.client_id)}>
-                  <Text style={{color: '#888'}}>Durak resmi ekle</Text>
+                  {point.image_url ? (
+                    <Image
+                      source={{uri: point.image_url}}
+                      style={styles.image}
+                    />
+                  ) : (
+                    <Text style={{color: '#888'}}>Durak resmi ekle</Text>
+                  )}
                 </TouchableOpacity>
 
                 <View style={styles.inputGroup}>
@@ -504,42 +560,6 @@ export const CreateRouteScreen = () => {
                 onPress={addRoutePoint}>
                 <Text style={styles.addButtonText}>Yeni durak ekle</Text>
               </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.sectionTitle}>Rota Detayları</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Rota Başlığı"
-              value={title}
-              onChangeText={setTitle}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Konum"
-              value={location}
-              onChangeText={setLocation}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Mesafe"
-              value={distance}
-              onChangeText={setDistance}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.sectionTitle}>Rota Fotoğrafı</Text>
-            <TouchableOpacity
-              style={styles.imagePicker}
-              onPress={handlePickImage}>
-              <Text style={styles.imagePickerText}>
-                {imageUri ? 'Fotoğrafı Değiştir' : 'Fotoğraf Seç'}
-              </Text>
-            </TouchableOpacity>
-            {imageUri && (
-              <Image source={{uri: imageUri}} style={styles.imagePreview} />
             )}
           </View>
         </View>
@@ -685,6 +705,19 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingHorizontal: 10,
     color: '#000',
+  },
+  imagePicker: {
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    color: '#222',
+  },
+  image: {
+    width: '100%',
+    height: 150,
+    resizeMode: 'cover',
   },
   pickerContainer: {
     width: '100%',
@@ -854,15 +887,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fafafa',
-  },
-  imagePickerText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  imagePreview: {
-    width: '100%',
-    height: 200,
-    borderRadius: 10,
-    marginBottom: 15,
   },
 });

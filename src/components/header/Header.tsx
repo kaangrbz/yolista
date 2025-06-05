@@ -1,7 +1,14 @@
-import React from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, StyleProp, ViewStyle } from 'react-native'
+import React from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  StyleProp,
+  ViewStyle,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { PageName } from '../../types/navigation';
+import {PageName} from '../../types/navigation';
 
 // components/headers/BaseHeader.tsx
 type HeaderProps = {
@@ -10,47 +17,42 @@ type HeaderProps = {
   rightComponent?: React.ReactNode;
   centerTitle?: boolean;
   style?: StyleProp<ViewStyle>;
-}
+};
 
 export const BaseHeader = ({
   title,
   leftComponent,
   rightComponent,
   centerTitle = false,
-  style = {}
+  style = {},
 }: HeaderProps) => (
   <View style={[styles.header, style]}>
-    {leftComponent && (<View style={styles.leftSection}>
-      {leftComponent}
-    </View>)}
+    {leftComponent && <View style={styles.leftSection}>{leftComponent}</View>}
 
-    {title &&
-      (<Text style={[styles.title, centerTitle && styles.centered]} numberOfLines={1}>
+    {title && (
+      <Text
+        style={[styles.title, centerTitle && styles.centered]}
+        numberOfLines={1}>
         {title}
-      </Text>)
-    }
+      </Text>
+    )}
 
-    {rightComponent 
-        ? (<View style={styles.rightSection}>
-            {rightComponent}
-          </View>) 
-        : <Text style={styles.rightPlaceholder}>&nbsp;</Text>}
+    {rightComponent ? (
+      <View style={styles.rightSection}>{rightComponent}</View>
+    ) : (
+      <Text style={styles.rightPlaceholder}>&nbsp;</Text>
+    )}
   </View>
 );
 
 // components/headers/HomeHeader.tsx
-export const HomeHeader = () => (
-  <BaseHeader
-    title="Yolista"
-    centerTitle
-  />
-);
+export const HomeHeader = () => <BaseHeader title="Yolista" centerTitle />;
 
 // components/headers/RouteDetailHeader.tsx
-export const RouteDetailHeader = ({ navigation }: { navigation?: any }) => (
+export const RouteDetailHeader = ({navigation}: {navigation?: any}) => (
   <BaseHeader
     title="Rota Detayı"
-    style={{ justifyContent: 'space-between' }}
+    style={{justifyContent: 'space-between'}}
     leftComponent={
       <TouchableOpacity onPress={() => navigation.goBack()}>
         <Icon name="arrow-left" size={24} color="#000" />
@@ -60,19 +62,11 @@ export const RouteDetailHeader = ({ navigation }: { navigation?: any }) => (
 );
 
 // components/headers/ExploreHeader.tsx
-export const ExploreHeader = ({ onSearch }) => (
-  <BaseHeader
-    title="Keşfet"
-  />
-);
+export const ExploreHeader = ({onSearch}) => <BaseHeader title="Keşfet" />;
 
 export const CreateRouteHeader = () => {
-  return (
-    <BaseHeader
-      title="Yeni Rota Oluştur"
-    />
-  );
-}
+  return <BaseHeader title="Yeni Rota Oluştur" />;
+};
 
 export const NotificationsHeader = () => {
   return (
@@ -85,15 +79,17 @@ export const NotificationsHeader = () => {
       }
     />
   );
-}
+};
 
-export const FollowersHeader = ({ navigation }: { navigation: any }) => {
+export const FollowersHeader = ({navigation}: {navigation: any}) => {
   return (
     <BaseHeader
       title="Takipçiler"
-      style={{ justifyContent: 'flex-start', gap: 16 }}
+      style={{justifyContent: 'flex-start', gap: 16}}
       leftComponent={
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}>
           <Icon name="arrow-left" size={24} color="#121212" />
         </TouchableOpacity>
       }
@@ -101,13 +97,15 @@ export const FollowersHeader = ({ navigation }: { navigation: any }) => {
   );
 };
 
-export const FollowingHeader = ({ navigation }: { navigation: any }) => {
+export const FollowingHeader = ({navigation}: {navigation: any}) => {
   return (
     <BaseHeader
       title="Takip Edilenler"
-      style={{ justifyContent: 'flex-start', gap: 16 }}
+      style={{justifyContent: 'flex-start', gap: 16}}
       leftComponent={
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}>
           <Icon name="arrow-left" size={24} color="#121212" />
         </TouchableOpacity>
       }
