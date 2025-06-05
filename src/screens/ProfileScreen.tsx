@@ -13,7 +13,8 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
-import { Tabs } from 'react-native-collapsible-tab-view';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+const Tab = createMaterialTopTabNavigator();
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useCityStore, CityState } from '../store/cityStore';
@@ -26,6 +27,7 @@ import { navigate, PageName } from '../types/navigation';
 import UserModel from '../model/user.model';
 import GlobalFloatingAction from '../components/common/GlobalFloatingAction';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Profile } from '../model/profile.model';
 
 const { width } = Dimensions.get('window');
 
@@ -49,25 +51,77 @@ const HEADER_HEIGHT = Platform.OS === 'ios' ? 300 : 320;
 
 const SavedTab = () => {
   return (
-    <Tabs.ScrollView>
-      <View style={styles.tabContent}>
-        <View style={styles.postContainer}>
-          <Text style={styles.noContentText}>Kaydedilen öğe yok</Text>
-        </View>
+    <View style={styles.tabContent}>
+      <View style={styles.postContainer}>
+        <Text style={styles.noContentText}>Kaydedilen öğe yok</Text>
       </View>
-    </Tabs.ScrollView>
+    </View>
   );
 };
 
 const TaggedTab = () => {
   return (
-    <Tabs.ScrollView>
-      <View style={styles.tabContent}>
-        <View style={styles.postContainer}>
-          <Text style={styles.noContentText}>Etiketlendiğiniz gönderi yok</Text>
-        </View>
+    <View style={styles.tabContent}>
+      <View style={styles.postContainer}>
+        <Text style={styles.noContentText}>Etiketlendiğiniz rota yok</Text>
       </View>
-    </Tabs.ScrollView>
+    </View>
+  );
+};
+
+interface PostsTabProps {
+  onRefresh: () => Promise<void>;
+  refreshing: boolean;
+  routes: RouteWithProfile[];
+  isLoading: boolean;
+  expandedDescriptions: { [key: string]: boolean };
+  onToggleDescription: (routeId: string) => void;
+  currentUserId: string | null;
+  fetchRoutes: () => Promise<void>;
+}
+
+const PostsTab = ({
+  onRefresh,
+  refreshing,
+  routes,
+  isLoading,
+  expandedDescriptions,
+  onToggleDescription,
+  currentUserId,
+  fetchRoutes
+}: PostsTabProps) => {
+  if (isLoading || refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#333', '#1DA1F2']}
+            tintColor="#000000"
+          />
+        }
+      >
+        <RouteList
+          routes={routes}
+          loading={isLoading}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          expandedDescriptions={expandedDescriptions}
+          onToggleDescription={(routeId) => onToggleDescription(routeId)}
+          userId={currentUserId}
+          onRefreshRoutes={fetchRoutes}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -214,42 +268,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   }, []);
 
   // Tab Content Components
-  const PostsTab = () => {
-    
-    if (isLoading || refreshing) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#000" />
-        </View>
-      );
-    }
-
-    return (
-      <SafeAreaView style={styles.container}>
-        <Tabs.ScrollView
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#333', '#1DA1F2']}
-            tintColor="#000000"
-          />
-        }
-      >
-        <RouteList
-          routes={routes}
-          loading={isLoading}
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          expandedDescriptions={expandedDescriptions}
-          onToggleDescription={(routeId) => onToggleDescription(routeId)}
-          userId={currentUserId}
-          onRefreshRoutes={fetchRoutes}
-        />
-      </Tabs.ScrollView>
-      </SafeAreaView>
-    );
-  };
 
   const handleLogout = async () => {
     try {
@@ -306,7 +324,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
   console.log('user', user);
 
-  const renderHeader = () => {
+  const renderHeader = (user: Profile) => {
     return (
       <View style={styles.headerContainer}>
         <View style={{ width: '100%' }}>
@@ -343,7 +361,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           <View style={styles.headerNameContainer}>
             <Text style={styles.headerName}>
               {user?.full_name || 'Kullanıcı'}
-              {user?.verified && <MaterialIcons name="verified" size={16} color="#1DA1F2" />}
+              {user?.is_verified && <MaterialIcons name="verified" size={16} color="#1DA1F2" />}
 
             </Text>
 
@@ -377,7 +395,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{routes.length}</Text>
-            <Text style={styles.statLabel}>Gönderi</Text>
+            <Text style={styles.statLabel}>Rota</Text>
           </View>
           <TouchableOpacity 
             style={styles.statItem} 
@@ -426,24 +444,58 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Tabs.Container
-        renderHeader={renderHeader}
-        headerHeight={HEADER_HEIGHT}
-        headerContainerStyle={styles.tabsHeaderContainer}
-        containerStyle={styles.tabsContainer}
-        initialTabName="posts"
+      {renderHeader(user)}
+      <Tab.Navigator
+        screenOptions={{
+          tabBarActiveTintColor: '#000',
+          tabBarInactiveTintColor: '#666',
+          tabBarIndicatorStyle: { backgroundColor: '#000' },
+          tabBarLabelStyle: { fontWeight: '600', textTransform: 'none' },
+          tabBarStyle: { backgroundColor: '#fff', elevation: 0, shadowOpacity: 0 },
+        }}
       >
-        <Tabs.Tab name="posts" label="Gönderiler">
-          <PostsTab />
-        </Tabs.Tab>
-        <Tabs.Tab name="saved" label="Kaydedilenler">
-          <SavedTab />
-        </Tabs.Tab>
-        <Tabs.Tab name="tagged" label="Etiketler">
-          <TaggedTab />
-        </Tabs.Tab>
-      </Tabs.Container>
-
+        <Tab.Screen 
+          name="Rotalar"
+          options={{
+            tabBarShowLabel: false,
+            tabBarIcon: ({ color, size }) => (
+              <MaterialIcons name="view-comfortable" size={size} color={color} />
+            ),
+          }}
+          children={() => (
+            <PostsTab 
+              onRefresh={onRefresh}
+              refreshing={refreshing}
+              routes={routes}
+              isLoading={isLoading}
+              expandedDescriptions={expandedDescriptions}
+              onToggleDescription={onToggleDescription}
+              currentUserId={currentUserId}
+              fetchRoutes={fetchRoutes}
+            />
+          )} 
+        />
+        <Tab.Screen 
+          name="Kaydedilenler" 
+          options={{
+            tabBarShowLabel: false,
+            tabBarIcon: ({ color, size }) => (
+              <Icon name="bookmark-outline" size={size} color={color} />
+            ),
+          }}
+          component={SavedTab} 
+        />
+        <Tab.Screen 
+          name="Etiketler" 
+          options={{
+            tabBarShowLabel: false,
+            tabBarIcon: ({ color, size }) => (
+              <Icon name="tag-outline" size={size} color={color} />
+            ),
+          }}
+          component={TaggedTab} 
+        />
+      </Tab.Navigator>
       <GlobalFloatingAction />
     </SafeAreaView>
   );
@@ -456,7 +508,7 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     backgroundColor: '#fff',
-    height: HEADER_HEIGHT,
+    // height: HEADER_HEIGHT,
   },
   headerImageContainer: {
     width: '100%',
@@ -565,20 +617,6 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 14,
     color: '#666',
-  },
-  tabsHeaderContainer: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  tabsContainer: {
-    backgroundColor: '#fff',
   },
   tabBar: {
     backgroundColor: '#fff',

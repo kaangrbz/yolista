@@ -155,6 +155,24 @@ const UserModel = {
       success: true,
       message: 'Takipten çıkarıldı'
     };
+  },
+
+  //* Check if a username is available
+  async isUsernameAvailable(username: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('username', username)
+      .limit(1);
+
+    console.log(data);
+  
+    if (error) {
+      console.error('Error checking username:', error);
+      return false;
+    }
+  
+    return data.length === 0; // Returns true if the username is available
   }
 
 };
