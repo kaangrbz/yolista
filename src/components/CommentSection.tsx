@@ -155,12 +155,12 @@ const CommentSection: React.FC<CommentSectionProps> = ({
         // Get user profile to get avatar
         const { data: profile } = await supabase
           .from('profiles')
-          .select('avatar_url')
+          .select('image_url')
           .eq('id', user.id)
           .single();
           
-        if (profile?.avatar_url) {
-          setUserAvatar(profile.avatar_url);
+        if (profile?.image_url) {
+          setUserAvatar(profile.image_url);
         }
       }
     };
@@ -220,7 +220,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
   const renderCommentItem = ({ item }: { item: CommentWithProfile }) => (
     <View style={styles.commentItem}>
       <Image 
-        source={{ uri: item.profiles?.avatar_url || 'https://picsum.photos/40/40' }}
+        source={{ uri: item.profiles?.image_url || 'https://picsum.photos/40/40' }}
         style={styles.commentAuthorImage}
       />
       <View style={styles.commentContent}>

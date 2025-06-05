@@ -1,6 +1,13 @@
 import { supabase } from '../lib/supabase';
 import NotificationModel from './notifications.model';
 
+export interface User {
+  id: string;
+  username: string;
+  full_name: string;
+  image_url: string;
+}
+
 interface FollowResponse {
   success: boolean;
   message: string;
@@ -12,7 +19,32 @@ interface FollowType {
   followed_type: 'profile' | 'group' | 'event';
 }
 
+const unaccent = (text: string) => {
+  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+};
+
 const UserModel = {
+  //* Get users by username
+  async getUsers(searchQuery?: string, limit: number = 10) {
+    const { data: users, error } = await supabase
+    .rpc('search_profiles', { term: `%${searchQuery}%`, lim: limit });        
+
+    if (error) {
+      console.error('Error fetching users:', error);
+      return [];
+    }
+
+    return users as User[];
+  },
+
+
+  //* Get logged user
+  async getLoggedUser() {
+    const { data: user, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    return user?.user;
+  },
+
   // Function to get followers of a user
   async getFollowers(userId: string) {
     const { data: followers, error } = await supabase
@@ -166,12 +198,12 @@ const UserModel = {
       .limit(1);
 
     console.log(data);
-  
+
     if (error) {
       console.error('Error checking username:', error);
       return false;
     }
-  
+
     return data.length === 0; // Returns true if the username is available
   }
 

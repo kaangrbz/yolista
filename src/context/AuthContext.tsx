@@ -29,7 +29,10 @@ interface AuthContextType {
     username: string,
   ) => Promise<void>;
   logout: () => Promise<void>;
+  unreadNotificationCount: number | undefined;
 }
+// Extracting the type of unreadNotificationCount
+type UnreadNotificationCountType = AuthContextType['unreadNotificationCount'];
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -47,8 +50,22 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<UserWithProfile | null>(null);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState<UnreadNotificationCountType>(undefined);
 
   useEffect(() => {
+    const fetchUnreadNotificationCount = async () => {
+      try {
+        const { data: { count }, error: countError } = await supabase
+          .from('notifications')
+          .select('*')
+          console.log("🚀 ~ fetchUnreadNotificationCount ~ count:", count)
+        if (countError) throw countError;
+        setUnreadNotificationCount(count);
+      } catch (error) {
+        console.error('Error fetching unread notification count:', error);
+      }
+    };
+
     const fetchSessionAndProfile = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -79,8 +96,13 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
         console.error('Error fetching session or profile:', error);
       }
     };
-  
+
+    fetchUnreadNotificationCount();
     fetchSessionAndProfile();
+
+    const interval = setInterval(() => {
+      fetchUnreadNotificationCount();
+    }, 5000);
   
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setIsAuthenticated(!!session);
@@ -106,6 +128,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
   
     return () => {
       subscription.unsubscribe();
+      clearInterval(interval);
     };
   }, []);
   
@@ -197,6 +220,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
         signIn,
         signUp,
         logout,
+        unreadNotificationCount,
       }}>
       {children}
     </AuthContext.Provider>

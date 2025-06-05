@@ -77,8 +77,13 @@ const NotificationModel = {
     entityType: NotificationEntityType;
     message?: string;
   }) {
+    // Prevent users from sending notifications to themselves
+    if (senderId && senderId === recipientId) {
+      return null;
+    }
+
     // Rate limit uygulanacak tipler
-    const rateLimitTypes = ["follow", "like", "comment"];
+    const rateLimitTypes = ["follow"];
   
     if (senderId && rateLimitTypes.includes(entityType)) {
       const limitMs = NOTIFICATION_RATE_LIMITS[entityType as keyof typeof NOTIFICATION_RATE_LIMITS];

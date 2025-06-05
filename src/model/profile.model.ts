@@ -4,6 +4,7 @@ export interface Profile {
   full_name: string;
   image_url?: string;
   is_verified: boolean;
+  is_deleted?: boolean;
   created_at?: string;
   updated_at?: string;
 } 

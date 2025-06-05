@@ -2,6 +2,8 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { PlatformPressable } from '@react-navigation/elements';
 
 // Import your screens
 import { HomeScreen } from '../screens/HomeScreen';
@@ -184,9 +186,12 @@ const NotificationStackScreen = () => {
 };
 
 const MainTabNavigator = () => {
+  const {unreadNotificationCount} = useAuth();
+  console.log("🚀 ~ MainTabNavigator ~ unreadNotificationCount:", unreadNotificationCount)
+
   return (
     <Tab.Navigator
-      screenOptions={{
+      screenOptions={(props) => ({
         tabBarActiveTintColor: '#121212',
         tabBarInactiveTintColor: 'gray',
         headerShown: false,
@@ -198,7 +203,13 @@ const MainTabNavigator = () => {
           fontSize: 12,
           marginBottom: 5,
         },
-      }}
+        tabBarButton: (props) => (
+          <PlatformPressable
+            {...props}
+            android_ripple={{ color: 'transparent' }}  // Disables the ripple effect for Android
+          />
+        ),
+      })}
     >
       <Tab.Screen
         name="HomeStack"
@@ -216,7 +227,7 @@ const MainTabNavigator = () => {
         options={{
           tabBarShowLabel: false,
           tabBarIcon: ({ color, size }) => (
-            <Icon name="routes" color={color} size={size} />
+            <MaterialIcon name="search" color={color} size={size} />
           ),
         }}
       />
@@ -226,7 +237,7 @@ const MainTabNavigator = () => {
         options={{
           tabBarShowLabel: false,
           tabBarIcon: ({ color, size }) => (
-            <Icon name="plus-circle" color={color} size={size * 1.25} />
+            <Icon name="leaf-circle-outline" color={color} size={size * 1.25} />
           ),
         }}
       />
@@ -238,6 +249,7 @@ const MainTabNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Icon name="bell" color={color} size={size} />
           ),
+          tabBarBadge: unreadNotificationCount,
         }}
       />
       <Tab.Screen

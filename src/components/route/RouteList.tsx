@@ -76,7 +76,7 @@ const RouteList: React.FC<RouteListProps> = ({
       )}
       contentContainerStyle={styles.routesContainer}
       ListFooterComponent={renderFooter}
-      ListEmptyComponent={renderEmptyComponent}
+      ListEmptyComponent={loading ? null : renderEmptyComponent}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh}
           colors={['#333', '#121212']}

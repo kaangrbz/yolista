@@ -268,6 +268,43 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   }, []);
 
   // Tab Content Components
+  const PostsTab = () => {
+    
+    if (isLoading || refreshing) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#000" />
+        </View>
+      );
+    }
+
+    return (
+      <SafeAreaView style={styles.container}>
+        <Tabs.ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#333', '#1DA1F2']}
+            tintColor="#000000"
+            titleColor="#000000"
+          />
+        }
+      >
+        <RouteList
+          routes={routes}
+          loading={isLoading}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          expandedDescriptions={expandedDescriptions}
+          onToggleDescription={(routeId) => onToggleDescription(routeId)}
+          userId={currentUserId}
+          onRefreshRoutes={fetchRoutes}
+        />
+      </Tabs.ScrollView>
+      </SafeAreaView>
+    );
+  };
 
   const handleLogout = async () => {
     try {
