@@ -29,8 +29,8 @@ const NotificationModel = {
    * @param {string} userId - The recipient ID of the user
    * @returns {Promise<any[]>} List of notifications with profile data
    */
-  async getNotifications({ userId }: { userId: string }): Promise<NotificationType[]> {
-    const { data, error } = await supabase
+  async getNotifications({ userId, lastCreatedAt }: { userId: string, lastCreatedAt?: string | null }): Promise<NotificationType[]> {
+    const query = supabase
       .from("notifications")
       .select(`
         *,
@@ -45,9 +45,14 @@ const NotificationModel = {
       `)
       .eq("recipient_id", userId)
       .order("created_at", { ascending: false })
-      .limit(40);
 
-      console.log('notification data',data, error);
+    // if (lastCreatedAt) {
+    //   query.gte("created_at", lastCreatedAt);
+    // }
+
+    const { data, error } = await query.limit(50);
+
+    console.log('notification data',data, error);
     if (error) {
       showToast("error", "Bildirimler alınamadı");
       throw error;

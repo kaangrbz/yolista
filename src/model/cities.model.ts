@@ -8,7 +8,9 @@ const CityModel = {
 async getCities() {
   const { data: cities, error } = await supabase
     .from('cities')
-    .select('*');
+    .select('*')
+    .order('order_index', { ascending: true })
+    .order('id', { ascending: true });
 
   if (error) {
     console.error("Error fetching cities:", error);

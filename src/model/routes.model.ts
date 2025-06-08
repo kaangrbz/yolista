@@ -82,7 +82,8 @@ const RouteModel = {
     }
 
     if (searchQuery) {
-      query.ilike('title', `%${searchQuery}%`).ilike('description', `%${searchQuery}%`);
+      const filters = searchQuery.split(' ').map((term) => `title.ilike.%${term}%`).join(",");
+      query.or(filters);
     }
 
     //* Fetch only main routes when `onlyMain` is true

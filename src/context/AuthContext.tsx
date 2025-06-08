@@ -58,7 +58,6 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
         const { data: { count }, error: countError } = await supabase
           .from('notifications')
           .select('*')
-          console.log("🚀 ~ fetchUnreadNotificationCount ~ count:", count)
         if (countError) throw countError;
         setUnreadNotificationCount(count);
       } catch (error) {

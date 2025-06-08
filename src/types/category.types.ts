@@ -5,4 +5,5 @@ export interface CategoryItem {
     icon_name: string;
     description: string;
     index: number;
+    is_disabled: boolean;
   }

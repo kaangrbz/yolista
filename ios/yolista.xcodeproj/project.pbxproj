@@ -274,7 +274,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.yolista;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kaan.yolista;
 				PRODUCT_NAME = yolista;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -302,7 +302,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.yolista;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kaan.yolista;
 				PRODUCT_NAME = yolista;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";

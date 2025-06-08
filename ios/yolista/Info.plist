@@ -17,11 +17,11 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-<string>1.2.1</string>
+<string>1.2.2</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-<string>8</string>
+<string>9</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -71,5 +71,12 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Resimlerinizi yüklemek için fotoğraf kütüphanesine erişim gerekiyor.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Resimlerinizi kaydetmek için fotoğraf kütüphanesine erişim gerekiyor.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Resimlerinizi kaydetmek için fotoğraf kütüphanesine erişim gerekiyor.</string>
+
 </dict>
 </plist>

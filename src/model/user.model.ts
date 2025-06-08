@@ -197,8 +197,6 @@ const UserModel = {
       .eq('username', username)
       .limit(1);
 
-    console.log(data);
-
     if (error) {
       console.error('Error checking username:', error);
       return false;

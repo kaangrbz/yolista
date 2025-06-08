@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { CategoryItem } from '../types/category.types';
-import CategoryModel from '../model/category.modal';
+import CategoryModel from '../model/category.model';
 import { ExploreHeader } from '../components/header/Header';
 import GlobalFloatingAction from '../components/common/GlobalFloatingAction';
 import RouteModel, { RouteWithProfile, GetRoutesProps } from '../model/routes.model';
@@ -22,7 +22,7 @@ import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native'
 import UserModel, { User } from '../model/user.model';
 import UserCard from '../components/user/UserCard';
 
-const NUM_COLUMNS = 2;
+const NUM_COLUMNS = 3;
 const { width } = Dimensions.get('window');
 const ITEM_WIDTH = (width - 4) / NUM_COLUMNS; // 3 items per row with 2px gap
 
@@ -100,6 +100,7 @@ const ExploreScreen = () => {
         icon_name: 'routes',
         description: 'Tüm Rotalar',
         index: 0,
+        is_disabled: false,
       });
 
 
@@ -176,23 +177,19 @@ const ExploreScreen = () => {
       <Image source={{ uri: item.image_url || 'https://picsum.photos/300/300?random=' + item.id }} style={styles.exploreImage} />
       <View style={styles.overlay}>
         <View style={styles.row}>
-          <View style={styles.cityContainer}>
-            <Icon name="map-marker" size={16} color="#fff" />
-            <Text style={styles.cityText}>{item.cities.name}</Text>
-          </View>
           <View style={styles.likeContainer}>
             <Icon name="heart" size={16} color="#fff" />
             <Text style={styles.likeCount}>{item?.like_count?.toLocaleString()}</Text>
           </View>
         </View>
-        <View style={styles.infoContainer}>
+        {/* <View style={styles.infoContainer}>
           <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
 
           <TouchableOpacity style={styles.userContainer} onPress={() => navigation.navigate('ProfileMain', { userId: item.profiles.id })}>
             <Text style={styles.userName}>{item.profiles.full_name}</Text>
             <Text style={styles.userUsername}>@{item.profiles.username}</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
       </View>
     </TouchableOpacity>
   );
@@ -342,7 +339,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
   },
   searchContainer: {
     flexDirection: 'row',

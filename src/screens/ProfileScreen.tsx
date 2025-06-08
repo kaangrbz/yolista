@@ -28,6 +28,8 @@ import UserModel from '../model/user.model';
 import GlobalFloatingAction from '../components/common/GlobalFloatingAction';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Profile } from '../model/profile.model';
+import { Tabs } from 'react-native-collapsible-tab-view';
+import ProfileEditModal from '../components/profile/ProfileEditModal';
 
 const { width } = Dimensions.get('window');
 
@@ -139,46 +141,46 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const [isFollowLoading, setIsFollowLoading] = useState<boolean>(false);
   const [fetchingUser, setFetchingUser] = useState(false);
   const navigation = useNavigation<ProfileScreenNavigationProp>();
-  const selectedCityId = useCityStore((state: CityState) => state.selectedCityId);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
 
   // Check if the current profile belongs to the logged-in user
   const isCurrentUserProfile = currentUserId === profileUserId;
   const [followingsCount, setFollowingsCount] = useState<any>(null);
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        setFetchingUser(true);
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        if (currentUser) {
-          setCurrentUserId(currentUser.id);
+  const fetchUser = async () => {
+    try {
+      setFetchingUser(true);
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        setCurrentUserId(currentUser.id);
 
-          // If no userId is provided in route params, use the current user's ID
-          const targetUserId = route?.params?.userId || currentUser.id;
-          setProfileUserId(targetUserId);
+        // If no userId is provided in route params, use the current user's ID
+        const targetUserId = route?.params?.userId || currentUser.id;
+        setProfileUserId(targetUserId);
 
-          // Fetch profile user data
-          const { data: profileUser, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', targetUserId)
-            .single();
+        // Fetch profile user data
+        const { data: profileUser, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', targetUserId)
+          .single();
 
-          if (profileUser) {
-            setUser(profileUser);
-          }
-
-          // Check if current user is following this profile
-          if (targetUserId !== currentUser.id) {
-            checkFollowStatus(currentUser.id, targetUserId);
-          }
+        if (profileUser) {
+          setUser(profileUser);
         }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      } finally {
-        setFetchingUser(false);
+
+        // Check if current user is following this profile
+        if (targetUserId !== currentUser.id) {
+          checkFollowStatus(currentUser.id, targetUserId);
+        }
       }
-    };
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    } finally {
+      setFetchingUser(false);
+    }
+  };
+  useEffect(() => {
 
     fetchUser();
     onRefresh();
@@ -242,6 +244,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const onRefresh = React.useCallback(async () => {
     try {
       setRefreshing(true);
+      await fetchUser();
       await fetchRoutes();
       await fetchFollowers();
       await fetchFollowings();
@@ -280,17 +283,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
     return (
       <SafeAreaView style={styles.container}>
-        <Tabs.ScrollView
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#333', '#1DA1F2']}
-            tintColor="#000000"
-            titleColor="#000000"
-          />
-        }
-      >
         <RouteList
           routes={routes}
           loading={isLoading}
@@ -301,7 +293,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           userId={currentUserId}
           onRefreshRoutes={fetchRoutes}
         />
-      </Tabs.ScrollView>
       </SafeAreaView>
     );
   };
@@ -359,6 +350,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     }
   };
 
+  const handleProfileUpdate = (updatedProfile: Profile) => {
+    setUser(updatedProfile);
+  };
+
   console.log('user', user);
 
   const renderHeader = (user: Profile) => {
@@ -380,17 +375,20 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
           {/* Only show these buttons for the current user's profile */}
           {isCurrentUserProfile && (
-            <>
-              <TouchableOpacity style={styles.logoutContainer} onPress={handleLogout}>
-                <Icon name="logout" size={24} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.profileSettingContainer}>
-                <Icon name="cog" size={24} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.profileEditContainer}>
+            <View style={styles.headerButtonsContainer}>
+              <TouchableOpacity style={styles.headerButton}
+                onPress={() => {
+                  setUser(user);
+                  setIsEditModalVisible(true);
+                  
+                }}
+              >
                 <Icon name="pencil" size={24} color="#fff" />
               </TouchableOpacity>
-            </>
+              <TouchableOpacity style={styles.headerButton} onPress={handleLogout}>
+                <Icon name="logout" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
           )}
         </View>
 
@@ -481,6 +479,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={{flex: 1}}>
       {renderHeader(user)}
       <Tab.Navigator
         screenOptions={{
@@ -533,7 +532,18 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           component={TaggedTab} 
         />
       </Tab.Navigator>
+      </View>
       <GlobalFloatingAction />
+      
+      {user && (
+        <ProfileEditModal
+          visible={isEditModalVisible}
+          onClose={() => setIsEditModalVisible(false)}
+          profile={user}
+          
+          onUpdate={handleProfileUpdate}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -561,6 +571,15 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  headerButtonsContainer: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
   profilePhotoContainer: {
     position: 'absolute',
     bottom: -40,
@@ -584,18 +603,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  profileSettingContainer: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 8,
-    borderRadius: 20,
-  },
-  profileEditContainer: {
-    position: 'absolute',
-    top: 10,
-    right: 60,
+  headerButton: {
     backgroundColor: 'rgba(0,0,0,0.5)',
     padding: 8,
     borderRadius: 20,

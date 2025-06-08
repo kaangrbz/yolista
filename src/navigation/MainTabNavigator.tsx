@@ -19,7 +19,7 @@ import { FollowersScreen } from '../screens/FollowersScreen';
 
 // Define the parameter lists for each stack
 type ProfileStackParamList = {
-  ProfileMain: { userId: string; currentUserId: string };
+  ProfileMain: { userId?: string; currentUserId?: string };
   RouteDetail: { routeId: string };
   Explore: { categoryId?: number };
   Followers: { userId: string };

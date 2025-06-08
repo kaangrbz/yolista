@@ -4,7 +4,7 @@ export const validateName = (name: string): boolean => {
 };
 
 export function validateUsername(username: string): boolean {
-  const regex = /^(?!.*[._]{2})[a-zA-Z0-9._]{1,30}(?<!\.)$/;
+  const regex = /^(?!.*[._]{2})[a-zA-Z0-9._]{3,30}(?<!\.)$/;
   return regex.test(username);
 }
 
@@ -41,7 +41,7 @@ export function getValidationMessage(
       ? 'Kullanıcı adı geçerli.'
       : value.endsWith(' ') || value.endsWith('.') || value.startsWith('.') || value.startsWith(' ')
       ? 'Kullanıcı adı boşluk veya nokta ile başlayamaz ve bitemez.'
-      : 'Kullanıcı adı yalnızca latin harfleri, rakam, alt çizgi (_) ve nokta (.) içerebilir.';
+      : 'Kullanıcı adı minimum 3 maksimum 30 karakter uzunluğunda olabilir ve yalnızca latin harfleri, rakam, alt çizgi (_) ve nokta (.) içerebilir.';
   }
 
   if (type === 'email') {

@@ -28,6 +28,8 @@ const NotificationsScreen = () => {
   const [notifications, setNotifications] = React.useState<NotificationType[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+  const [lastCreatedAt, setLastCreatedAt] = React.useState<string | null>(null);
 
   useEffect(() => {
     setIsLoadingNotifications(true);
@@ -36,12 +38,26 @@ const NotificationsScreen = () => {
     }
   }, [isFocused, user?.id]);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (type: 'initial' | 'loadMore' = 'initial') => {
     try {
       if (!user?.id) return;
+      
+      // const _lastCreatedAt = type === 'loadMore' ? notifications[notifications.length - 1].created_at : null;
+      
+      // if (lastCreatedAt === _lastCreatedAt) {
+      //   setIsLoadingNotifications(false);
+      //   return;
+      // }
+      // setLastCreatedAt(_lastCreatedAt);
 
-      const fetchedNotifications = await NotificationModel.getNotifications({ userId: user.id });
-      setNotifications(fetchedNotifications);
+      const fetchedNotifications = await NotificationModel.getNotifications({ userId: user.id});
+      // setLastCreatedAt(fetchedNotifications[fetchedNotifications.length - 1].created_at);
+
+      if (type === 'loadMore') {
+        setNotifications(fetchedNotifications);
+      } else {
+        setNotifications(fetchedNotifications);
+      }
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
@@ -140,10 +156,14 @@ const NotificationsScreen = () => {
             {renderNotificationIcon(item.entity_type)}
           </View>
           <View style={styles.notificationContent}>
-            <Text style={styles.notificationText}>
-              <Text style={styles.username}>{item.profiles.username} </Text>
+            <View style={styles.notificationText}>
+                <TouchableOpacity style={styles.username} onPress={()=> {
+                  navigation.navigate('ProfileMain', { userId: item.sender_id });
+                }}>
+                  <Text style={styles.username}>{item.profiles.username}</Text>
+                </TouchableOpacity>
               <Text style={styles.message}>{label}</Text>
-            </Text>
+            </View>
 
             <Text style={styles.timeText}>{getTimeAgo(item.created_at)}</Text>
           </View>
@@ -169,6 +189,17 @@ const NotificationsScreen = () => {
     );
   }
 
+  // const handleLoadMore = async () => {
+  //   console.log('handleLoadMore');
+  //   setIsLoadingMore(true);
+    
+  //   await fetchNotifications('loadMore');
+  //   setTimeout(() => {
+  //     setIsLoadingMore(false);
+  //   }, 1000);
+    
+  // };
+
   return (
     <SafeAreaView style={styles.container}>
       <NotificationsHeader />
@@ -193,6 +224,13 @@ const NotificationsScreen = () => {
               <Text style={styles.emptyText}>Bildirim bulunamadı</Text>
             </View>
           }
+          ListFooterComponent={
+            isLoadingMore ? (
+              <ActivityIndicator size="small" color="#333" style={{ paddingVertical: 10 }} />
+            ) : null
+          }
+          // onEndReached={handleLoadMore}
+          // onEndReachedThreshold={0.5}
         />
       </View>
     </SafeAreaView>
@@ -258,16 +296,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   notificationText: {
-    fontSize: 15,
-    color: '#000',
-    lineHeight: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   username: {
     fontWeight: '600',
     color: '#000',
+    marginRight: 4,
+    lineHeight: 20,
+    fontSize: 15,
   },
   message: {
     color: '#8E8E93',
+    lineHeight: 20,
+    fontSize: 15,
   },
   timeText: {
     fontSize: 13,
