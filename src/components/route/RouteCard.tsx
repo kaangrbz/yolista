@@ -130,10 +130,16 @@ const RouteCard: React.FC<RouteCardProps> = ({
     downloadImage(route.image_url);
   }, [route.image_url]);
 
+  // Generate random size for explore items
+  const getRandomSize = () => {
+    const sizes = ['normal', 'doubleWidth', 'doubleHeight'];
+    return sizes[Math.floor(Math.random() * sizes.length)];
+  };
+
   if (isExploreScreen) {
     return (
       <TouchableOpacity
-        style={styles.exploreCard }
+        style={styles.exploreCard}
         onPress={() => navigation.navigate('RouteDetail', { routeId: route.id || '' })}
       >
         <TouchableOpacity 
@@ -166,21 +172,6 @@ const RouteCard: React.FC<RouteCardProps> = ({
             </View>
           </View>
         </TouchableOpacity>
-
-        {/* <View style={styles.exploreInfo}>
-          <Text style={styles.exploreTitle} numberOfLines={2}>{route.title}</Text>
-          {route.description && (
-            <Text style={styles.exploreDescription} numberOfLines={2}>
-              {route.description}
-            </Text>
-          )}
-        </View> */}
-
-        {/* <ImageViewer
-          images={imageUri ? [{ uri: imageUri }] : []}
-          visible={isImageViewerVisible}
-          onRequestClose={() => setIsImageViewerVisible(false)}
-        /> */}
       </TouchableOpacity>
     );
   }
@@ -502,10 +493,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    width: '100%',
+    height: '100%',
   },
   exploreImageContainer: {
     width: '100%',
-    aspectRatio: 1,
+    height: '100%',
     backgroundColor: '#f5f5f5',
   },
   exploreImage: {

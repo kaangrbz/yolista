@@ -29,9 +29,7 @@ import { showToast } from '../utils/alert';
 
 const NUM_COLUMNS = 3;
 const { width } = Dimensions.get('window');
-const ITEM_WIDTH = (width - 4) / NUM_COLUMNS; // 3 items per row with 2px gap
-const COLUMN_COUNT = 3;
-const CARD_WIDTH = (width - 32 - (COLUMN_COUNT - 1) * 8) / COLUMN_COUNT;
+const CARD_WIDTH = (width) / NUM_COLUMNS;
 
 // Types
 
@@ -175,10 +173,8 @@ const ExploreScreen = () => {
     }));
   };
 
-  const renderItem = ({ item, index }: { item: RouteWithProfile; index: number }) => (
-    <View style={[
-      styles.cardWrapper,
-    ]}>
+  const renderItem = ({ item }: { item: RouteWithProfile }) => (
+    <View style={styles.cardWrapper}>
       <RouteCard
         route={item}
         userId={user?.id || null}
@@ -227,14 +223,14 @@ const ExploreScreen = () => {
       </View>
 
       <ScrollView refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#333', '#121212']}
-              tintColor="#000000"
-              titleColor="#000000"
-            />
-          }>
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={['#333', '#121212']}
+          tintColor="#000000"
+          titleColor="#000000"
+        />
+      }>
 
       {
         users.length > 0 && (
@@ -279,15 +275,8 @@ const ExploreScreen = () => {
           <FlatList
             data={routes}
             renderItem={renderItem}
-            onRefresh={onRefresh}
-            refreshing={refreshing}
             keyExtractor={(item) => item.id}
-            numColumns={COLUMN_COUNT}
-            ListEmptyComponent={() => (
-              <View style={styles.noRoutesContainer}>
-                <Text style={styles.noRoutesText}>Bu kategoride hiç rota bulunamadı</Text>
-              </View>
-            )}
+            numColumns={NUM_COLUMNS}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
           />
@@ -369,8 +358,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   userImage: {
-    width: ITEM_WIDTH,
-    height: ITEM_WIDTH,
+    width: CARD_WIDTH,
+    height: CARD_WIDTH,
   },
   title: {
     fontSize: 16,
@@ -419,6 +408,7 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     width: CARD_WIDTH,
+    aspectRatio: 1,
   },
 });
 
