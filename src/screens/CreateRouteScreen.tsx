@@ -338,10 +338,10 @@ export const CreateRouteScreen = () => {
         const asset = result.assets[0];
 
         // Check if the image is vertical
-        if (asset.height && asset.width && asset.height > asset.width) {
-          showToast('error', 'Lütfen yatay bir resim seçiniz');
-          return;
-        }
+        // if (asset.height && asset.width && asset.height > asset.width) {
+        //   showToast('error', 'Lütfen yatay bir resim seçiniz');
+        //   return;
+        // }
 
         // Resize the image
         const resizedImage = await resizeImage(asset.uri!, 1285, 1080, 'JPEG', 80, client_id);

@@ -9,6 +9,7 @@ import Seperator from '../Seperator';
 import { NoImage } from '../../assets';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../utils/alert';
+import ImageViewer from '../ImageViewer';
 
 interface RouteCardProps {
   route: RouteWithProfile;
@@ -40,6 +41,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingImage, setLoadingImage] = useState(true);
+  const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
 
   // Handle text layout if needed
   const handleTextLayout = (e: any, key: string) => {
@@ -136,7 +138,15 @@ const RouteCard: React.FC<RouteCardProps> = ({
           />
         )}
 
-        <View style={styles.imageContainer}>
+        <TouchableOpacity 
+          style={styles.imageContainer}
+          onPress={() => {
+            if (imageUri) {
+              setIsImageViewerVisible(true);
+            }
+          }}
+          disabled={!imageUri}
+        >
           {loadingImage ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color="#333" />
@@ -154,7 +164,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
               resizeMode="cover"
             />
           )}
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.routeInfo}>
           <View style={{ padding: 16 }}>
@@ -270,6 +280,12 @@ const RouteCard: React.FC<RouteCardProps> = ({
           </View>
         </View>
       </TouchableOpacity>
+
+      <ImageViewer
+        images={imageUri ? [{ uri: imageUri }] : []}
+        visible={isImageViewerVisible}
+        onRequestClose={() => setIsImageViewerVisible(false)}
+      />
     </View>
   );
 };

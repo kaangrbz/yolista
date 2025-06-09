@@ -62,7 +62,7 @@ export const AppNavigator = () => {
     return (
       <View style={styles.loadingContainer}>
         <Logo size="large" color="#1DA1F2" />
-        <Text style={styles.loadingText}>Yükleniyor...</Text>
+        <ActivityIndicator size="large" color="#1DA1F2" />
       </View>
     );
   }
