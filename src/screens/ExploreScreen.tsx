@@ -178,7 +178,6 @@ const ExploreScreen = () => {
   const renderItem = ({ item, index }: { item: RouteWithProfile; index: number }) => (
     <View style={[
       styles.cardWrapper,
-      { marginRight: (index + 1) % COLUMN_COUNT !== 0 ? 8 : 0 }
     ]}>
       <RouteCard
         route={item}
@@ -417,11 +416,9 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   listContent: {
-    padding: 16,
   },
   cardWrapper: {
     width: CARD_WIDTH,
-    marginBottom: 8,
   },
 });
 

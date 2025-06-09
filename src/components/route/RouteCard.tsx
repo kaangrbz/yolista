@@ -133,17 +133,14 @@ const RouteCard: React.FC<RouteCardProps> = ({
   if (isExploreScreen) {
     return (
       <TouchableOpacity
-        style={styles.exploreCard}
+        style={styles.exploreCard }
         onPress={() => navigation.navigate('RouteDetail', { routeId: route.id || '' })}
       >
         <TouchableOpacity 
           style={styles.exploreImageContainer}
           onPress={() => {
-            if (imageUri) {
-              setIsImageViewerVisible(true);
-            }
+            navigation.navigate('RouteDetail', { routeId: route.id || '' });
           }}
-          disabled={!imageUri}
         >
           {loadingImage ? (
             <View style={styles.loadingContainer}>
@@ -170,20 +167,20 @@ const RouteCard: React.FC<RouteCardProps> = ({
           </View>
         </TouchableOpacity>
 
-        <View style={styles.exploreInfo}>
+        {/* <View style={styles.exploreInfo}>
           <Text style={styles.exploreTitle} numberOfLines={2}>{route.title}</Text>
           {route.description && (
             <Text style={styles.exploreDescription} numberOfLines={2}>
               {route.description}
             </Text>
           )}
-        </View>
+        </View> */}
 
-        <ImageViewer
+        {/* <ImageViewer
           images={imageUri ? [{ uri: imageUri }] : []}
           visible={isImageViewerVisible}
           onRequestClose={() => setIsImageViewerVisible(false)}
-        />
+        /> */}
       </TouchableOpacity>
     );
   }
@@ -499,7 +496,6 @@ const styles = StyleSheet.create({
   // Explore screen specific styles
   exploreCard: {
     backgroundColor: '#fff',
-    borderRadius: 8,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
