@@ -4,12 +4,27 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AuthorInfo from '../AuthorInfo';
 import RouteModel, { RouteWithProfile } from '../../model/routes.model';
 import { navigate, PageName } from '../../types/navigation';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Seperator from '../Seperator';
 import { NoImage } from '../../assets';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../utils/alert';
 import ImageViewer from '../ImageViewer';
+
+// Define the navigation param list type
+type RootStackParamList = {
+  HomeMain: undefined;
+  RouteDetail: { routeId: string };
+  AddCategory: undefined;
+  Explore: { categoryId?: number };
+  ProfileMain: { userId: string; currentUserId: string };
+  Followers: { userId: string };
+  Following: { userId: string };
+  ExploreMain: { categoryId?: number };
+};
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface RouteCardProps {
   route: RouteWithProfile;
@@ -37,7 +52,9 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const [isExpanded, setIsExpanded] = useState(expandedDescriptions[routeKey] || false);
   const [localLikeCount, setLocalLikeCount] = useState(route.like_count || 0);
   const [localDidLike, setLocalDidLike] = useState(route.did_like || false);
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
+  const currentRoute = useRoute();
+  const isExploreScreen = currentRoute.name === 'ExploreMain';
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingImage, setLoadingImage] = useState(true);
@@ -113,6 +130,64 @@ const RouteCard: React.FC<RouteCardProps> = ({
     downloadImage(route.image_url);
   }, [route.image_url]);
 
+  if (isExploreScreen) {
+    return (
+      <TouchableOpacity
+        style={styles.exploreCard}
+        onPress={() => navigation.navigate('RouteDetail', { routeId: route.id || '' })}
+      >
+        <TouchableOpacity 
+          style={styles.exploreImageContainer}
+          onPress={() => {
+            if (imageUri) {
+              setIsImageViewerVisible(true);
+            }
+          }}
+          disabled={!imageUri}
+        >
+          {loadingImage ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#333" />
+            </View>
+          ) : imageUri ? (
+            <Image 
+              source={{ uri: imageUri }} 
+              style={styles.exploreImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Image 
+              source={NoImage} 
+              style={styles.exploreImage}
+              resizeMode="cover"
+            />
+          )}
+          <View style={styles.exploreOverlay}>
+            <View style={styles.likeContainer}>
+              <Icon name={localDidLike ? "heart" : "heart-outline"} size={16} color="#fff" />
+              <Text style={styles.likeCount}>{localLikeCount}</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.exploreInfo}>
+          <Text style={styles.exploreTitle} numberOfLines={2}>{route.title}</Text>
+          {route.description && (
+            <Text style={styles.exploreDescription} numberOfLines={2}>
+              {route.description}
+            </Text>
+          )}
+        </View>
+
+        <ImageViewer
+          images={imageUri ? [{ uri: imageUri }] : []}
+          visible={isImageViewerVisible}
+          onRequestClose={() => setIsImageViewerVisible(false)}
+        />
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <View style={[styles.cardContainer, (showConnectingLine && !isMainRoute) && styles.withConnectingLine]}>
       {showConnectingLine && (
@@ -120,7 +195,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
       )}
       <TouchableOpacity
         style={styles.routeCard}
-        onPress={() => navigate(navigation, PageName.RouteDetail, { routeId: route.id || '' })}
+        onPress={() => navigation.navigate('RouteDetail', { routeId: route.id || '' })}
         disabled={!isMainRoute}
       >
         {showAuthorHeader && (
@@ -179,7 +254,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
                     onPress={(e) => {
                       e.stopPropagation();
                       console.log('Category tapped:', route.categories?.name);
-                      navigate(navigation, PageName.Explore, { categoryId: route.category_id });
+                      navigation.navigate('Explore', { categoryId: route.category_id });
                     }}
                     activeOpacity={0.7}
                   >
@@ -210,7 +285,6 @@ const RouteCard: React.FC<RouteCardProps> = ({
                 </Text>
                 {route.description?.length > 140 && (
                   <TouchableOpacity style={styles.seeMoreText} onPress={() => {
-                    // onToggleDescription(routeKey);
                     setIsExpanded(!isExpanded);
                   }}>
                     <Text
@@ -420,6 +494,61 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // Explore screen specific styles
+  exploreCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  exploreImageContainer: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  exploreImage: {
+    width: '100%',
+    height: '100%',
+  },
+  exploreOverlay: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 1,
+  },
+  likeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  likeCount: {
+    color: '#fff',
+    fontSize: 12,
+    marginLeft: 4,
+    fontWeight: '600',
+  },
+  exploreInfo: {
+    padding: 8,
+  },
+  exploreTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#121212',
+    marginBottom: 4,
+  },
+  exploreDescription: {
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 16,
   },
 });
 

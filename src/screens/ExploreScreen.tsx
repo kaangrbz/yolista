@@ -21,10 +21,17 @@ import { navigate, PageName } from '../types/navigation';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import UserModel, { User } from '../model/user.model';
 import UserCard from '../components/user/UserCard';
+import { supabase } from '../lib/supabase';
+import RouteCard from '../components/route/RouteCard';
+import { useAuth } from '../context/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { showToast } from '../utils/alert';
 
 const NUM_COLUMNS = 3;
 const { width } = Dimensions.get('window');
 const ITEM_WIDTH = (width - 4) / NUM_COLUMNS; // 3 items per row with 2px gap
+const COLUMN_COUNT = 3;
+const CARD_WIDTH = (width - 32 - (COLUMN_COUNT - 1) * 8) / COLUMN_COUNT;
 
 // Types
 
@@ -60,6 +67,9 @@ const ExploreScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
+  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const [expandedDescriptions, setExpandedDescriptions] = useState<{ [key: string]: boolean }>({});
 
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -84,7 +94,7 @@ const ExploreScreen = () => {
         setUsers([]);
       }
 
-      await fetchExploreItems();
+      await fetchRoutes();
       setIsLoading(false);
     }, 1000);
   };
@@ -114,30 +124,23 @@ const ExploreScreen = () => {
     handleSearch();
   }, [searchQuery, activeCategory]);
 
-  const fetchExploreItems = async () => {
-    if (searchTimeout.current) {
-      clearTimeout(searchTimeout.current);
-    }
-
-    setIsLoading(true);
+  const fetchRoutes = async () => {
     try {
       let props: GetRoutesProps = { onlyMain: true, categoryId: activeCategory, searchQuery: searchQuery }
       const routes = await RouteModel.getRoutes(props);
       setRoutes(routes);
     } catch (error) {
-      console.error('Error fetching explore items:', error);
+      console.error('Error fetching routes:', error);
+      showToast('error', 'Rotalar yüklenirken bir hata oluştu');
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   };
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    // fetchCategories();
-    fetchExploreItems();
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
+    fetchRoutes();
   }, []);
 
   const renderCategoryItem: ListRenderItem<CategoryItem> = ({ item }) => (
@@ -165,33 +168,28 @@ const ExploreScreen = () => {
     </TouchableOpacity>
   );
 
-  const renderExploreItem: ListRenderItem<RouteWithProfile> = ({ item, index }) => (
-    <TouchableOpacity
-      style={[
-        styles.exploreItem,
-        { marginRight: (index + 1) % 3 === 0 ? 0 : 2 },
-      ]}
-      activeOpacity={0.8}
-      onPress={() => navigate(navigation, PageName.RouteDetail, { routeId: item.id })}
-    >
-      <Image source={{ uri: item.image_url || 'https://picsum.photos/300/300?random=' + item.id }} style={styles.exploreImage} />
-      <View style={styles.overlay}>
-        <View style={styles.row}>
-          <View style={styles.likeContainer}>
-            <Icon name="heart" size={16} color="#fff" />
-            <Text style={styles.likeCount}>{item?.like_count?.toLocaleString()}</Text>
-          </View>
-        </View>
-        {/* <View style={styles.infoContainer}>
-          <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
+  const handleToggleDescription = (routeId: string) => {
+    setExpandedDescriptions(prev => ({
+      ...prev,
+      [routeId]: !prev[routeId]
+    }));
+  };
 
-          <TouchableOpacity style={styles.userContainer} onPress={() => navigation.navigate('ProfileMain', { userId: item.profiles.id })}>
-            <Text style={styles.userName}>{item.profiles.full_name}</Text>
-            <Text style={styles.userUsername}>@{item.profiles.username}</Text>
-          </TouchableOpacity>
-        </View> */}
-      </View>
-    </TouchableOpacity>
+  const renderItem = ({ item, index }: { item: RouteWithProfile; index: number }) => (
+    <View style={[
+      styles.cardWrapper,
+      { marginRight: (index + 1) % COLUMN_COUNT !== 0 ? 8 : 0 }
+    ]}>
+      <RouteCard
+        route={item}
+        userId={user?.id || null}
+        onRefresh={fetchRoutes}
+        expandedDescriptions={expandedDescriptions}
+        onToggleDescription={handleToggleDescription}
+        showAuthorHeader={false}
+        showConnectingLine={false}
+      />
+    </View>
   );
 
   const renderUserItem: ListRenderItem<User> = ({ item }: { item: User }): React.JSX.Element | undefined => {
@@ -212,7 +210,7 @@ const ExploreScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <ExploreHeader onSearch={() => console.log('search')} />
 
@@ -281,27 +279,17 @@ const ExploreScreen = () => {
         !isLoading && routes.length > 0 && (
           <FlatList
             data={routes}
-            renderItem={renderExploreItem}
+            renderItem={renderItem}
             onRefresh={onRefresh}
             refreshing={refreshing}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={['#333', '#121212']}
-                tintColor="#000000"
-                titleColor="#000000"
-              />
-            }
             keyExtractor={(item) => item.id}
-            numColumns={NUM_COLUMNS}
+            numColumns={COLUMN_COUNT}
             ListEmptyComponent={() => (
               <View style={styles.noRoutesContainer}>
                 <Text style={styles.noRoutesText}>Bu kategoride hiç rota bulunamadı</Text>
               </View>
             )}
-            columnWrapperStyle={styles.columnWrapper}
-            contentContainerStyle={styles.exploreList}
+            contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
           />
         )
@@ -428,95 +416,12 @@ const styles = StyleSheet.create({
   activeCategoryText: {
     color: '#fff',
   },
-  exploreList: {
-    padding: 1,
+  listContent: {
+    padding: 16,
   },
-  columnWrapper: {
-    marginBottom: 2,
-  },
-  exploreItem: {
-    width: ITEM_WIDTH,
-    height: ITEM_WIDTH,
-    backgroundColor: '#F5F5F5',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  exploreImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    padding: 8,
-    justifyContent: 'space-between',
-  },
-  likeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  cityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  cityText: {
-    color: '#fff',
-    fontSize: 12,
-    marginLeft: 4,
-    fontWeight: '600',
-  },
-  likeCount: {
-    color: '#fff',
-    fontSize: 12,
-    marginLeft: 4,
-    fontWeight: '600',
-  },
-  infoContainer: {
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 8,
-    padding: 6,
-  },
-  itemTitle: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  userContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  userName: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 1,
-  },
-  userUsername: {
-    color: '#fff',
-    fontSize: 12,
-    marginLeft: 4,
-  },
-  locationText: {
-    color: '#fff',
-    fontSize: 10,
-    marginLeft: 2,
-    opacity: 0.9,
+  cardWrapper: {
+    width: CARD_WIDTH,
+    marginBottom: 8,
   },
 });
 
