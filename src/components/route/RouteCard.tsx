@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AuthorInfo from '../AuthorInfo';
 import RouteModel, { RouteWithProfile } from '../../model/routes.model';
 import { navigate, PageName } from '../../types/navigation';
 import { useNavigation } from '@react-navigation/native';
 import Seperator from '../Seperator';
+import { NoImage } from '../../assets';
+import { supabase } from '../../lib/supabase';
+import { showToast } from '../../utils/alert';
 
 interface RouteCardProps {
   route: RouteWithProfile;
@@ -34,6 +37,9 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const [localLikeCount, setLocalLikeCount] = useState(route.like_count || 0);
   const [localDidLike, setLocalDidLike] = useState(route.did_like || false);
   const navigation = useNavigation();
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingImage, setLoadingImage] = useState(true);
 
   // Handle text layout if needed
   const handleTextLayout = (e: any, key: string) => {
@@ -46,6 +52,64 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const safeCreatedAt = route.created_at || new Date().toISOString();
   const safeAuthorId = route.user_id || '';
   const safeRouteId = route.id || ''; // Ensure we have a valid route ID
+
+  // Function to get the public URL for an image
+  const getPublicUrl = (path: string | undefined) => {
+    if (!path) {
+      console.log('No path provided for getPublicUrl');
+      return null;
+    }
+    try {
+      const { data } = supabase.storage.from('route-images').getPublicUrl(path);
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error getting public URL:', error);
+      return null;
+    }
+  };
+
+  // Function to download the image
+  const downloadImage = async (image_url: string | undefined) => {
+    setLoadingImage(true);
+    
+    if (!image_url) {
+      setImageUri(null);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // If public URL fails, try to download the file
+      const { data, error } = await supabase
+        .storage
+        .from('route-images')
+        .download(image_url);
+
+      if (error) {
+        console.error('Supabase download error:', error);
+        throw error;
+      }
+
+      // Convert Blob to Base64
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageUri(reader.result as string);
+      };
+      reader.readAsDataURL(data);
+    } catch (error) {
+      console.error('Error in downloadImage:', error);
+      showToast('error', 'Resim yüklenirken bir hata oluştu');
+      setImageUri(null);
+    } finally {
+      setLoading(false);
+      setLoadingImage(false);
+    }
+  };
+
+  // Trigger the function when the component is mounted or image_url changes
+  useEffect(() => {
+    downloadImage(route.image_url);
+  }, [route.image_url]);
 
   return (
     <View style={[styles.cardContainer, (showConnectingLine && !isMainRoute) && styles.withConnectingLine]}>
@@ -71,17 +135,33 @@ const RouteCard: React.FC<RouteCardProps> = ({
             cityName={route.cities?.name || ''}
           />
         )}
-        <Image
-          source={{ uri: route.image_url || 'https://picsum.photos/800/500?random=' + route.id }}
-          style={styles.routeImage}
-          resizeMode="cover"
-        />
+
+        <View style={styles.imageContainer}>
+          {loadingImage ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#333" />
+            </View>
+          ) : imageUri ? (
+            <Image 
+              source={{ uri: imageUri }} 
+              style={styles.routeImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Image 
+              source={NoImage} 
+              style={styles.routeImage}
+              resizeMode="cover"
+            />
+          )}
+        </View>
+
         <View style={styles.routeInfo}>
-          <View style={{padding: 16}}>
+          <View style={{ padding: 16 }}>
             <Text style={styles.routeTitle}>{route.title}</Text>
 
             {/* Category and city should be hidden for not main routes */}
-            <View style={[styles.row, !isMainRoute && { display: 'none' }]}>
+            <View style={[styles.row, !isMainRoute && { display: 'none' }, { paddingBottom: 4 }]}>
               {route.categories?.name && (
                 <>
                   <TouchableOpacity
@@ -209,7 +289,6 @@ const styles = StyleSheet.create({
   },
   categoryContainer: {
     alignSelf: 'flex-start',
-    paddingVertical: 2,
   },
   withConnectingLine: {
     paddingLeft: 16,
@@ -237,9 +316,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  routeImage: {
+  imageContainer: {
     width: '100%',
     height: 200,
+    backgroundColor: '#f5f5f5',
   },
   routeInfo: {
     paddingBottom: 0,
@@ -262,7 +342,6 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 8,
     marginTop: 4,
-    lineHeight: 20,
   },
 
   cityContainer: {
@@ -271,7 +350,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cityName: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#333',
   },
   seeMoreText: {
@@ -316,6 +395,15 @@ const styles = StyleSheet.create({
     margin: 0,
     fontSize: 14,
     color: '#121212',
+  },
+  routeImage: {
+    width: '100%',
+    height: '100%',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

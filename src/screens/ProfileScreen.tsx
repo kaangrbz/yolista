@@ -394,11 +394,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
         <View style={styles.headerTextContainer}>
           <View style={styles.headerNameContainer}>
-            <Text style={styles.headerName}>
-              {user?.full_name || 'Kullanıcı'}
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
+              <Text style={styles.headerName}>{user?.full_name || 'Kullanıcı'}</Text>
               {user?.is_verified && <MaterialIcons name="verified" size={16} color="#1DA1F2" />}
 
-            </Text>
+            </View>
 
 
             {/* Show follow/unfollow button for other users' profiles */}
@@ -478,7 +478,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={{flex: 1}}>
       {renderHeader(user)}
       <Tab.Navigator
@@ -544,7 +544,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           onUpdate={handleProfileUpdate}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

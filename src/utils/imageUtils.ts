@@ -9,6 +9,16 @@ export interface ResizedImage {
   filename: string;
 }
 
+interface FileToUpload {
+  file: string; // Local file URI
+  path: string; // Path in the bucket
+}
+
+interface UploadMultipleFilesResponse {
+  success: boolean;
+  results: Array<{ path: string; success: boolean; error?: string }>;
+}
+
 export async function resizeImage(
   uri: string,
   width: number = 1080,
@@ -40,6 +50,7 @@ export async function resizeImage(
         onlyScaleDown: true,
       },
     );
+    console.log("🚀 ~ resized:", resized)
 
     if (!resized || !resized.uri) {
       console.error('Failed to resize image: No result from ImageResizer');
@@ -115,4 +126,35 @@ export async function resizeMultipleImages(
   );
 
   return Promise.all(resizePromises);
+}
+
+export async function uploadMultipleFiles(
+  files: FileToUpload[],
+  bucketName: string
+): Promise<UploadMultipleFilesResponse> {
+  const uploadResults = [];
+
+  for (const file of files) {
+    try {
+      const fileBlob = await fetch(file.file).then((res) => res.blob());
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .upload(file.path, fileBlob);
+
+      if (error) {
+        uploadResults.push({ path: file.path, success: false, error: error.message });
+      } else {
+        uploadResults.push({ path: file.path, success: true });
+      }
+    } catch (error) {
+      uploadResults.push({ path: file.path, success: false, error: String(error) });
+    }
+  }
+
+  const allSuccessful = uploadResults.every((result) => result.success);
+
+  return {
+    success: allSuccessful,
+    results: uploadResults,
+  };
 }

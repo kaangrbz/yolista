@@ -36,11 +36,12 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
       }
 
       showToast('success', 'Rota silme işlemi başarılı');
+      setVisibleDropdown(false);
 
       try {
         if (callback && typeof callback === 'function') {
           callback();
-          if (screenName !== 'HomeMain') {
+          if (screenName === 'RouteDetail') {
             navigation.goBack();
           }
         }
@@ -64,11 +65,12 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
       }
 
       showToast('success', 'Rota gizleme işlemi başarılı');
+      setVisibleDropdown(false);
 
       try {
         if (callback && typeof callback === 'function') {
           callback();
-          if (screenName !== 'HomeMain') {
+          if (screenName === 'RouteDetail') {
             navigation.goBack();
           }
         }
@@ -84,10 +86,12 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
 
   const handleEditRoute = async () => {
     showToast('warning', 'Düzenleme özelliği henüz aktif değil')
+    setVisibleDropdown(false);
   }
 
   const handleReportRoute = async () => {
     showToast('warning', 'Raporlama özelliği henüz aktif değil')
+    setVisibleDropdown(false);
   }
 
 

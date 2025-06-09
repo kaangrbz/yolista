@@ -17,11 +17,11 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-<string>1.2.2</string>
+<string>1.2.3-beta</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-<string>9</string>
+<string>11</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -32,7 +32,7 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>Konumunuzu paylaşmak için konum izni gerekiyor.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>AntDesign.ttf</string>
@@ -71,12 +71,28 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	
+	<!-- Photo Library Permissions -->
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Resimlerinizi yüklemek için fotoğraf kütüphanesine erişim gerekiyor.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Resimlerinizi kaydetmek için fotoğraf kütüphanesine erişim gerekiyor.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Resimlerinizi kaydetmek için fotoğraf kütüphanesine erişim gerekiyor.</string>
+	<string>$(PRODUCT_NAME) would like access to your photo gallery to upload images for routes.</string>
 
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>$(PRODUCT_NAME) would like to save photos to your photo library.</string>
+	
+	<!-- Camera Permission -->
+	<key>NSCameraUsageDescription</key>
+	<string>$(PRODUCT_NAME) would like to use your camera to take photos for routes.</string>
+	
+	<!-- iOS 14+ Photo Library Access -->
+	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
+	<true/>
+
+	<!-- Microphone Permission -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>$(PRODUCT_NAME) would like to use your microphone for video recording.</string>
+
+	<!-- Media Library Permission -->
+	<key>NSMediaLibraryUsageDescription</key>
+	<string>$(PRODUCT_NAME) would like to use your media library to upload images for routes.</string>
 </dict>
 </plist>

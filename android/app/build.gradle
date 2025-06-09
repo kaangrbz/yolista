@@ -2,6 +2,7 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+
 // React Native Vector Icons
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
 
@@ -85,8 +86,8 @@ android {
         applicationId "com.yolista"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 9
-        versionName "1.2.2"
+        versionCode 11
+        versionName "1.2.3-beta"
     }
     signingConfigs {
         debug {
@@ -126,6 +127,9 @@ dependencies {
 
     // React Native Vector Icons
     implementation project(':react-native-vector-icons')
+
+    // React Native FS
+    implementation project(':react-native-fs')
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

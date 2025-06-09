@@ -15,7 +15,7 @@ import { CityState, useCityStore } from '../store/cityStore';
 
 import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/alert';
-import { resizeMultipleImages, uploadImage } from '../utils/imageUtils';
+import { resizeImage, resizeMultipleImages, uploadImage, uploadMultipleFiles } from '../utils/imageUtils';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { CreateRouteHeader } from '../components/header/Header';
 import DropDownPicker from 'react-native-dropdown-picker';
@@ -26,6 +26,8 @@ import CategoryModel from '../model/category.model';
 import CityModel from '../model/cities.model';
 import ImageResizer from 'react-native-image-resizer';
 import { requestFilePermission } from '../utils/PermissionController';
+import { decode, encode } from 'base64-arraybuffer';
+import RNFS from 'react-native-fs';
 
 
 export const CreateRouteScreen = () => {
@@ -49,6 +51,8 @@ export const CreateRouteScreen = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isLoadingCity, setIsLoadingCity] = useState(true);
   const [isLoadingCategory, setIsLoadingCategory] = useState(true);
+  // Route points state
+  const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
 
   // Form state
   const [formErrors, setFormErrors] = useState({
@@ -69,8 +73,6 @@ export const CreateRouteScreen = () => {
 
   const isFocused = useIsFocused();
 
-  // Route points state
-  const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
 
   useEffect(() => {
     if (isFocused) {
@@ -141,7 +143,7 @@ export const CreateRouteScreen = () => {
   // Route management functions
   const addRoutePoint = async () => {
     const newRoutePoint: RoutePoint = {
-      client_id: randomString(16).toString(),
+      client_id: randomString(16),
       title: '',
       description: '',
       image_url: '',
@@ -165,6 +167,18 @@ export const CreateRouteScreen = () => {
     );
 
   };
+
+  const updateRoutePointMultiple = (
+    client_id: string,
+    fields: Partial<RoutePoint>, // Only allow valid `RoutePoint` keys
+  ) => {
+    setRoutePoints(
+      routePoints.map(point =>
+        point.client_id === client_id ? { ...point, ...fields } : point,
+      ),
+    );
+  };
+
 
   const removeRoutePoint = (id: string) => {
     if (routePoints.length <= 1) {
@@ -199,40 +213,6 @@ export const CreateRouteScreen = () => {
     setRoutePoints(reorderedPoints);
   };
 
-  const handleRouteImageSelect = async (client_id: string) => {
-    try {
-      // Check and request file permissions
-      const hasPermission = await requestFilePermission();
-      if (!hasPermission) {
-        showToast('error', 'Dosya erişim izni reddedildi');
-        return;
-      }
-
-      const result = await launchImageLibrary({
-        mediaType: 'photo',
-        quality: 0.8,
-        includeBase64: false,
-        selectionLimit: 1,
-      });
-
-      if (result.didCancel) return;
-      
-      if (result.errorCode) {
-        console.error('ImagePicker Error: ', result.errorMessage);
-        showToast('error', result.errorMessage || 'Resim seçilirken bir hata oluştu');
-        return;
-      }
-
-      if (result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        // Use the original URI for now, we'll handle resizing during submission
-        updateRoutePoint(client_id, 'image_url', asset.uri);
-      }
-    } catch (error) {
-      console.error('Error selecting image:', error);
-      showToast('error', 'Resim seçilirken bir hata oluştu');
-    }
-  };
 
   // Bookmark functionality removed
 
@@ -290,6 +270,7 @@ export const CreateRouteScreen = () => {
     setFormErrors(errors);
     return isValid;
   };
+
   // Handle input blur
   const handleInputBlur = (field: string) => {
     setTouched(prev => ({
@@ -299,6 +280,7 @@ export const CreateRouteScreen = () => {
     validateForm();
   };
 
+  // Reset form
   const resetForm = () => {
     // Clear route points
     setRoutePoints([]);
@@ -327,20 +309,89 @@ export const CreateRouteScreen = () => {
     addRoutePoint();
   };
 
-  async function resizeAllRoutePointImages(routePoints: RoutePoint[]) {
-    // Filter out points without images and map to the expected format
-    const imagesToResize = routePoints
-      .filter(point => point.image_url)
-      .map(point => ({
-        uri: point.image_url!,
-        client_id: point.client_id || ''
-      }));
+  const handleImageSelect = async (client_id: string) => {
+    try {
+      // Check and request file permissions
+      const hasPermission = await requestFilePermission();
+      if (!hasPermission) {
+        showToast('error', 'Dosya erişim izni reddedildi');
+        return;
+      }
 
-    // Resize all images in parallel
-    return resizeMultipleImages(imagesToResize);
-  }
+      const result = await launchImageLibrary({
+        mediaType: 'mixed',
+        quality: 0.8,
+        includeBase64: false,
+        selectionLimit: 1,
+        restrictMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
+      });
+
+      if (result.didCancel) return;
+
+      if (result.errorCode) {
+        console.error('ImagePicker Error: ', result.errorMessage);
+        showToast('error', result.errorMessage || 'Resim seçilirken bir hata oluştu');
+        return;
+      }
+
+      if (result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+
+        // Check if the image is vertical
+        if (asset.height && asset.width && asset.height > asset.width) {
+          showToast('error', 'Lütfen yatay bir resim seçiniz');
+          return;
+        }
+
+        // Resize the image
+        const resizedImage = await resizeImage(asset.uri!, 1285, 1080, 'JPEG', 80, client_id);
+
+        updateRoutePoint(client_id, 'image_url', resizedImage?.uri);
+      }
+    } catch (error) {
+      console.error('Error selecting image:', error);
+      showToast('error', 'Resim seçilirken bir hata oluştu');
+    }
+  };
+
+  // Upload images to Supabase
+  const uploadImages = async (): Promise<{ data: any, client_id: string }[]> => {
+    try {
+      const promises = routePoints
+        .filter(point => point.image_url)
+        .map(async (item: RoutePoint) => {
+          const filePath = `${user.id}/${randomString(16)}.jpg`;
+
+          // Read the image file as a binary array
+          const image_base64 = await RNFS.readFile(item.image_url!, 'base64');
+
+          const { data, error } = await supabase.storage
+            .from('route-images')
+            .upload(filePath, decode(image_base64), {
+              cacheControl: '3600',
+              upsert: false,
+              contentType: 'image/jpeg',
+            });
+
+          if (error) {
+            throw error;
+          }
+
+          return { data, client_id: item.client_id! };
+        });
+
+      const results = await Promise.all(promises);
+
+      return results;
+    } catch (error) {
+      console.error('Upload failed:', error.message);
+      return [];
+    }
+  };
 
   const handleSubmit = async (): Promise<void> => {
+    setIsPublishing(true);
+
     // Validate form fields
     const isValid = validateForm();
     setTouched({
@@ -351,101 +402,36 @@ export const CreateRouteScreen = () => {
       routes: true,
     });
 
-    if (!isValid) {
-      showToast('error', 'Lütfen formu kontrol edin');
-      return;
-    }
-
-    setIsPublishing(true);
-
     try {
-      // Process route points with images
-      const processedPoints = await Promise.all(
-        routePoints.map(async (point) => {
-          if (!point.image_url) return point;
-          
-          try {
-            // Resize the image
-            const resized = await ImageResizer.createResizedImage(
-              point.image_url,
-              1080,
-              608,
-              'JPEG',
-              80,
-              0,
-              undefined, // Let ImageResizer create a temporary file
-              false,
-              {
-                mode: 'contain',
-                onlyScaleDown: true,
-              },
-            );
-
-            // Upload the resized image
-            const filename = `route_${Date.now()}_${point.client_id}.jpg`;
-            const publicUrl = await uploadImage(
-              resized.uri,
-              filename,
-              'route-points'
-            );
-
-            if (!publicUrl) {
-              throw new Error('Failed to upload image');
-            }
-
-            // Return the updated point with the new image URL
-            return { ...point, image_url: publicUrl };
-          } catch (error) {
-            console.error('Error processing image:', error);
-            return point; // Return original point if image processing fails
-          }
-        })
-      );
-
-      // Update route points with processed images
-      setRoutePoints(processedPoints);
-
-      // Submit the route data
-      const { data, error } = await RouteModel.createRoute(
-        processedPoints,
-        selectedCityId,
-        selectedCategoryId,
-      );
-
-      if (error) {
-        throw error;
+      if (!isValid) {
+        showToast('error', 'Lütfen formu kontrol edin');
+        setIsPublishing(false);
+        return;
       }
 
-      showToast('success', 'Rota başarıyla oluşturuldu');
-      resetForm();
-    } catch (error) {
-      console.error('Error creating route:', error);
-      showToast('error', 'Rota oluşturulurken bir hata oluştu');
-    } finally {
-      setIsPublishing(false);
-    }
+      const uploadResult = await uploadImages();
+      const newRoutePoints: RoutePoint[] = [];
 
-    // resizedImages.forEach((image) => {
-    //   if (image) {
-    //     let route = routePoints.find(point => point.client_id === image.client_id) as RoutePoint;
-    //     updateRoutePoint(image.client_id, 'image_url', image.uri);
-    //   }
-    // });
+      routePoints.forEach(point => {
+        const result = uploadResult.find((result: {
+          data: {
+            id: string;
+            path: string;
+            fullPath: string;
+          } | null, client_id: string
+        }) => result.client_id === point.client_id);
 
-    // setIsPublishing(false);
-    // resizedImages.forEach(async (resizedImage) => {
-    //   if (resizedImage) {
-    //     const publicUrl = await uploadImage(
-    //       resizedImage.uri,
-    //       resizedImage.filename,
-    //       'route-images'
-    //     );
-    //   }
-    // });
-    return;
-    try {
+        if (result) {
+          newRoutePoints.push({ ...point, image_url: result.data?.path });
+        } else {
+          newRoutePoints.push(point);
+        }
+      }); 
+
+      console.log('newRoutePoints', newRoutePoints);
+
       const { data, error } = await RouteModel.createRoute(
-        routePoints,
+        newRoutePoints,
         selectedCityId,
         selectedCategoryId,
       );
@@ -458,13 +444,14 @@ export const CreateRouteScreen = () => {
 
       showToast('success', 'Rota başarıyla eklendi', 'Başarılı');
       resetForm();
-      navigation.goBack();
+      navigation.navigate('HomeStack');
     } catch (error) {
-      console.error('Error adding route:', error);
-      showToast('error', 'Rota eklenirken bir hata oluştu', 'Hata');
+      console.error('Error creating route:', error);
+      showToast('error', 'Rota oluşturulurken bir hata oluştu');
     } finally {
-      // setIsPublishing(false);
+      setIsPublishing(false);
     }
+
   };
 
   return (
@@ -473,80 +460,80 @@ export const CreateRouteScreen = () => {
       <View style={[styles.container]}>
         <View style={styles.form}>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between'  }}>
-            
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: '#222' }]}>
-              Şehir seç <Text style={{ color: 'red' }}>*</Text>
-            </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
 
-            {isLoadingCity && <ActivityIndicator size="small" color="#000" />}
-            {!isLoadingCity && (
-              <DropDownPicker
-              open={openCity}
-              value={selectedCityId}
-              items={cities}
-              setOpen={setOpenCity}
-              setValue={setSelectedCityId}
-              searchable
-              onChangeValue={value => {
-                if (value !== null) {
-                  handleInputBlur('cityId');
-                }
-              }}
-              setItems={setCities}
-              placeholder="Şehir seçin"
-              style={styles.pickerStyle}
-              textStyle={styles.pickerTextStyle}
-              dropDownContainerStyle={styles.pickerContainerStyle}
-              disabledItemContainerStyle={styles.disabledItemContainerStyle}
-              disabledItemLabelStyle={styles.disabledItemLabelStyle}
-              onClose={() => handleInputBlur('cityId')}
-            />
-            )}
-            {formErrors.cityId && touched.cityId && (
-              <Text style={styles.errorText}>{formErrors.cityId}</Text>
-            )}
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: '#222' }]}>
-              Kategori seç{' '}
-              <Text style={{ color: '#66666660', fontSize: 12 }}>
-                (opsiyonel)
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: '#222' }]}>
+                Şehir seç <Text style={{ color: 'red' }}>*</Text>
               </Text>
-            </Text>
 
-            {isLoadingCategory && (
-              <ActivityIndicator size="small" color="#000" />
-            )}
-            {!isLoadingCategory && (
-              <DropDownPicker
-                open={openCategory}
-                value={selectedCategoryId}
-                items={categories}
-                setOpen={setOpenCategory}
-                setValue={setSelectedCategoryId}
-                searchable
-                onChangeValue={value => {
-                  if (value !== null) {
-                    handleInputBlur('categoryId');
-                  }
-                }}
-                setItems={setCategories}
-                placeholder="Kategori seçin"
-                style={styles.pickerStyle}
-                textStyle={styles.pickerTextStyle}
-                dropDownContainerStyle={styles.pickerContainerStyle}
-                disabledItemContainerStyle={styles.disabledItemContainerStyle}
-                disabledItemLabelStyle={styles.disabledItemLabelStyle}
-                onClose={() => handleInputBlur('categoryId')}
-              />
-            )}
-            {formErrors.categoryId && touched.categoryId && (
-              <Text style={styles.errorText}>{formErrors.categoryId}</Text>
-            )}
-          </View>
+              {isLoadingCity && <ActivityIndicator size="small" color="#000" />}
+              {!isLoadingCity && (
+                <DropDownPicker
+                  open={openCity}
+                  value={selectedCityId}
+                  items={cities}
+                  setOpen={setOpenCity}
+                  setValue={setSelectedCityId}
+                  searchable
+                  onChangeValue={value => {
+                    if (value !== null) {
+                      handleInputBlur('cityId');
+                    }
+                  }}
+                  setItems={setCities}
+                  placeholder="Şehir seçin"
+                  style={styles.pickerStyle}
+                  textStyle={styles.pickerTextStyle}
+                  dropDownContainerStyle={styles.pickerContainerStyle}
+                  disabledItemContainerStyle={styles.disabledItemContainerStyle}
+                  disabledItemLabelStyle={styles.disabledItemLabelStyle}
+                  onClose={() => handleInputBlur('cityId')}
+                />
+              )}
+              {formErrors.cityId && touched.cityId && (
+                <Text style={styles.errorText}>{formErrors.cityId}</Text>
+              )}
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: '#222' }]}>
+                Kategori seç{' '}
+                <Text style={{ color: '#66666660', fontSize: 12 }}>
+                  (opsiyonel)
+                </Text>
+              </Text>
+
+              {isLoadingCategory && (
+                <ActivityIndicator size="small" color="#000" />
+              )}
+              {!isLoadingCategory && (
+                <DropDownPicker
+                  open={openCategory}
+                  value={selectedCategoryId}
+                  items={categories}
+                  setOpen={setOpenCategory}
+                  setValue={setSelectedCategoryId}
+                  searchable
+                  onChangeValue={value => {
+                    if (value !== null) {
+                      handleInputBlur('categoryId');
+                    }
+                  }}
+                  setItems={setCategories}
+                  placeholder="Kategori seçin"
+                  style={styles.pickerStyle}
+                  textStyle={styles.pickerTextStyle}
+                  dropDownContainerStyle={styles.pickerContainerStyle}
+                  disabledItemContainerStyle={styles.disabledItemContainerStyle}
+                  disabledItemLabelStyle={styles.disabledItemLabelStyle}
+                  onClose={() => handleInputBlur('categoryId')}
+                />
+              )}
+              {formErrors.categoryId && touched.categoryId && (
+                <Text style={styles.errorText}>{formErrors.categoryId}</Text>
+              )}
+            </View>
           </View>
 
           <ScrollView style={styles.inputContainer}>
@@ -561,7 +548,7 @@ export const CreateRouteScreen = () => {
               <Text style={styles.errorText}>{formErrors.routes}</Text>
             )}
 
-            {routePoints.map((point, index) => (
+            {routePoints.length > 0 && routePoints.map((point, index) => (
               <View key={point.client_id} style={styles.routeItem}>
                 <View style={styles.routeHeader}>
                   <Text style={styles.routeHeaderText}>Durak {index + 1}</Text>
@@ -593,7 +580,7 @@ export const CreateRouteScreen = () => {
 
                 <TouchableOpacity
                   style={styles.imagePicker}
-                  onPress={() => handleRouteImageSelect(point.client_id!)}>
+                  onPress={() => handleImageSelect(point.client_id!)}>
                   {point.image_url ? (
                     <Image
                       source={{ uri: point.image_url }}

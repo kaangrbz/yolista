@@ -11,6 +11,7 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
+import com.rnfs.RNFSPackage;
 
 // React Native Vector Icons
 import com.oblador.vectoricons.VectorIconsPackage;
@@ -26,6 +27,9 @@ class MainApplication : Application(), ReactApplication {
 
               // React Native Vector Icons
               add(VectorIconsPackage())
+
+              // React Native FS
+              add(RNFSPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"
