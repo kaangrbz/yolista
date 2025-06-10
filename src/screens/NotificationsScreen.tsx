@@ -38,6 +38,16 @@ const NotificationsScreen = () => {
     }
   }, [isFocused, user?.id]);
 
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (user?.id) {
+      timer = setInterval(() => {
+        NotificationModel.markAsRead({ userId: user.id });
+      }, 5000);
+    }
+    return () => clearInterval(timer);
+  }, [user?.id]);
+
   const fetchNotifications = async (type: 'initial' | 'loadMore' = 'initial') => {
     try {
       if (!user?.id) return;

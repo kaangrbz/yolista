@@ -109,8 +109,8 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
       // If public URL fails, try to download the file
       const { data, error } = await supabase
         .storage
-        .from('user-profiles')
-        .download(image_url);
+        .from('profiles')
+        .download(`${authorId}/${image_url}`);
 
       if (error) {
         console.error('Supabase download error:', error);
@@ -125,7 +125,7 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
       reader.readAsDataURL(data);
     } catch (error) {
       console.error('Error in downloadImage:', error);
-      showToast('error', 'Resim yüklenirken bir hata oluştu');
+      // showToast('error', 'Resim yüklenirken bir hata oluştu');
       setImageUri(null);
     } finally {
     }

@@ -141,11 +141,12 @@ const NotificationModel = {
    * @param {number} notificationId - The ID of the notification to update
    * @returns {Promise<any>} Updated notification object
    */
-  async markAsRead({ notificationId }: { notificationId: number }): Promise<NotificationType[]> {
+  async markAsRead({ userId }: { userId: string }): Promise<NotificationType[]> {
     const { data, error } = await supabase
       .from("notifications")
       .update({ is_read: true })
-      .eq("id", notificationId)
+      .eq("recipient_id", userId)
+      .eq("is_read", false)
       .select("*");
 
     if (error) {

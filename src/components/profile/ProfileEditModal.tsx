@@ -25,6 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 import { randomString } from '../../utils/randomString';
 import RNFS from 'react-native-fs';
 import { decode } from 'base64-arraybuffer';
+import { NoImage } from '../../assets';
 
 interface ProfileEditModalProps {
   visible: boolean;
@@ -32,6 +33,7 @@ interface ProfileEditModalProps {
   profile: Profile;
   onUpdate: (updatedProfile: Profile) => void;
   imageUri: string | null;
+  headerImageUri: string | null;
 }
 
 const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
@@ -40,6 +42,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
   profile,
   onUpdate,
   imageUri,
+  headerImageUri,
 }) => {
   const [loading, setLoading] = useState(false);
   const [fullName, setFullName] = useState(profile.full_name || '');
@@ -47,7 +50,9 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
   const [description, setDescription] = useState(profile.description || '');
   const [website, setWebsite] = useState(profile.website || '');
   const [imageUrl, setImageUrl] = useState(profile.image_url || '');
+  const [headerImageUrl, setHeaderImageUrl] = useState(profile.header_image_url || '');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingHeaderImage, setUploadingHeaderImage] = useState(false);
   const [isUsernameChanged, setIsUsernameChanged] = useState(false);
   const [usernameCheckTimeout, setUsernameCheckTimeout] = useState<any>(null);
   const { user } = useAuth();
@@ -76,7 +81,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
   });
 
 
-  const handleImagePick = async () => {
+  const handleImagePick = async (type: 'profile' | 'header') => {
     try {
       // First check and request permissions
       const hasPermission = await requestFilePermission();
@@ -101,49 +106,76 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
         return;
       }
 
-      if (result.assets && result.assets[0]) {
+      if (type === 'profile') {
         setUploadingImage(true);
+      } else if (type === 'header') {
+        setUploadingHeaderImage(true);
+      }
+
+      if (result.assets && result.assets[0]) {
         const asset = result.assets[0];
 
-        // Upload the image
         // Resize the image
-        const resizedImage = await resizeImage(asset.uri!, 200, 200, 'JPEG', 80, profile.id);
+        let resizedImage;
+        let bucketName = 'profile';
+        if (type === 'profile') {
+          resizedImage = await resizeImage(asset.uri!, 200, 200, 'JPEG', 80, profile.id);
+          bucketName = 'profiles';
+        } else if (type === 'header') {
+          resizedImage = await resizeImage(asset.uri!, 1285, 1080, 'JPEG', 80, profile.id);
+          bucketName = 'headers';
+        }
 
-        const filePath = `${user?.id}/${randomString(16)}.jpg`;
+        const fileName = `${randomString(16)}.jpg`;
+        const filePath = `${user?.id}/${fileName}`;
 
         // Read the image file as a binary array
         const image_base64 = await RNFS.readFile(resizedImage?.uri!, 'base64');
 
         const { data, error } = await supabase.storage
-          .from('user-profiles')
+          .from(bucketName)
           .upload(filePath, decode(image_base64), {
             cacheControl: '3600',
             upsert: false,
             contentType: 'image/jpeg',
           });
 
-          
-
-          
         if (data) {
-          setImageUrl(resizedImage?.uri!);
+          
 
-          const updateResult = await UserModel.updateUserImage(user?.id!, { image_url: data.path });
+          let updateData: any;
+          if (type === 'profile') {
+            setImageUrl(resizedImage?.uri!);
+            updateData = {
+              image_url: fileName,
+            };
+          } else if (type === 'header') {
+            setHeaderImageUrl(resizedImage?.uri!);
+            updateData = {
+              header_image_url: fileName,
+            };
+          }
+
+          const updateResult = await UserModel.updateUserImage(user?.id!, updateData);
 
           if (!updateResult) {
-            showToast('error', 'Profil fotoğrafı güncellenirken bir hata oluştu');
+            showToast('error', 'Fotoğraf güncellenirken bir hata oluştu');
           } else {
-            showToast('success', 'Profil fotoğrafı güncellendi');
+            showToast('success', 'Fotoğraf güncellendi');
           }
         } else {
-          showToast('error', 'Resim yüklenirken bir hata oluştu');
+          // showToast('error', 'Resim yüklenirken bir hata oluştu');
         }
       }
     } catch (error) {
       console.error('Error picking image:', error);
       showToast('error', 'Resim seçilirken bir hata oluştu');
     } finally {
-      setUploadingImage(false);
+      if (type === 'profile') {
+        setUploadingImage(false);
+      } else if (type === 'header') {
+        setUploadingHeaderImage(false);
+      }
     }
   };
 
@@ -266,7 +298,26 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
           <ScrollView style={styles.content}>
             <TouchableOpacity
               style={styles.imageContainer}
-              onPress={handleImagePick}
+              onPress={() => handleImagePick('header')}
+              disabled={uploadingHeaderImage}
+            >
+              {uploadingHeaderImage ? (
+                <ActivityIndicator size="large" color="#1DA1F2" />
+              ) : (
+                <>
+                  <Image
+                    source={ headerImageUri ? { uri: headerImageUri} : NoImage} 
+                    style={styles.headerImage}
+                  />
+                  <View style={styles.imageOverlay}>
+                    <Icon name="camera" size={24} color="#fff" />
+                  </View>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.imageContainer}
+              onPress={() => handleImagePick('profile')}
               disabled={uploadingImage}
             >
               {uploadingImage ? (
@@ -274,7 +325,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
               ) : (
                 <>
                   <Image
-                    source={{ uri: imageUri || 'https://picsum.photos/200' }}
+                    source={ imageUri ? { uri: imageUri} : NoImage}
                     style={styles.profileImage}
                   />
                   <View style={styles.imageOverlay}>
@@ -389,16 +440,19 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   imageContainer: {
-    width: 100,
-    height: 100,
     borderRadius: 50,
     overflow: 'hidden',
     alignSelf: 'center',
     marginBottom: 20,
   },
-  profileImage: {
+  headerImage: {
     width: '100%',
-    height: '100%',
+    minWidth: '100%',
+    height: 200,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
   },
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -72,40 +72,30 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const safeAuthorId = route.user_id || '';
   const safeRouteId = route.id || ''; // Ensure we have a valid route ID
 
-  // Function to get the public URL for an image
-  const getPublicUrl = (path: string | undefined) => {
-    if (!path) {
-      console.log('No path provided for getPublicUrl');
-      return null;
-    }
-    try {
-      const { data } = supabase.storage.from('route-images').getPublicUrl(path);
-      return data.publicUrl;
-    } catch (error) {
-      console.error('Error getting public URL:', error);
-      return null;
-    }
-  };
-
   // Function to download the image
   const downloadImage = async (image_url: string | undefined) => {
     setLoadingImage(true);
-    
+
+    console.log('Downloading image_url:', image_url);
+
     if (!image_url) {
       setImageUri(null);
+      setLoadingImage(false);
       return;
     }
 
     setLoading(true);
     try {
       // If public URL fails, try to download the file
+      const filepath = `${route.user_id}/${image_url}`;
+
       const { data, error } = await supabase
         .storage
-        .from('route-images')
-        .download(image_url);
+        .from('routes')
+        .download(filepath);
 
       if (error) {
-        console.error('Supabase download error:', error);
+        console.log('Supabase download error:', error);
         throw error;
       }
 
@@ -116,12 +106,12 @@ const RouteCard: React.FC<RouteCardProps> = ({
       };
       reader.readAsDataURL(data);
     } catch (error) {
-      console.error('Error in downloadImage:', error);
-      showToast('error', 'Resim yüklenirken bir hata oluştu');
+      console.log('Error in downloadImage:', error);
+      // showToast('error', 'Resim yüklenirken bir hata oluştu');
       setImageUri(null);
     } finally {
       setLoading(false);
-      setLoadingImage(false);
+      setTimeout(() => setLoadingImage(false), 100);
     }
   };
 
@@ -142,7 +132,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
         style={styles.exploreCard}
         onPress={() => navigation.navigate('RouteDetail', { routeId: route.id || '' })}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.exploreImageContainer}
           onPress={() => {
             navigation.navigate('RouteDetail', { routeId: route.id || '' });
@@ -153,14 +143,14 @@ const RouteCard: React.FC<RouteCardProps> = ({
               <ActivityIndicator size="small" color="#333" />
             </View>
           ) : imageUri ? (
-            <Image 
-              source={{ uri: imageUri }} 
+            <Image
+              source={{ uri: imageUri }}
               style={styles.exploreImage}
               resizeMode="cover"
             />
           ) : (
-            <Image 
-              source={NoImage} 
+            <Image
+              source={NoImage}
               style={styles.exploreImage}
               resizeMode="cover"
             />
@@ -201,7 +191,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
           />
         )}
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.imageContainer}
           onPress={() => {
             if (imageUri) {
@@ -215,14 +205,14 @@ const RouteCard: React.FC<RouteCardProps> = ({
               <ActivityIndicator size="small" color="#333" />
             </View>
           ) : imageUri ? (
-            <Image 
-              source={{ uri: imageUri }} 
+            <Image
+              source={{ uri: imageUri }}
               style={styles.routeImage}
               resizeMode="cover"
             />
           ) : (
-            <Image 
-              source={NoImage} 
+            <Image
+              source={NoImage}
               style={styles.routeImage}
               resizeMode="cover"
             />
@@ -322,23 +312,21 @@ const RouteCard: React.FC<RouteCardProps> = ({
               </TouchableOpacity>
             </View>
           </View>
-          <View style={[styles.commentContainer]}>
-            <View style={styles.commentInputContainer}>
-              <Image
-                source={{
-                  uri: route.image_url || `https://picsum.photos/seed/${route.profiles?.id}/20/20`,
-                }}
-                style={styles.commentImage}
-              />
-              <TextInput
-                placeholder="Yorum yap"
-                placeholderTextColor="#666"
-                style={styles.commentInput}
-              />
-              <TouchableOpacity>
-                <Icon name="send" size={20} color="#121" />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.commentInputContainer}>
+            <Image
+              source={{
+                uri: `https://picsum.photos/seed/${route.profiles?.id}/20/20`,
+              }}
+              style={styles.commentImage}
+            />
+            <TextInput
+              placeholder="Yorum yap"
+              placeholderTextColor="#666"
+              style={styles.commentInput}
+            />
+            <TouchableOpacity>
+              <Icon name="send" size={20} color="#121" />
+            </TouchableOpacity>
           </View>
         </View>
       </TouchableOpacity>
@@ -452,14 +440,14 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   commentContainer: {
-    marginTop: 12,
   },
   commentInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
     paddingHorizontal: 12,
     paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
   },
   commentImage: {
     width: 24,

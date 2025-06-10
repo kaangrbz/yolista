@@ -30,6 +30,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Profile } from '../model/profile.model';
 import { Tabs } from 'react-native-collapsible-tab-view';
 import ProfileEditModal from '../components/profile/ProfileEditModal';
+import ImageViewer from '../components/ImageViewer';
 
 const { width } = Dimensions.get('window');
 
@@ -143,6 +144,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [headerImageUri, setHeaderImageUri] = useState<string | null>(null);
+  const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
+  const [isHeaderImageViewerVisible, setIsHeaderImageViewerVisible] = useState(false);
 
   // Check if the current profile belongs to the logged-in user
   const isCurrentUserProfile = currentUserId === profileUserId;
@@ -194,7 +198,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     try {
       setIsLoading(true);
       const routes = await RouteModel.getRoutes({
-       
+
         onlyMain: true,
         userId: profileUserId,
       });
@@ -275,47 +279,48 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   }, []);
 
   // Function to download the image
-    const downloadImage = async (image_url: string | undefined) => {
-  
-      if (!image_url) {
-        setImageUri(null);
-        return;
-      } 
-  
-      try {
-        // If public URL fails, try to download the file
-        const { data, error } = await supabase
-          .storage
-          .from('user-profiles')
-          .download(image_url);
-  
-        if (error) {
-          console.error('Supabase download error:', error);
-          throw error;
-        }
-  
-        // Convert Blob to Base64
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setImageUri(reader.result as string);
-        };
-        reader.readAsDataURL(data);
-      } catch (error) {
-        console.error('Error in downloadImage:', error);
-        showToast('error', 'Resim yüklenirken bir hata oluştu');
-        setImageUri(null);
-      } finally {
+  const downloadImage = async (image_url: string | undefined, bucketName: string, setImageUri: (uri: string | null) => void) => {
+
+    if (!image_url) {
+      setImageUri(null);
+      return;
+    }
+
+    try {
+      // If public URL fails, try to download the file
+      const { data, error } = await supabase
+        .storage
+        .from(bucketName)
+        .download(`${profileUserId}/${image_url}`);
+
+      if (error) {
+        console.error('Supabase download error:', error);
+        throw error;
       }
-    };
-  
-    // Trigger the function when the component is mounted or image_url changes
-    useEffect(() => {
-      downloadImage(user?.image_url);
-    }, [user?.image_url]);
+
+      // Convert Blob to Base64
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageUri(reader.result as string);
+      };
+      reader.readAsDataURL(data);
+    } catch (error) {
+      console.error('Error in downloadImage:', error);
+      // showToast('error', 'Resim yüklenirken bir hata oluştu');
+      setImageUri(null);
+    } finally {
+    }
+  };
+
+  // Trigger the function when the component is mounted or image_url changes
+  useEffect(() => {
+    downloadImage(user?.image_url, 'profiles', setImageUri);
+    downloadImage(user?.header_image_url, 'headers', setHeaderImageUri);
+  }, [user?.image_url]);
 
   // Tab Content Components
   const PostsTab = () => {
-    
+
     if (isLoading || refreshing) {
       return (
         <View style={styles.loadingContainer}>
@@ -404,16 +409,43 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
       <View style={styles.headerContainer}>
         <View style={{ width: '100%' }}>
           <View style={styles.headerImageContainer}>
-            <Image
-              source={{ uri: user?.header_image || 'https://picsum.photos/800/300' }}
-              style={styles.headerImage}
+            <TouchableOpacity
+              onPress={() => {
+                if (headerImageUri) {
+                  setIsHeaderImageViewerVisible(true);
+                }
+              }}
+              disabled={!headerImageUri}>
+              <Image
+                source={ headerImageUri ? { uri: headerImageUri} : undefined}
+                style={styles.headerImage}
+              />
+            </TouchableOpacity>
+            <ImageViewer
+              images={headerImageUri ? [{ uri: headerImageUri }] : []}
+              visible={isHeaderImageViewerVisible}
+              onRequestClose={() => setIsHeaderImageViewerVisible(false)}
             />
             <View style={styles.profilePhotoContainer}>
-              <Image
-                source={{ uri: imageUri || '' }}
-                style={styles.profilePhoto}
-              />
+              <TouchableOpacity
+                onPress={() => {
+                  if (imageUri) {
+                    setIsImageViewerVisible(true);
+                  }
+                }}
+                disabled={!imageUri}>
+
+                <Image
+                  source={ imageUri ? { uri: imageUri } : undefined}
+                  style={styles.profilePhoto}
+                />
+              </TouchableOpacity>
             </View>
+            <ImageViewer
+              images={imageUri ? [{ uri: imageUri }] : []}
+              visible={isImageViewerVisible}
+              onRequestClose={() => setIsImageViewerVisible(false)}
+            />
           </View>
 
           {/* Only show these buttons for the current user's profile */}
@@ -423,7 +455,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
                 onPress={() => {
                   setUser(user);
                   setIsEditModalVisible(true);
-                  
+
                 }}
               >
                 <Icon name="pencil" size={24} color="#fff" />
@@ -437,7 +469,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
         <View style={styles.headerTextContainer}>
           <View style={styles.headerNameContainer}>
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
               <Text style={styles.headerName}>{user?.full_name || 'Kullanıcı'}</Text>
               {user?.is_verified && <MaterialIcons name="verified" size={16} color="#1DA1F2" />}
 
@@ -475,8 +507,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
             <Text style={styles.statValue}>{routes.length}</Text>
             <Text style={styles.statLabel}>Rota</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.statItem} 
+          <TouchableOpacity
+            style={styles.statItem}
             onPress={() => {
               if (profileUserId) {
                 try {
@@ -490,8 +522,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
             <Text style={styles.statValue}>{followersCount || 0}</Text>
             <Text style={styles.statLabel}>Takipçi</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.statItem} 
+          <TouchableOpacity
+            style={styles.statItem}
             onPress={() => {
               if (profileUserId) {
                 try {
@@ -511,7 +543,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   };
 
 
-    
+
   if (fetchingUser) {
     return (
       <View style={styles.loadingContainer}>
@@ -522,69 +554,69 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
   return (
     <View style={styles.container}>
-      <View style={{flex: 1}}>
-      {renderHeader(user)}
-      <Tab.Navigator
-        screenOptions={{
-          tabBarActiveTintColor: '#000',
-          tabBarInactiveTintColor: '#666',
-          tabBarIndicatorStyle: { backgroundColor: '#000' },
-          tabBarLabelStyle: { fontWeight: '600', textTransform: 'none' },
-          tabBarStyle: { backgroundColor: '#fff', elevation: 0, shadowOpacity: 0 },
-        }}
-      >
-        <Tab.Screen 
-          name="Rotalar"
-          options={{
-            tabBarShowLabel: false,
-            tabBarIcon: ({ color, size }) => (
-              <MaterialIcons name="view-comfortable" size={size} color={color} />
-            ),
+      <View style={{ flex: 1 }}>
+        {renderHeader(user)}
+        <Tab.Navigator
+          screenOptions={{
+            tabBarActiveTintColor: '#000',
+            tabBarInactiveTintColor: '#666',
+            tabBarIndicatorStyle: { backgroundColor: '#000' },
+            tabBarLabelStyle: { fontWeight: '600', textTransform: 'none' },
+            tabBarStyle: { backgroundColor: '#fff', elevation: 0, shadowOpacity: 0 },
           }}
-          children={() => (
-            <PostsTab 
-              onRefresh={onRefresh}
-              refreshing={refreshing}
-              routes={routes}
-              isLoading={isLoading}
-              expandedDescriptions={expandedDescriptions}
-              onToggleDescription={onToggleDescription}
-              currentUserId={currentUserId}
-              fetchRoutes={fetchRoutes}
-            />
-          )} 
-        />
-        <Tab.Screen 
-          name="Kaydedilenler" 
-          options={{
-            tabBarShowLabel: false,
-            tabBarIcon: ({ color, size }) => (
-              <Icon name="bookmark-outline" size={size} color={color} />
-            ),
-          }}
-          component={SavedTab} 
-        />
-        <Tab.Screen 
-          name="Etiketler" 
-          options={{
-            tabBarShowLabel: false,
-            tabBarIcon: ({ color, size }) => (
-              <Icon name="tag-outline" size={size} color={color} />
-            ),
-          }}
-          component={TaggedTab} 
-        />
-      </Tab.Navigator>
+        >
+          <Tab.Screen
+            name="Rotalar"
+            options={{
+              tabBarShowLabel: false,
+              tabBarIcon: ({ color, size }) => (
+                <MaterialIcons name="view-comfortable" size={size} color={color} />
+              ),
+            }}
+            children={() => (
+              <PostsTab
+                onRefresh={onRefresh}
+                refreshing={refreshing}
+                routes={routes}
+                isLoading={isLoading}
+                expandedDescriptions={expandedDescriptions}
+                onToggleDescription={onToggleDescription}
+                currentUserId={currentUserId}
+                fetchRoutes={fetchRoutes}
+              />
+            )}
+          />
+          <Tab.Screen
+            name="Kaydedilenler"
+            options={{
+              tabBarShowLabel: false,
+              tabBarIcon: ({ color, size }) => (
+                <Icon name="bookmark-outline" size={size} color={color} />
+              ),
+            }}
+            component={SavedTab}
+          />
+          <Tab.Screen
+            name="Etiketler"
+            options={{
+              tabBarShowLabel: false,
+              tabBarIcon: ({ color, size }) => (
+                <Icon name="tag-outline" size={size} color={color} />
+              ),
+            }}
+            component={TaggedTab}
+          />
+        </Tab.Navigator>
       </View>
       <GlobalFloatingAction />
-      
+
       {user && (
         <ProfileEditModal
           visible={isEditModalVisible}
           onClose={() => setIsEditModalVisible(false)}
           profile={user}
           imageUri={imageUri}
-          
+          headerImageUri={headerImageUri}
           onUpdate={handleProfileUpdate}
         />
       )}
@@ -605,6 +637,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 150,
     position: 'relative',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    backgroundColor: '#ccc',
   },
   headerNameContainer: {
     flexDirection: 'row',

@@ -345,18 +345,19 @@ export const CreateRouteScreen = () => {
   };
 
   // Upload images to Supabase
-  const uploadImages = async (): Promise<{ data: any, client_id: string }[]> => {
+  const uploadImages = async (): Promise<{ data: any, client_id: string, fileName: string }[]> => {
     try {
       const promises = routePoints
         .filter(point => point.image_url)
         .map(async (item: RoutePoint) => {
-          const filePath = `${user.id}/${randomString(16)}.jpg`;
+          const fileName = `${randomString(16)}.jpg`;
+          const filePath = `${user.id}/${fileName}`;
 
           // Read the image file as a binary array
           const image_base64 = await RNFS.readFile(item.image_url!, 'base64');
 
           const { data, error } = await supabase.storage
-            .from('route-images')
+            .from('routes')
             .upload(filePath, decode(image_base64), {
               cacheControl: '3600',
               upsert: false,
@@ -367,7 +368,7 @@ export const CreateRouteScreen = () => {
             throw error;
           }
 
-          return { data, client_id: item.client_id! };
+          return { data, client_id: item.client_id!, fileName };
         });
 
       const results = await Promise.all(promises);
@@ -408,11 +409,11 @@ export const CreateRouteScreen = () => {
             id: string;
             path: string;
             fullPath: string;
-          } | null, client_id: string
+          } | null, client_id: string, fileName: string
         }) => result.client_id === point.client_id);
 
         if (result) {
-          newRoutePoints.push({ ...point, image_url: result.data?.path });
+          newRoutePoints.push({ ...point, image_url: result.fileName });
         } else {
           newRoutePoints.push(point);
         }
