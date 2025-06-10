@@ -9,6 +9,7 @@ import RouteModel from '../model/routes.model';
 import { showToast } from '../utils/alert';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { NoImage } from '../assets';
+import { supabase } from '../lib/supabase';
 
 const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId, cityName }: {
   fullName: string;
@@ -25,6 +26,7 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
   const [visibleDropdown, setVisibleDropdown] = useState(false);
   const navigation = useNavigation();
   const screenName = useNavigationState((state) => state.routes[state.index].name)
+  const [imageUri, setImageUri] = useState<string | null>(null);
 
   const handleDeleteRoute = async () => {
     try {
@@ -95,12 +97,51 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
   }
 
 
+  // Function to download the image
+  const downloadImage = async (image_url: string | undefined) => {
+
+    if (!image_url) {
+      setImageUri(null);
+      return;
+    } 
+
+    try {
+      // If public URL fails, try to download the file
+      const { data, error } = await supabase
+        .storage
+        .from('user-profiles')
+        .download(image_url);
+
+      if (error) {
+        console.error('Supabase download error:', error);
+        throw error;
+      }
+
+      // Convert Blob to Base64
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageUri(reader.result as string);
+      };
+      reader.readAsDataURL(data);
+    } catch (error) {
+      console.error('Error in downloadImage:', error);
+      showToast('error', 'Resim yüklenirken bir hata oluştu');
+      setImageUri(null);
+    } finally {
+    }
+  };
+
+  // Trigger the function when the component is mounted or image_url changes
+  useEffect(() => {
+    downloadImage(image_url);
+  }, [image_url]);
+
   return (
     <View style={styles.authorContainer}>
       <View style={styles.authorInfo}>
         <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('ProfileMain', { userId: authorId })}>
           <Image
-            source={{ uri: image_url || 'https://picsum.photos/200/200' }}
+            source={{ uri: imageUri || ''}}
             style={styles.authorImage}
             resizeMode="cover"
           />
@@ -134,12 +175,12 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
               <Icon name="delete" size={20} color="#c00" style={styles.menuItemIcon} />
               <Text style={[styles.menuText, { color: '#c00' }]}>Sil</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity style={styles.menuOption} onPress={handleHideRoute}>
               <Icon name="archive" size={20} color="#333" style={styles.menuItemIcon} />
               <Text style={styles.menuText}>Arşivle</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity style={styles.menuOption} onPress={handleEditRoute}>
               <Icon name="lock" size={20} color="#333" style={styles.menuItemIcon} />
               <Text style={styles.menuText}>Düzenle</Text>
@@ -148,11 +189,11 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
         )}
 
         {loggedUserId !== authorId &&
-        <TouchableOpacity style={styles.menuOption} onPress={handleReportRoute}>
-          <Icon name="alert-octagon" size={20} color="#c00" style={styles.menuItemIcon} />
-          <Text style={styles.menuText}>Raporla</Text>
-        </TouchableOpacity>
-      }
+          <TouchableOpacity style={styles.menuOption} onPress={handleReportRoute}>
+            <Icon name="alert-octagon" size={20} color="#c00" style={styles.menuItemIcon} />
+            <Text style={styles.menuText}>Raporla</Text>
+          </TouchableOpacity>
+        }
       </DropdownMenu>
     </View>
   )

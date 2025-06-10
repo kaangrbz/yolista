@@ -203,7 +203,22 @@ const UserModel = {
     }
 
     return data.length === 0; // Returns true if the username is available
-  }
+  },
+
+  //* Update user profile
+  async updateUserImage(userId: string, profile: { image_url: string }): Promise<boolean> {
+    const { error } = await supabase
+      .from('profiles')
+      .update(profile)
+      .eq('id', userId);
+
+    if (error) {
+      console.error("Error updating user profile:", error);
+      return false;
+    }
+
+    return true;
+  },
 
 };
 

@@ -142,10 +142,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const [fetchingUser, setFetchingUser] = useState(false);
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [imageUri, setImageUri] = useState<string | null>(null);
 
   // Check if the current profile belongs to the logged-in user
   const isCurrentUserProfile = currentUserId === profileUserId;
   const [followingsCount, setFollowingsCount] = useState<any>(null);
+  const [followersCount, setFollowersCount] = useState<any>(null);
 
   const fetchUser = async () => {
     try {
@@ -211,6 +213,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
       setIsLoading(true);
       const followers = await UserModel.getFollowers(profileUserId);
       setFollowers(followers || []);
+      setFollowersCount(followers.length);
     } catch (error) {
       console.error('Error fetching followers:', error);
     } finally {
@@ -244,6 +247,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const onRefresh = React.useCallback(async () => {
     try {
       setRefreshing(true);
+      downloadImage(user?.image_url);
       await fetchUser();
       await fetchRoutes();
       await fetchFollowers();
@@ -269,6 +273,45 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
       [routeId]: !prev[routeId],
     }));
   }, []);
+
+  // Function to download the image
+    const downloadImage = async (image_url: string | undefined) => {
+  
+      if (!image_url) {
+        setImageUri(null);
+        return;
+      } 
+  
+      try {
+        // If public URL fails, try to download the file
+        const { data, error } = await supabase
+          .storage
+          .from('user-profiles')
+          .download(image_url);
+  
+        if (error) {
+          console.error('Supabase download error:', error);
+          throw error;
+        }
+  
+        // Convert Blob to Base64
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImageUri(reader.result as string);
+        };
+        reader.readAsDataURL(data);
+      } catch (error) {
+        console.error('Error in downloadImage:', error);
+        showToast('error', 'Resim yüklenirken bir hata oluştu');
+        setImageUri(null);
+      } finally {
+      }
+    };
+  
+    // Trigger the function when the component is mounted or image_url changes
+    useEffect(() => {
+      downloadImage(user?.image_url);
+    }, [user?.image_url]);
 
   // Tab Content Components
   const PostsTab = () => {
@@ -367,7 +410,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
             />
             <View style={styles.profilePhotoContainer}>
               <Image
-                source={{ uri: user?.image_url || 'https://picsum.photos/200' }}
+                source={{ uri: imageUri || '' }}
                 style={styles.profilePhoto}
               />
             </View>
@@ -444,7 +487,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
               }
             }}
           >
-            <Text style={styles.statValue}>{followers?.length || 0}</Text>
+            <Text style={styles.statValue}>{followersCount || 0}</Text>
             <Text style={styles.statLabel}>Takipçi</Text>
           </TouchableOpacity>
           <TouchableOpacity 
@@ -459,7 +502,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
               }
             }}
           >
-            <Text style={styles.statValue}>{followings?.length || 0}</Text>
+            <Text style={styles.statValue}>{followingsCount || 0}</Text>
             <Text style={styles.statLabel}>Takip</Text>
           </TouchableOpacity>
         </View>
@@ -540,6 +583,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           visible={isEditModalVisible}
           onClose={() => setIsEditModalVisible(false)}
           profile={user}
+          imageUri={imageUri}
           
           onUpdate={handleProfileUpdate}
         />

@@ -16,17 +16,22 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../utils/alert';
-import { resizeAndUploadImage } from '../../utils/imageUtils';
+import { resizeAndUploadImage, resizeImage } from '../../utils/imageUtils';
 import { Profile } from '../../model/profile.model';
 import UserModel from '../../model/user.model';
 import { getValidationMessage, validateUsername } from '../../utils/validationUtils';
 import { requestFilePermission } from '../../utils/PermissionController';
+import { useAuth } from '../../context/AuthContext';
+import { randomString } from '../../utils/randomString';
+import RNFS from 'react-native-fs';
+import { decode } from 'base64-arraybuffer';
 
 interface ProfileEditModalProps {
   visible: boolean;
   onClose: () => void;
   profile: Profile;
   onUpdate: (updatedProfile: Profile) => void;
+  imageUri: string | null;
 }
 
 const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
@@ -34,6 +39,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
   onClose,
   profile,
   onUpdate,
+  imageUri,
 }) => {
   const [loading, setLoading] = useState(false);
   const [fullName, setFullName] = useState(profile.full_name || '');
@@ -44,7 +50,8 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isUsernameChanged, setIsUsernameChanged] = useState(false);
   const [usernameCheckTimeout, setUsernameCheckTimeout] = useState<any>(null);
-  
+  const { user } = useAuth();
+
   // Form state
   const [formErrors, setFormErrors] = useState({
     full_name: '',
@@ -52,7 +59,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
     description: '',
     website: '',
   });
-  
+
   // Form state
   const [formSuccess, setFormSuccess] = useState({
     full_name: '',
@@ -96,25 +103,38 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
 
       if (result.assets && result.assets[0]) {
         setUploadingImage(true);
-        const selectedImage = result.assets[0];
-        
-        // Upload the image
-        const uploadedUrl = await resizeAndUploadImage(
-          {
-            uri: selectedImage.uri || '',
-            type: selectedImage.type || 'image/jpeg',
-          },
-          profile.id,
-          400, // width
-          400, // height
-          'JPEG',
-          80, // quality
-          'user-profiles' // bucket name
-        );
+        const asset = result.assets[0];
 
-        if (uploadedUrl) {
-          setImageUrl(uploadedUrl);
-          showToast('success', 'Profil fotoğrafı güncellendi');
+        // Upload the image
+        // Resize the image
+        const resizedImage = await resizeImage(asset.uri!, 200, 200, 'JPEG', 80, profile.id);
+
+        const filePath = `${user?.id}/${randomString(16)}.jpg`;
+
+        // Read the image file as a binary array
+        const image_base64 = await RNFS.readFile(resizedImage?.uri!, 'base64');
+
+        const { data, error } = await supabase.storage
+          .from('user-profiles')
+          .upload(filePath, decode(image_base64), {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: 'image/jpeg',
+          });
+
+          
+
+          
+        if (data) {
+          setImageUrl(resizedImage?.uri!);
+
+          const updateResult = await UserModel.updateUserImage(user?.id!, { image_url: data.path });
+
+          if (!updateResult) {
+            showToast('error', 'Profil fotoğrafı güncellenirken bir hata oluştu');
+          } else {
+            showToast('success', 'Profil fotoğrafı güncellendi');
+          }
         } else {
           showToast('error', 'Resim yüklenirken bir hata oluştu');
         }
@@ -125,6 +145,55 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  const handleChangeUsername = (value: string) => {
+    setTouched({
+      ...touched,
+      username: true,
+    });
+    formErrors.username = '';
+    formSuccess.username = '';
+
+    if (!validateUsername(value)) {
+      console.log('Username validation failed');
+      formErrors.username = getValidationMessage('username', value);
+      return;
+    }
+
+
+    if (value !== profile.username) {
+      setIsUsernameChanged(true);
+
+      if (usernameCheckTimeout) {
+        clearTimeout(usernameCheckTimeout);
+      }
+
+      setUsernameCheckTimeout(
+        setTimeout(async () => {
+          console.log('Username check timeout');
+          const isUsernameAvailable = await UserModel.isUsernameAvailable(username);
+          if (!isUsernameAvailable) {
+            console.log('Username is not available');
+            setFormErrors({
+              ...formErrors,
+              username: 'Bu kullanıcı adı zaten kullanılıyor',
+            });
+          } else {
+
+            setIsUsernameChanged(false);
+            console.log('Username is available');
+            setFormSuccess({
+              ...formSuccess,
+              username: 'Bu kullanıcı adı kullanılabilir',
+            });
+          }
+        }, 500)
+      );
+    } else {
+      setIsUsernameChanged(false);
+    }
+
   };
 
   const handleSave = async () => {
@@ -142,7 +211,6 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
           username: username.trim(),
           description: description.trim(),
           website: website.trim(),
-          image_url: imageUrl,
           updated_at: new Date().toISOString(),
         })
         .eq('id', profile.id)
@@ -164,54 +232,6 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
     }
   };
 
-  const handleChangeUsername = (value: string) => {
-    setTouched({
-      ...touched,
-      username: true,
-    });
-    formErrors.username = '';
-    formSuccess.username = '';
-    
-    if (!validateUsername(value)) {
-      console.log('Username validation failed');
-      formErrors.username = getValidationMessage('username', value);
-      return;
-    }
-
-    
-    if (value !== profile.username) {
-      setIsUsernameChanged(true);
-
-      if (usernameCheckTimeout) {
-        clearTimeout(usernameCheckTimeout);
-      }
-
-      setUsernameCheckTimeout(
-        setTimeout(async () => {
-          console.log('Username check timeout');
-          const isUsernameAvailable = await UserModel.isUsernameAvailable(username);
-          if (!isUsernameAvailable) {
-            console.log('Username is not available');
-            setFormErrors({
-              ...formErrors,
-              username: 'Bu kullanıcı adı zaten kullanılıyor',
-            });
-          } else { 
-
-      setIsUsernameChanged(false);
-            console.log('Username is available');
-            setFormSuccess({
-              ...formSuccess,
-              username: 'Bu kullanıcı adı kullanılabilir',
-            });
-          }
-        }, 500)
-      );
-    } else {
-      setIsUsernameChanged(false);
-    }
-
-  };
 
   return (
     <Modal
@@ -220,7 +240,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
       transparent={true}
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalContainer}
       >
@@ -254,7 +274,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
               ) : (
                 <>
                   <Image
-                    source={{ uri: imageUrl || 'https://picsum.photos/200' }}
+                    source={{ uri: imageUri || 'https://picsum.photos/200' }}
                     style={styles.profileImage}
                   />
                   <View style={styles.imageOverlay}>
@@ -318,7 +338,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
               />
             </View>
 
-            <View style={{height: 100}}></View>
+            <View style={{ height: 100 }}></View>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
