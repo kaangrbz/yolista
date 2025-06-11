@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Profile } from '../../model/profile.model';
+import { supabase } from '../../lib/supabase';
+import { DefaultAvatar } from '../../assets';
 
 interface UserCardProps {
   user: Profile;
@@ -9,10 +11,50 @@ interface UserCardProps {
 }
 
 const UserCard: React.FC<UserCardProps> = ({ user, onPress }) => {
+  const [imageUri, setImageUri] = useState<string | null>(null);
+
+    const downloadImage = async () => {
+    let image_url: string | undefined = user?.image_url;
+
+    if (!image_url) {
+      setImageUri(null);
+      return;
+    }
+
+    try {
+      // If public URL fails, try to download the file
+      const { data, error } = await supabase
+        .storage
+        .from('profiles')
+        .download(`${user.id}/${image_url}`);
+
+      if (error) {
+        console.error('Supabase download error:', error);
+        return;
+      }
+
+      // Convert Blob to Base64
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageUri(reader.result as string);
+      };
+      reader.readAsDataURL(data);
+    } catch (error) {
+      console.error('Error in downloadImage:', error);
+      // showToast('error', 'Resim yüklenirken bir hata oluştu');
+      setImageUri(null);
+    }
+  };
+
+  // Trigger the function when the component is mounted or image_url changes
+  useEffect(() => {
+    downloadImage();
+  }, []);
+
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
       <Image
-        source={{ uri: user.image_url || 'https://picsum.photos/200?random=' + user.id }}
+        source={imageUri ? { uri: imageUri } : DefaultAvatar}
         style={styles.avatar}
       />
       <View style={styles.userInfo}>

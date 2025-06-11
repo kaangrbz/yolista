@@ -7,7 +7,7 @@ import { navigate, PageName } from '../../types/navigation';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Seperator from '../Seperator';
-import { NoImage } from '../../assets';
+import { DefaultAvatar, NoImage } from '../../assets';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../utils/alert';
 import ImageViewer from '../ImageViewer';
@@ -314,9 +314,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
           </View>
           <View style={styles.commentInputContainer}>
             <Image
-              source={{
-                uri: `https://picsum.photos/seed/${route.profiles?.id}/20/20`,
-              }}
+              source={DefaultAvatar}
               style={styles.commentImage}
             />
             <TextInput

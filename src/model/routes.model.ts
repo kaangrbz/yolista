@@ -8,7 +8,7 @@ export interface RoutePoint {
   id?: string;
   client_id?: string; // Make client_id optional
   parent_id?: string;
-  city_id?: number;
+  city_id?: number | null;
   category_id?: number;
   user_id?: string;
   title: string;
@@ -258,9 +258,8 @@ const RouteModel = {
       return { data: null, error: true, message: 'Ana rota bulunamadı.', type: 'find-main-route' };
     }
 
-    if (cityId) {
-      mainRoute.city_id = cityId;
-    }
+    
+    mainRoute.city_id = cityId || null;
 
     if (categoryId) {
       mainRoute.category_id = categoryId;
@@ -287,7 +286,6 @@ const RouteModel = {
     }
 
     const otherRoutes = cleanedRouteData.filter((route) => route.order_index !== 0);
-    console.log("🚀 ~ createRoute ~ otherRoutes:", otherRoutes)
 
     // Diğer rotaların parent_id'sini ana rotanın id'si ile güncelle
     otherRoutes.forEach((route) => {

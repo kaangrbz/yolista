@@ -15,52 +15,42 @@ import { NotificationsHeader } from '../components/header/Header';
 import { useIsFocused } from '@react-navigation/native';
 import NotificationModel, { NotificationType, NotificationEntityType } from '../model/notifications.model';
 import { useAuth } from '../context/AuthContext';
-import { formatDistanceToNow } from 'date-fns';
-import { tr } from 'date-fns/locale';
 import { useNavigation } from '@react-navigation/native';
 import { getTimeAgo } from '../utils/timeAgo';
-import { Seperator } from '../components';
 
 const NotificationsScreen = () => {
-  const { user } = useAuth();
+  const { user, setUnreadNotificationCount } = useAuth();
   const isFocused = useIsFocused();
   const navigation = useNavigation();
   const [notifications, setNotifications] = React.useState<NotificationType[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
-  const [isLoadingMore, setIsLoadingMore] = React.useState(false);
-  const [lastCreatedAt, setLastCreatedAt] = React.useState<string | null>(null);
 
   useEffect(() => {
     setIsLoadingNotifications(true);
+
+    let timer: NodeJS.Timeout;
+    timer = setTimeout(() => {
+      setUnreadNotificationCount(0);
+
+      if (isFocused && user?.id) {
+        NotificationModel.markAsRead({ userId: user.id });
+      }
+    }, 2000);
+
     if (isFocused && user?.id) {
       fetchNotifications();
     }
+
+    return () => clearTimeout(timer);
   }, [isFocused, user?.id]);
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (user?.id) {
-      timer = setInterval(() => {
-        NotificationModel.markAsRead({ userId: user.id });
-      }, 5000);
-    }
-    return () => clearInterval(timer);
-  }, [user?.id]);
 
   const fetchNotifications = async (type: 'initial' | 'loadMore' = 'initial') => {
     try {
       if (!user?.id) return;
-      
-      // const _lastCreatedAt = type === 'loadMore' ? notifications[notifications.length - 1].created_at : null;
-      
-      // if (lastCreatedAt === _lastCreatedAt) {
-      //   setIsLoadingNotifications(false);
-      //   return;
-      // }
-      // setLastCreatedAt(_lastCreatedAt);
 
-      const fetchedNotifications = await NotificationModel.getNotifications({ userId: user.id});
+      const fetchedNotifications = await NotificationModel.getNotifications({ userId: user.id });
       // setLastCreatedAt(fetchedNotifications[fetchedNotifications.length - 1].created_at);
 
       if (type === 'loadMore') {
@@ -167,11 +157,11 @@ const NotificationsScreen = () => {
           </View>
           <View style={styles.notificationContent}>
             <View style={styles.notificationText}>
-                <TouchableOpacity style={styles.username} onPress={()=> {
-                  navigation.navigate('ProfileMain', { userId: item.sender_id });
-                }}>
-                  <Text style={styles.username}>{item.profiles.username}</Text>
-                </TouchableOpacity>
+              <TouchableOpacity style={styles.username} onPress={() => {
+                navigation.navigate('ProfileMain', { userId: item.sender_id });
+              }}>
+                <Text style={styles.username}>{item.profiles.username}</Text>
+              </TouchableOpacity>
               <Text style={styles.message}>{label}</Text>
             </View>
 
@@ -189,7 +179,7 @@ const NotificationsScreen = () => {
   };
 
   if (isLoadingNotifications) {
-    return ( 
+    return (
       <SafeAreaView style={styles.container}>
         <NotificationsHeader />
         <View style={{ paddingTop: 20 }}>
@@ -202,12 +192,12 @@ const NotificationsScreen = () => {
   // const handleLoadMore = async () => {
   //   console.log('handleLoadMore');
   //   setIsLoadingMore(true);
-    
+
   //   await fetchNotifications('loadMore');
   //   setTimeout(() => {
   //     setIsLoadingMore(false);
   //   }, 1000);
-    
+
   // };
 
   return (
@@ -234,13 +224,8 @@ const NotificationsScreen = () => {
               <Text style={styles.emptyText}>Bildirim bulunamadı</Text>
             </View>
           }
-          ListFooterComponent={
-            isLoadingMore ? (
-              <ActivityIndicator size="small" color="#333" style={{ paddingVertical: 10 }} />
-            ) : null
-          }
-          // onEndReached={handleLoadMore}
-          // onEndReachedThreshold={0.5}
+        // onEndReached={handleLoadMore}
+        // onEndReachedThreshold={0.5}
         />
       </View>
     </SafeAreaView>

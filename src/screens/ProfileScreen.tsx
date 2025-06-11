@@ -31,6 +31,7 @@ import { Profile } from '../model/profile.model';
 import { Tabs } from 'react-native-collapsible-tab-view';
 import ProfileEditModal from '../components/profile/ProfileEditModal';
 import ImageViewer from '../components/ImageViewer';
+import { DefaultAvatar } from '../assets';
 
 const { width } = Dimensions.get('window');
 
@@ -251,7 +252,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const onRefresh = React.useCallback(async () => {
     try {
       setRefreshing(true);
-      downloadImage(user?.image_url);
+
+      await downloadImage(user?.image_url, 'profiles', setImageUri);
+      await downloadImage(user?.header_image_url, 'headers', setHeaderImageUri); 
+
       await fetchUser();
       await fetchRoutes();
       await fetchFollowers();
@@ -436,7 +440,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
                 disabled={!imageUri}>
 
                 <Image
-                  source={ imageUri ? { uri: imageUri } : undefined}
+                  source={ imageUri ? { uri: imageUri } : DefaultAvatar}
                   style={styles.profilePhoto}
                 />
               </TouchableOpacity>

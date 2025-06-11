@@ -8,7 +8,7 @@ import { getTimeAgo } from '../utils/timeAgo';
 import RouteModel from '../model/routes.model';
 import { showToast } from '../utils/alert';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
-import { NoImage } from '../assets';
+import { DefaultAvatar, NoImage } from '../assets';
 import { supabase } from '../lib/supabase';
 
 const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId, cityName }: {
@@ -141,7 +141,7 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
       <View style={styles.authorInfo}>
         <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('ProfileMain', { userId: authorId })}>
           <Image
-            source={{ uri: imageUri || ''}}
+            source={imageUri ? { uri: imageUri } : DefaultAvatar}
             style={styles.authorImage}
             resizeMode="cover"
           />

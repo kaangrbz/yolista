@@ -249,7 +249,7 @@ const MainTabNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Icon name="bell" color={color} size={size} />
           ),
-          tabBarBadge: unreadNotificationCount,
+          tabBarBadge: unreadNotificationCount ? unreadNotificationCount : undefined,
         }}
       />
       <Tab.Screen

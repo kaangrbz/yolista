@@ -252,10 +252,10 @@ export const CreateRouteScreen = () => {
     // }
 
     // City validation
-    if (!selectedCityId) {
-      errors.cityId = 'Şehir seçimi zorunludur';
-      isValid = false;
-    }
+    // if (!selectedCityId) {
+    //   errors.cityId = 'Şehir seçimi zorunludur';
+    //   isValid = false;
+    // }
 
     setFormErrors(errors);
     return isValid;
@@ -273,7 +273,6 @@ export const CreateRouteScreen = () => {
   // Reset form
   const resetForm = () => {
     // Clear route points
-    setRoutePoints([]);
 
     // Reset form fields
     setSelectedCityId(defaultSelectedCityId || 0);
@@ -294,9 +293,8 @@ export const CreateRouteScreen = () => {
       categoryId: false,
       routes: false,
     });
-
-    // Add one empty route point
-    addRoutePoint();
+    
+    setRoutePoints([]);
   };
 
   const handleImageSelect = async (client_id: string) => {

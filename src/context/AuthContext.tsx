@@ -30,6 +30,7 @@ interface AuthContextType {
   ) => Promise<void>;
   logout: () => Promise<void>;
   unreadNotificationCount: number | undefined;
+  setUnreadNotificationCount: (count: number) => void;
 }
 // Extracting the type of unreadNotificationCount
 type UnreadNotificationCountType = AuthContextType['unreadNotificationCount'];
@@ -50,16 +51,26 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<UserWithProfile | null>(null);
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState<UnreadNotificationCountType>(undefined);
+  const [unreadNotificationCount, setUnreadNotificationCountState] = useState<UnreadNotificationCountType>(undefined);
+
+  const setUnreadNotificationCount = (count: number) => {
+    setUnreadNotificationCountState(count);
+  };
 
   useEffect(() => {
     const fetchUnreadNotificationCount = async () => {
+      console.log("🚀 ~ fetchUnreadNotificationCount ~ user?.id:", user?.id)
+      if (!user?.id) return;
       try {
-        const { data: { count }, error: countError } = await supabase
+        const { data, error: countError } = await supabase
           .from('notifications')
-          .select('*')
+          .select('*', { count: 'exact' })
+          .eq('is_read', false)
+          .eq('recipient_id', user.id);
+
+        console.log("🚀 ~ fetchUnreadNotificationCount ~ data:", data)
         if (countError) throw countError;
-        setUnreadNotificationCount(count);
+        setUnreadNotificationCountState(data?.length || 0);
       } catch (error) {
         console.error('Error fetching unread notification count:', error);
       }
@@ -131,7 +142,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
     };
   }, []);
   
-
+  //* Signin 
   const signIn = async (email: string, password: string) => {
     try {
       const {error} = await supabase.auth.signInWithPassword({
@@ -145,6 +156,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
     }
   };
 
+  //* Signup 
   const signUp = async (
     email: string,
     password: string,
@@ -152,6 +164,17 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
     username: string,
   ) => {
     try {
+      // First check if username is already taken
+      const { data: existingUser, error: checkError } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('username', username)
+        .single();
+
+      if (existingUser) {
+        throw new Error('Username is already taken');
+      }
+
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -172,27 +195,37 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
         throw new Error('No user data returned from signup');
       }
 
-      // The trigger will handle profile creation
-      // We just need to wait a moment for it to complete
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait for the trigger to create the profile
+      let retries = 0;
+      const maxRetries = 5;
+      
+      while (retries < maxRetries) {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single();
 
-      // Verify profile was created
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authData.user.id)
-        .single();
+        if (profileData) {
+          // Profile was created successfully
+          setUser({
+            ...authData.user,
+            profile: profileData,
+          });
+          return;
+        }
 
-      if (profileError || !profileData) {
-        console.error('Profile verification error:', profileError);
-        throw new Error('Failed to verify profile creation');
+        if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+          console.error('Profile verification error:', profileError);
+          throw new Error('Failed to verify profile creation');
+        }
+
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        retries++;
       }
 
-      // Update local user state
-      setUser({
-        ...authData.user,
-        profile: profileData,
-      });
+      throw new Error('Profile creation timed out');
 
     } catch (error) {
       console.error('Sign up error:', error);
@@ -220,6 +253,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
         signUp,
         logout,
         unreadNotificationCount,
+        setUnreadNotificationCount,
       }}>
       {children}
     </AuthContext.Provider>
