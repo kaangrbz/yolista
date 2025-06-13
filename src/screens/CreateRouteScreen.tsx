@@ -293,7 +293,7 @@ export const CreateRouteScreen = () => {
       categoryId: false,
       routes: false,
     });
-    
+
     setRoutePoints([]);
   };
 
@@ -415,7 +415,7 @@ export const CreateRouteScreen = () => {
         } else {
           newRoutePoints.push(point);
         }
-      }); 
+      });
 
       console.log('newRoutePoints', newRoutePoints);
 
@@ -452,9 +452,14 @@ export const CreateRouteScreen = () => {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
 
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: '#222' }]}>
-                Şehir seç <Text style={{ color: 'red' }}>*</Text>
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={[styles.label, { color: '#222' }]}>
+                  Şehir seç
+                </Text>
+                <Text style={{ color: '#66666660', fontSize: 12, marginLeft: 4, marginBottom: 4 }}>
+                  (opsiyonel)
+                </Text>
+              </View>
 
               {isLoadingCity && <ActivityIndicator size="small" color="#000" />}
               {!isLoadingCity && (
@@ -486,12 +491,14 @@ export const CreateRouteScreen = () => {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: '#222' }]}>
-                Kategori seç{' '}
-                <Text style={{ color: '#66666660', fontSize: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={[styles.label, { color: '#222' }]}>
+                  Kategori seç
+                </Text>
+                <Text style={{ color: '#66666660', fontSize: 12, marginLeft: 4, marginBottom: 4 }}>
                   (opsiyonel)
                 </Text>
-              </Text>
+              </View>
 
               {isLoadingCategory && (
                 <ActivityIndicator size="small" color="#000" />

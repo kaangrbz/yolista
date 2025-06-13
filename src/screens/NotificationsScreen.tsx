@@ -28,21 +28,16 @@ const NotificationsScreen = () => {
 
   useEffect(() => {
     setIsLoadingNotifications(true);
-
-    let timer: NodeJS.Timeout;
-    timer = setTimeout(() => {
-      setUnreadNotificationCount(0);
-
-      if (isFocused && user?.id) {
-        NotificationModel.markAsRead({ userId: user.id });
-      }
-    }, 2000);
+    if (isFocused && user?.id) {
+      NotificationModel.markAsRead({ userId: user.id });
+    }
 
     if (isFocused && user?.id) {
       fetchNotifications();
     }
 
-    return () => clearTimeout(timer);
+    return () => {
+    }
   }, [isFocused, user?.id]);
 
 
