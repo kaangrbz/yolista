@@ -6,7 +6,7 @@ import { Profile } from './profile.model';
 // Route interface
 export interface RoutePoint {
   id?: string;
-  client_id?: string; // Make client_id optional
+  client_id: string; // Make client_id optional
   parent_id?: string;
   city_id?: number | null;
   category_id?: number;

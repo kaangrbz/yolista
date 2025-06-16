@@ -12,6 +12,7 @@ import {
   RefreshControl,
   ScrollView,
   Platform,
+  Linking,
 } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 const Tab = createMaterialTopTabNavigator();
@@ -48,7 +49,15 @@ interface ProfileScreenProps {
   };
 }
 
-type ProfileScreenNavigationProp = NativeStackNavigationProp<any>;
+type ProfileStackParamList = {
+  ProfileMain: { userId?: string };
+  RouteDetail: { routeId: string };
+  Explore: { categoryId?: number };
+  Followers: { userId: string };
+  Following: { userId: string };
+};
+
+type ProfileScreenNavigationProp = NativeStackNavigationProp<ProfileStackParamList>;
 
 const HEADER_HEIGHT = Platform.OS === 'ios' ? 300 : 320;
 
@@ -254,7 +263,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
       setRefreshing(true);
 
       await downloadImage(user?.image_url, 'profiles', setImageUri);
-      await downloadImage(user?.header_image_url, 'headers', setHeaderImageUri); 
+      await downloadImage(user?.header_image_url, 'headers', setHeaderImageUri);
 
       await fetchUser();
       await fetchRoutes();
@@ -408,6 +417,61 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
   console.log('user', user);
 
+  const renderProfileInfo = (user: Profile) => {
+    if (!user) return null;
+
+    return (
+      <View style={styles.headerTextContainer}>
+        <View style={{ flexDirection: 'column', gap: 5 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <Text style={styles.headerName}>{user?.full_name || 'Kullanıcı'}</Text>
+
+            <Text style={styles.headerUsername}>@{user?.username || 'kullanici'}</Text>
+            {user?.is_verified && <MaterialIcons name="verified" size={16} color="#1DA1F2" />}
+          </View>
+
+          {user.description && (
+            <Text style={styles.description}>{user.description}</Text>
+          )}
+          
+          {user.website && (
+            <TouchableOpacity
+              onPress={() => {
+                if (user.website) {
+                  const url = user.website.startsWith('http://') 
+                    ? user.website.replace('http://', 'https://')
+                    : user.website.startsWith('https://') 
+                      ? user.website 
+                      : `https://${user.website}`;
+                  Linking.openURL(url);
+                }
+              }}
+            >
+              <Text style={styles.website}>{user.website}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {!isCurrentUserProfile && currentUserId && profileUserId && (
+          <TouchableOpacity
+            style={[styles.followContainer, isFollowing ? styles.unfollowContainer : {}]}
+            onPress={handleFollowToggle}
+            disabled={isFollowLoading}
+          >
+            {isFollowLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.followButtonText}>
+                {isFollowing ? <Icon name="account-minus" size={18} color="#fff" /> : <Icon name="account-plus" size={18} color="#fff" />}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
+
+      </View>
+    );
+  };
+
   const renderHeader = (user: Profile) => {
     return (
       <View style={styles.headerContainer}>
@@ -421,7 +485,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
               }}
               disabled={!headerImageUri}>
               <Image
-                source={ headerImageUri ? { uri: headerImageUri} : undefined}
+                source={headerImageUri ? { uri: headerImageUri } : undefined}
                 style={styles.headerImage}
               />
             </TouchableOpacity>
@@ -440,7 +504,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
                 disabled={!imageUri}>
 
                 <Image
-                  source={ imageUri ? { uri: imageUri } : DefaultAvatar}
+                  source={imageUri ? { uri: imageUri } : DefaultAvatar}
                   style={styles.profilePhoto}
                 />
               </TouchableOpacity>
@@ -471,40 +535,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           )}
         </View>
 
-        <View style={styles.headerTextContainer}>
-          <View style={styles.headerNameContainer}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Text style={styles.headerName}>{user?.full_name || 'Kullanıcı'}</Text>
-              {user?.is_verified && <MaterialIcons name="verified" size={16} color="#1DA1F2" />}
-
-            </View>
-
-
-            {/* Show follow/unfollow button for other users' profiles */}
-            {!isCurrentUserProfile && currentUserId && profileUserId && (
-              <TouchableOpacity
-                style={[styles.followContainer, isFollowing ? styles.unfollowContainer : {}]}
-                onPress={handleFollowToggle}
-                disabled={isFollowLoading}
-              >
-                {isFollowLoading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.followButtonText}>
-                    {isFollowing ? <Icon name="account-minus" size={18} color="#fff" /> : <Icon name="account-plus" size={18} color="#fff" />}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
+        {renderProfileInfo(user)}
 
 
 
-
-          <View style={styles.row}>
-            <Text style={styles.headerUsername}>@{user?.username || 'kullanici'}</Text>
-          </View>
-        </View>
 
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
@@ -722,7 +756,7 @@ const styles = StyleSheet.create({
   headerUsername: {
     fontSize: 14,
     color: '#666',
-    marginRight: 10,
+
   },
   row: {
     flexDirection: 'row',
@@ -782,6 +816,32 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  website: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textDecorationLine: 'none',
+
+  },
+  profileInfo: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  fullName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  username: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  description: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
   },
 });
 
