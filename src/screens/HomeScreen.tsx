@@ -1,28 +1,40 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {  StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { RouteWithProfile } from '../model/routes.model';
 import { CityState, useCityStore } from '../store/cityStore';
-import GlobalFloatingAction from '../components/common/GlobalFloatingAction';
 import { checkFirstTime } from '../utils/welcome';
 import { supabase } from '../lib/supabase';
 import { HomeHeader } from '../components/header/Header';
-import RouteList from '../components/route/RouteList';
-import RouteModel from '../model/routes.model';
-import {useRoute} from '@react-navigation/native';
+import { useRoute } from '@react-navigation/native';
 import { showToast } from '../utils/alert';
+import StoriesBar from '../components/StoriesBar';
+import UniversalPost from '../components/UniversalPost';
+import { useHomePosts } from '../hooks/usePosts';
+import RouteModel from '../model/routes.model';
 
 
 export const HomeScreen = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isReloading, setIsReloading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
   const [expandedDescriptions, setExpandedDescriptions] = useState<{ [key: string]: boolean }>({});
-  const [userId, setUserId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string>('');
+  const [userIdLoaded, setUserIdLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const navigation = useNavigation();
   const selectedCityId = useCityStore((state: CityState) => state.selectedCityId);
   const route = useRoute();
+
+  // Mock stories data
+  const [stories] = useState([
+    { id: '1', username: 'mark_zuckerberg', image_url: 'https://picsum.photos/100/100?random=1', isViewed: false },
+    { id: '2', username: 'elon_musk', image_url: 'https://picsum.photos/100/100?random=2', isViewed: true },
+    { id: '3', username: 'bill_gates', image_url: 'https://picsum.photos/100/100?random=3', isViewed: true },
+    { id: '4', username: 'taylor_swift', image_url: 'https://picsum.photos/100/100?random=4', isViewed: true },
+    { id: '5', username: 'jeff_bezos', image_url: 'https://picsum.photos/100/100?random=5', isViewed: true },
+  ]);
+
+  // Posts hook
+  const { posts: routes, isLoading, refresh: refreshPosts, loadMore, hasMore } = useHomePosts(userId, 10);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -37,76 +49,24 @@ export const HomeScreen = () => {
     };
 
     fetchUserId();
-
     checkFirstTime();
-    fetchRoutes();
   }, []);
 
-  // Only fetch routes when selectedCityId changes
-  useEffect(() => {
-    if (selectedCityId) {
-      fetchRoutes();
-    }
-  }, [selectedCityId]);
-
-  function shuffleArray(array: RouteWithProfile[]) {
-    for (let i = array.length - 1; i > 0; i--) {
-      // Pick a random index from 0 to i
-      const j = Math.floor(Math.random() * (i + 1));
-      // Swap elements at i and j
-      [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-  }
-  
-
-  const fetchRoutes = async () => {
-    try {
-      // Use selectedCityId from component scope
-      const cityId = selectedCityId || 0;
-      setIsLoading(true);
-
-      // if (!cityId) {
-      //   // Clear routes or show a message if no city is selected
-      //   setRoutes([]);
-      //   // Optional: Show a less intrusive message than Alert
-      //   console.log('No city selected, clearing routes.');
-      //   // Alert.alert('Bir şehir seçin', 'Lütfen bir şehir seçin');
-      //   // return;
-      // }
-
-      // // Fetch routes using the cityId from the component scope
-      // let data = await RouteModel.getAllRoutesByCityId(cityId);
-
-      // console.log('data', data);
-
-      let data = await RouteModel.getRoutes({ onlyMain: true, loggedUserId: userId });
-      console.log('data', data);
-
-      setRoutes(shuffleArray(data || []));
-    } catch (error) {
-      console.error('Error fetching routes:', error);
-      showToast('error', 'Rotalar yüklenirken bir hata oluştu');
-    } finally {
-      setIsLoading(false);
-    }
-  };
   
   const onRefresh = useCallback(async () => {
-    try {
-      setIsReloading(true);
-      setRefreshing(true);
-      // fetchRoutes will now use the correct selectedCityId from component scope
-      await fetchRoutes();
-      setRefreshing(false);
-      setIsReloading(false);
-    } catch (error) {
-      console.error('Error refreshing routes:', error);
-      showToast('error', 'Rotalar yenilenirken bir hata oluştu');
-      setIsReloading(false);
-      setRefreshing(false);
+    setRefreshing(true);
+    await refreshPosts();
+    setRefreshing(false);
+  }, [refreshPosts]);
+
+  const handleLoadMore = useCallback(() => {
+    if (hasMore && !isLoading && !isLoadingMore) {
+      setIsLoadingMore(true);
+      loadMore().finally(() => {
+        setIsLoadingMore(false);
+      });
     }
-  }, [selectedCityId]);
+  }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
 
   const handleToggleDescription = useCallback((routeId: string) => {
@@ -116,22 +76,111 @@ export const HomeScreen = () => {
     }));
   }, []);
 
+  const handleStoryPress = (storyId: string) => {
+    // Story görüntüleme logic'i buraya gelecek
+  };
+
+  const handleAddStory = () => {
+    // Hikaye ekleme logic'i buraya gelecek
+  };
+
+  const handleLike = async (routeId: string, isLiked: boolean) => {
+    if (!userId || !routeId) return;
+
+    try {
+      if (isLiked) {
+        await RouteModel.likeRoute(routeId, '', userId);
+      } else {
+        await RouteModel.unlikeRoute(routeId, userId);
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    }
+  };
+
+  const handleComment = (routeId: string) => {
+    (navigation as any).navigate('CommentSection', { 
+      routeId,
+      parentType: 'routeDetail',
+      routeOwnerId: '',
+    });
+  };
+
+  const handleShare = (routeId: string) => {
+    // Paylaşım logic'i buraya gelecek
+  };
+
+  const handleSave = (routeId: string) => {
+    // Kaydetme logic'i buraya gelecek
+  };
+
+  const handleProfilePress = (userId: string) => {
+    (navigation as any).navigate('ProfileMain', { 
+      userId, 
+      currentUserId: userId 
+    });
+  };
+
+  const renderPost = ({ item }: { item: RouteWithProfile }) => (
+    <UniversalPost
+      postId={item.id || ''}
+      userId={userId}
+    />
+  );
+
+  const renderFooter = () => {
+    if (isLoadingMore) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#1DA1F2" />
+          {/* <Text style={styles.loadingText}>Daha fazla yükleniyor...</Text> */}
+        </View>
+      );
+    }
+    
+    if (!hasMore) {
+      return (
+        <View style={styles.endContainer}>
+          <Text style={styles.endText}>✨ Tüm içerikleri gördün!</Text>
+          <Text style={styles.endSubText}>Yeni paylaşımlar için tekrar kontrol et</Text>
+        </View>
+      );
+    }
+    
+    return null;
+  };
+
+  const renderHeader = () => (
+    <StoriesBar
+      stories={stories}
+      onStoryPress={handleStoryPress}
+      onAddStory={handleAddStory}
+    />
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <HomeHeader />
-      <RouteList
-        routes={routes}
-        loading={isLoading || isReloading}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        onRefreshRoutes={fetchRoutes}
-        expandedDescriptions={expandedDescriptions}
-        onToggleDescription={handleToggleDescription}
-        userId={userId}
+      
+      <FlatList
+        data={routes}
+        renderItem={renderPost}
+        keyExtractor={(item) => item.id || ''}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#1DA1F2']}
+            tintColor="#1DA1F2"
+          />
+        }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListHeaderComponent={renderHeader}
+        ListFooterComponent={renderFooter}
+        showsVerticalScrollIndicator={false}
+        style={styles.flatList}
       />
-
-
-      <GlobalFloatingAction />
     </SafeAreaView>
   );
 };
@@ -139,7 +188,10 @@ export const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
+  },
+  flatList: {
+    flex: 1,
   },
   categoriesContainer: {
     paddingTop: 16,
@@ -154,6 +206,23 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#666',
+  },
+  endContainer: {
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  endText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '600',
+    marginBottom: 5,
+  },
+  endSubText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
   categoryButton: {
     flexDirection: 'row',

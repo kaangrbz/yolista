@@ -30,6 +30,7 @@ interface AuthContextType {
     username: string,
   ) => Promise<void>;
   logout: () => Promise<void>;
+  reloadAuth: () => void;
   unreadNotificationCount: number | undefined;
   setUnreadNotificationCount: (count: number) => void;
 }
@@ -233,6 +234,18 @@ const logout = async () => {
   }
 };
 
+const reloadAuth = () => {
+  setIsLoading(true);
+  setIsAuthenticated(false);
+  setUser(null);
+  // Re-fetch session and profile
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    setIsAuthenticated(!!session);
+    setUser(session?.user ?? null);
+    setIsLoading(false);
+  });
+};
+
 return (
   <AuthContext.Provider
     value={{
@@ -242,6 +255,7 @@ return (
       signIn,
       signUp,
       logout,
+      reloadAuth,
       unreadNotificationCount,
       setUnreadNotificationCount,
     }}>

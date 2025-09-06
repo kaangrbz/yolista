@@ -40,10 +40,12 @@ export interface RouteWithProfile extends RoutePoint {
   };
   like_count: number;
   did_like: boolean;
+  comment_count: number;
 }
 
 export interface GetRoutesProps {
   limit?: number;
+  offset?: number;
   onlyMain?: boolean;
   loggedUserId?: string | null;
   userId?: string;
@@ -52,7 +54,7 @@ export interface GetRoutesProps {
 }
 
 const RouteModel = {
-  async getRoutes({ limit = 10, onlyMain = false, loggedUserId, userId, categoryId, searchQuery }: GetRoutesProps): Promise<RouteWithProfile[]> {
+  async getRoutes({ limit = 10, offset = 0, onlyMain = false, loggedUserId, userId, categoryId, searchQuery }: GetRoutesProps): Promise<RouteWithProfile[]> {
     // First, get the routes with basic info
     const query = supabase
       .from('routes')
@@ -87,8 +89,10 @@ const RouteModel = {
     }
 
     //* Fetch only main routes when `onlyMain` is true
-    const { data: routes, error } = await (onlyMain ? query.eq('order_index', 0).limit(limit) : query.limit(limit));
+    const { data: routes, error } = await (onlyMain ? query.eq('order_index', 0).range(offset, offset + limit - 1) : query.range(offset, offset + limit - 1));
 
+    console.log('RouteModel.getRoutes - Query result:', { routes: routes?.length || 0, error });
+    
     if (error) throw new Error(`Failed to fetch routes: ${error.message}`);
     if (!routes) return [];
 
@@ -99,12 +103,26 @@ const RouteModel = {
       .map((route: any) => route.parent_id);
     const allIds = [...new Set([...routeIds, ...parentIds])];
 
+    
+    const { data: commentCounts, error: commentsError } = await supabase
+      .rpc('count_comments_by_route_ids', { route_ids: allIds });
+    
+    if (commentsError) {
+      console.error('Error fetching comment counts:', commentsError);
+    }
+    
+    const commentCountsMap = commentCounts?.reduce((acc: Record<string, number>, comment: any) => {
+      acc[comment.route_id] = comment.comment_count || 0  ;
+      return acc;
+    }, {});
+
     // Fetch likes count and user likes in a single query
     const { data: likesData, error: likesError } = await supabase
       .from('likes')
       .select('entity_id, user_id')
       .eq('entity_type', 'route')
       .in('entity_id', allIds);
+      
 
     if (likesError) {
       console.error('Error fetching likes:', likesError);
@@ -115,6 +133,7 @@ const RouteModel = {
         categories: Array.isArray(route.categories) ? route.categories[0] : route.categories,
         like_count: 0,
         did_like: false,
+        comment_count: 0,
       })) as RouteWithProfile[];
     }
 
@@ -139,6 +158,7 @@ const RouteModel = {
       categories: Array.isArray(route.categories) ? route.categories[0] : route.categories,
       like_count: likeCountMap[route.id] || 0,
       did_like: loggedUserId ? !!userLikesMap[route.id] : false,
+      comment_count: commentCountsMap[route.id] || 0,
     })) as RouteWithProfile[];
   },
 
@@ -258,7 +278,7 @@ const RouteModel = {
       return { data: null, error: true, message: 'Ana rota bulunamadı.', type: 'find-main-route' };
     }
 
-    
+
     mainRoute.city_id = cityId || null;
 
     if (categoryId) {

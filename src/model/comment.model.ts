@@ -1,10 +1,11 @@
 import { supabase } from '../lib/supabase';
+import NotificationModel from './notifications.model';
 
 export interface Comment {
   id: string;
   bookmark_id?: string;
   route_id?: string;
-  author_id: string;
+  user_id: string;
   content: string;
   created_at: string;
   updated_at: string;
@@ -12,59 +13,44 @@ export interface Comment {
     username: string;
     image_url?: string;
     full_name?: string;
-  };
-}
-
-export interface CommentWithProfile extends Comment {
-  profiles: {
-    username: string;
-    image_url?: string;
-    full_name?: string;
+    user_id?: string;
+    is_verified?: boolean;
   };
 }
 
 const CommentModel = {
   // Get comments for a specific route
-  async getRouteComments(routeId: string): Promise<CommentWithProfile[]> {
+  async getRouteComments(routeId: string): Promise<Comment[]> {
     const { data, error } = await supabase
       .from('comments')
       .select('*, profiles(username, image_url, full_name)')
       .eq('route_id', routeId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (error) {
       console.error('Error fetching route comments:', error);
       throw error;
     }
 
-    return data as CommentWithProfile[];
-  },
-
-  // Get comments for a specific bookmark
-  async getBookmarkComments(bookmarkId: string): Promise<CommentWithProfile[]> {
-    const { data, error } = await supabase
-      .from('comments')
-      .select('*, profiles(username, image_url, full_name)')
-      .eq('bookmark_id', bookmarkId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching bookmark comments:', error);
-      throw error;
-    }
-
-    return data as CommentWithProfile[];
+    return data as Comment[];
   },
 
   // Add a comment to a route
-  async addRouteComment(routeId: string, authorId: string, content: string): Promise<Comment> {
+  async addRouteComment(routeId: string, userId: string, content: string, routeOwnerId: string): Promise<Comment> {
+    console.log('routeId:', routeId);
+    console.log('userId:', userId);
+    console.log('content:', content);
+    console.log('routeOwnerId:', routeOwnerId);
     const { data, error } = await supabase
       .from('comments')
       .insert([
         {
           route_id: routeId,
-          author_id: authorId,
-          content
+          user_id: userId,
+          content,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
       ])
       .select()
@@ -75,26 +61,19 @@ const CommentModel = {
       throw error;
     }
 
-    return data as Comment;
-  },
-
-  // Add a comment to a bookmark
-  async addBookmarkComment(bookmarkId: string, authorId: string, content: string): Promise<Comment> {
-    const { data, error } = await supabase
-      .from('comments')
-      .insert([
-        {
-          bookmark_id: bookmarkId,
-          author_id: authorId,
-          content
-        }
-      ])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error adding bookmark comment:', error);
-      throw error;
+    try {
+      console.log('routeOwber Id:', routeOwnerId);
+      //* Send notification to the user
+      const notification = await NotificationModel.createNotification({
+        recipientId: routeOwnerId,
+        senderId: userId,
+        entityType: 'comment',
+        entityId: routeId,
+      });
+  
+      console.log('Notification:', notification); 
+    } catch (error) {
+      console.error('Error sending notification:', error);
     }
 
     return data as Comment;
@@ -105,11 +84,11 @@ const CommentModel = {
     // First check if the user is the author of the comment
     const { data: comment } = await supabase
       .from('comments')
-      .select('author_id')
+      .select('user_id')
       .eq('id', commentId)
       .single();
 
-    if (!comment || comment.author_id !== userId) {
+    if (!comment || comment.user_id !== userId) {
       throw new Error('Unauthorized: You can only delete your own comments');
     }
 
@@ -129,11 +108,11 @@ const CommentModel = {
     // First check if the user is the author of the comment
     const { data: comment } = await supabase
       .from('comments')
-      .select('author_id')
+      .select('user_id')
       .eq('id', commentId)
       .single();
 
-    if (!comment || comment.author_id !== userId) {
+    if (!comment || comment.user_id !== userId) {
       throw new Error('Unauthorized: You can only update your own comments');
     }
 

@@ -16,6 +16,8 @@ import ExploreScreen from '../screens/ExploreScreen';
 import { useAuth } from '../context/AuthContext';
 import { FollowingScreen } from '../screens/FollowingScreen';
 import { FollowersScreen } from '../screens/FollowersScreen';
+import { CommentSection } from '../components/CommentSection';
+import Creators from '../screens/Creators';
 
 // Define the parameter lists for each stack
 type ProfileStackParamList = {
@@ -24,6 +26,7 @@ type ProfileStackParamList = {
   Explore: { categoryId?: number };
   Followers: { userId: string };
   Following: { userId: string };
+  CommentSection: { routeId: string };
 };
 
 type HomeStackParamList = {
@@ -34,6 +37,7 @@ type HomeStackParamList = {
   ProfileMain: { userId: string; currentUserId: string };
   Followers: { userId: string };
   Following: { userId: string };
+  CommentSection: { routeId: string };
 };
 
 type ExploreStackParamList = {
@@ -42,6 +46,7 @@ type ExploreStackParamList = {
   ProfileMain: { userId: string; currentUserId: string };
   Followers: { userId: string };
   Following: { userId: string };
+  CommentSection: { routeId: string };
 };
 
 type NotificationStackParamList = {
@@ -50,6 +55,7 @@ type NotificationStackParamList = {
   ProfileMain: { userId: string; currentUserId: string },
   Followers: { userId: string },
   Following: { userId: string },
+  CommentSection: { routeId: string };
 };
 
 const Tab = createBottomTabNavigator();
@@ -89,6 +95,13 @@ const ProfileStackScreen = () => {
         name="Following" 
         component={FollowingScreen} 
       />  
+      <ProfileStack.Screen 
+        name="CommentSection" 
+        options={{
+          presentation: 'modal',
+        }}
+        component={CommentSection as any} 
+      />
     </ProfileStack.Navigator>
   );
 };
@@ -125,6 +138,13 @@ const HomeStackScreen = () => {
         name="Following" 
         component={FollowingScreen} 
       />  
+      <HomeStack.Screen 
+        name="CommentSection" 
+        options={{
+          presentation: 'modal',
+        }}
+        component={CommentSection as any} 
+      />
     </HomeStack.Navigator>
   );
 };
@@ -153,6 +173,13 @@ const ExploreStackScreen = () => {
         name="Following" 
         component={FollowingScreen} 
       />  
+      <ExploreStack.Screen 
+        name="CommentSection" 
+        options={{
+          presentation: 'modal',
+        }}
+        component={CommentSection as any} 
+      />
     </ExploreStack.Navigator>
   );
 };
@@ -181,6 +208,13 @@ const NotificationStackScreen = () => {
         name="Following" 
         component={FollowingScreen} 
       />  
+      <NotificationStack.Screen 
+        name="CommentSection" 
+        options={{
+          presentation: 'modal',
+        }}
+        component={CommentSection as any} 
+      />
     </NotificationStack.Navigator>
   );
 };
@@ -262,6 +296,16 @@ const MainTabNavigator = () => {
           ),
         }}
       />
+      {/* <Tab.Screen
+        name="CreatorsScreen"
+        component={Creators}
+        options={{
+          tabBarShowLabel: false,
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="card-account-details" color={color} size={size} />
+          ),
+        }}
+      /> */}
     </Tab.Navigator>
   );
 };

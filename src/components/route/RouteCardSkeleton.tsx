@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { 
   useAnimatedStyle, 
   withRepeat, 
@@ -41,12 +40,7 @@ const RouteCardSkeleton: React.FC<RouteCardSkeletonProps> = ({ isExploreScreen =
       <View style={styles.exploreCard}>
         <View style={styles.exploreImageContainer}>
           <Animated.View style={[styles.shimmer, shimmerStyle]}>
-            <LinearGradient
-              colors={['transparent', 'rgba(255,255,255,0.3)', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={StyleSheet.absoluteFill}
-            />
+            <View style={styles.shimmerOverlay} />
           </Animated.View>
         </View>
         <View style={styles.exploreInfo}>
@@ -72,12 +66,7 @@ const RouteCardSkeleton: React.FC<RouteCardSkeletonProps> = ({ isExploreScreen =
         {/* Image Skeleton */}
         <View style={styles.imageContainer}>
           <Animated.View style={[styles.shimmer, shimmerStyle]}>
-            <LinearGradient
-              colors={['transparent', 'rgba(255,255,255,0.3)', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={StyleSheet.absoluteFill}
-            />
+            <View style={styles.shimmerOverlay} />
           </Animated.View>
         </View>
 
@@ -202,6 +191,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  shimmerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
 
   // Explore screen specific styles

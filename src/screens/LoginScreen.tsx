@@ -1,108 +1,111 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
-  Alert,
-  ActivityIndicator,
-  Platform,
   KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  Animated,
+  Dimensions,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
-import { Link, useNavigation } from '@react-navigation/native';
-import { Logo } from '../components/Logo';
 import { showToast } from '../utils/alert';
+import { LoginHeader, LoginForm } from '../components/auth';
+
+const { height } = Dimensions.get('window');
 
 export const LoginScreen = () => {
   const navigation = useNavigation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAuth();
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [scaleAnim] = useState(new Animated.Value(0.9));
 
-  const handleLogin = async () => {
+  // Initialize animations
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const handleLogin = async (email: string, password: string) => {
     if (!email || !password) {
       showToast('error', 'Lütfen tüm alanları doldurun');
       return;
     }
 
     try {
-      setIsLoading(true);
       await signIn(email, password);
     } catch (error: any) {
       showToast('error', error.message || 'Giriş yaparken bir hata oluştu');
-    } finally {
-      setIsLoading(false);
+      throw error; // Re-throw to handle in LoginForm
     }
   };
 
+  const handleNavigateToRegister = () => {
+    navigation.navigate('Register' as never);
+  };
+
   return (
-    <KeyboardAvoidingView 
-    style={styles.container}
-    behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-        <View style={styles.header}>
-          <Logo size="large" color="#1DA1F2" />
-          <Text style={styles.subtitle}>
-            🌍 Seyahat rotalarını keşfetmek için giriş yapın! ✈️ Kişisel seyahat
-            deneyimlerinizi yönetmek ve yeni maceralara atılmak için hesabınıza
-            giriş yapın. Hadi başlayalım! 🚀
-          </Text>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      
+      <KeyboardAvoidingView 
+        style={styles.keyboardContainer}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        {/* Background Gradient Effect */}
+        <View style={styles.backgroundContainer}>
+          <View style={styles.gradientOverlay} />
         </View>
 
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="E-posta"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoCorrect={false}
-            autoComplete="email"
-            textContentType="emailAddress"
-            returnKeyType="next"
-            blurOnSubmit={false}
-            placeholderTextColor="#666"
-            enablesReturnKeyAutomatically
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Şifre"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="password"
-            textContentType="password"
-            returnKeyType="done"
-            blurOnSubmit={true}
-            placeholderTextColor="#666"
-            enablesReturnKeyAutomatically
-          />
+        {/* Header */}
+        <LoginHeader 
+          fadeAnim={fadeAnim}
+          scaleAnim={scaleAnim}
+        />
 
-          <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={isLoading}>
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Giriş Yap</Text>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Register')}
-            style={styles.registerText}>
-            <Text style={styles.registerText}>
-              Hesabınız yoksa buraya tıklayın
-            </Text>
-          </TouchableOpacity>
-        </View>
-    </KeyboardAvoidingView>
+        {/* Form */}
+        <LoginForm
+          onLogin={handleLogin}
+          onNavigateToRegister={handleNavigateToRegister}
+          fadeAnim={fadeAnim}
+          scaleAnim={scaleAnim}
+        />
+
+        {/* Footer */}
+        <Animated.View 
+          style={[
+            styles.footer,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }]
+            }
+          ]}
+        >
+          <View style={styles.footerContent}>
+            <View style={styles.footerText}>
+              <Text style={styles.footerTitle}>Yolista</Text>
+              <Text style={styles.footerSubtitle}>
+                Seyahat deneyimlerinizi paylaşın, yeni rotalar keşfedin
+              </Text>
+            </View>
+          </View>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -110,54 +113,45 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    padding: 20,
   },
-  header: {
-    flex: 1 / 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 8,
-    paddingHorizontal: 20,
-    lineHeight: 24,
-  },
-  form: {
+  keyboardContainer: {
     flex: 1,
-    justifyContent: 'center',
-    gap: 16,
   },
-  input: {
-    backgroundColor: '#f5f5f5',
-    padding: 16,
-    borderRadius: 8,
-    fontSize: 16,
-    color: '#333',
-    ...Platform.select({
-      ios: {
-        paddingVertical: 12,
-      },
-    }),
+  backgroundContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: -1,
   },
-  button: {
-    backgroundColor: '#1DA1F2',
-    padding: 16,
-    borderRadius: 8,
+  gradientOverlay: {
+    flex: 1,
+    backgroundColor: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+    opacity: 0.1,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+  },
+  footerContent: {
     alignItems: 'center',
   },
-  buttonDisabled: {
-    opacity: 0.7,
+  footerText: {
+    alignItems: 'center',
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  registerText: {
+  footerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#1DA1F2',
+    marginBottom: 4,
+  },
+  footerSubtitle: {
+    fontSize: 12,
+    color: '#666',
     textAlign: 'center',
-    marginTop: 16,
+    lineHeight: 16,
   },
 });
+
+export default LoginScreen;

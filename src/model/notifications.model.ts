@@ -130,7 +130,7 @@ const NotificationModel = {
       .select("*");
   
     if (error) {
-      showToast("error", "Bildirim oluşturulurken bir hata oluştu");
+      // showToast("error", "Bildirim oluşturulurken bir hata oluştu");
       throw error;
     }
     return data as NotificationType[];

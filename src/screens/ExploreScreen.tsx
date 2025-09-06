@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Image,
   TouchableOpacity,
   SafeAreaView,
   TextInput,
@@ -14,18 +13,16 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { CategoryItem } from '../types/category.types';
 import CategoryModel from '../model/category.model';
-import { ExploreHeader } from '../components/header/Header';
-import GlobalFloatingAction from '../components/common/GlobalFloatingAction';
-import RouteModel, { RouteWithProfile, GetRoutesProps } from '../model/routes.model';
-import { navigate, PageName } from '../types/navigation';
+import { ExploreHeader } from '../components/header/Header';  
+import { RouteWithProfile } from '../model/routes.model';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import UserModel, { User } from '../model/user.model';
 import UserCard from '../components/user/UserCard';
-import { supabase } from '../lib/supabase';
 import RouteCard from '../components/route/RouteCard';
 import { useAuth } from '../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showToast } from '../utils/alert';
+import { useExplorePosts } from '../hooks/usePosts';
 
 const NUM_COLUMNS = 3;
 const { width } = Dimensions.get('window');
@@ -59,15 +56,17 @@ const ExploreScreen = () => {
   const route = useRoute();
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
-  const [activeCategory, setActiveCategory] = useState(route.params?.categoryId || 0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState((route.params as any)?.categoryId || 0);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [expandedDescriptions, setExpandedDescriptions] = useState<{ [key: string]: boolean }>({});
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
+  // Posts hook
+  const { posts: routes, isLoading, refresh: refreshPosts, loadMore, hasMore, updateOptions } = useExplorePosts(activeCategory, searchQuery, 20);
 
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -81,7 +80,6 @@ const ExploreScreen = () => {
       clearTimeout(searchTimeout.current);
     }
 
-    setIsLoading(true);
     searchTimeout.current = setTimeout(async () => {
 
       if (searchQuery.length > 0) {
@@ -92,11 +90,14 @@ const ExploreScreen = () => {
         setUsers([]);
       }
 
-      await fetchRoutes();
-      setIsLoading(false);
+      // Posts hook'u güncelle
+      updateOptions({
+        exploreFeed: { categoryId: activeCategory, searchQuery: searchQuery, limit: 20 }
+      });
+      await refreshPosts();
+
     }, 1000);
   };
-
 
   const fetchCategories = async () => {
     try {
@@ -111,7 +112,6 @@ const ExploreScreen = () => {
         is_disabled: false,
       });
 
-
       setCategories(categories.sort((a, b) => a.index - b.index));
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -122,24 +122,24 @@ const ExploreScreen = () => {
     handleSearch();
   }, [searchQuery, activeCategory]);
 
-  const fetchRoutes = async () => {
-    try {
-      let props: GetRoutesProps = { onlyMain: true, categoryId: activeCategory, searchQuery: searchQuery }
-      const routes = await RouteModel.getRoutes(props);
-      setRoutes(routes);
-    } catch (error) {
-      console.error('Error fetching routes:', error);
-      showToast('error', 'Rotalar yüklenirken bir hata oluştu');
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    fetchRoutes();
-  }, []);
+    await refreshPosts();
+    setRefreshing(false);
+  }, [refreshPosts]);
+
+  const handleLoadMore = useCallback(() => {
+    if (hasMore && !isLoading && !isLoadingMore) {
+      console.log('ExploreScreen - Loading more posts...');
+      setIsLoadingMore(true);
+      loadMore().finally(() => {
+        // 1 saniye bekle, sonra tekrar yüklemeye izin ver
+        setTimeout(() => {
+          setIsLoadingMore(false);
+        }, 1000);
+      });
+    }
+  }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
   const renderCategoryItem: ListRenderItem<CategoryItem> = ({ item }) => (
     <TouchableOpacity
@@ -178,7 +178,7 @@ const ExploreScreen = () => {
       <RouteCard
         route={item}
         userId={user?.id || null}
-        onRefresh={fetchRoutes}
+        onRefresh={refreshPosts}
         expandedDescriptions={expandedDescriptions}
         onToggleDescription={handleToggleDescription}
         showAuthorHeader={false}
@@ -187,22 +187,21 @@ const ExploreScreen = () => {
     </View>
   );
 
-  const renderUserItem: ListRenderItem<User> = ({ item }: { item: User }): React.JSX.Element | undefined => {
-
+  const renderUserItem: ListRenderItem<User> = ({ item }: { item: User }) => {
     if (!item) {
-      return;
+      return null;
     }
     
     return (
       <TouchableOpacity
         style={styles.userItem}
         activeOpacity={0.8}
-        onPress={() => navigation.navigate('ProfileMain', { userId: item?.id })}
+        onPress={() => (navigation as any).navigate('ProfileMain', { userId: item?.id })}
       >
-        <UserCard user={item} onPress={() => navigation.navigate('ProfileMain', { userId: item?.id })} />
+        <UserCard user={item as any} onPress={() => (navigation as any).navigate('ProfileMain', { userId: item?.id })} />
       </TouchableOpacity>
-    )
-  }
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
@@ -275,10 +274,15 @@ const ExploreScreen = () => {
           <FlatList
             data={routes}
             renderItem={renderItem}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.id || ''}
             numColumns={NUM_COLUMNS}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.1}
+            ListFooterComponent={() => 
+              ((isLoading || isLoadingMore) && hasMore) ? <ActivityIndicator size="small" color="#000" style={{padding: 20}} /> : null
+            }
           />
         )
       }
@@ -302,7 +306,6 @@ const ExploreScreen = () => {
 
         <View style={{height: 200}}></View>
           </ScrollView>
-      <GlobalFloatingAction />
     </SafeAreaView>
   );
 };

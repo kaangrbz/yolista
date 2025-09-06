@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 // import styles from '../styles';
 
 interface ReactionSectionProps {
@@ -12,6 +14,8 @@ interface ReactionSectionProps {
   routeId?: string;
   onLike?: (routeId: string, isLiked: boolean) => void;
 }
+
+
 
 const ReactionSection = ({
   likeCount = 0,
@@ -24,6 +28,7 @@ const ReactionSection = ({
   // Local state to handle optimistic UI updates
   const [isLiked, setIsLiked] = useState(didLike);
   const [localLikeCount, setLocalLikeCount] = useState(likeCount);
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   
   useEffect(() => {
     setIsLiked(didLike);
@@ -45,10 +50,15 @@ const ReactionSection = ({
       onLike(routeId, newLikeState);
     }
   };
+
+  const handleComment = () => {
+    if (!routeId) return;
+    navigation.navigate('CommentSection', { routeId, parentType: 'routeDetail' });
+  };
   
   return (
     <View style={styles.reactionContainer}>
-      <TouchableOpacity style={styles.reactionItem}>
+      <TouchableOpacity style={styles.reactionItem} onPress={handleComment}>
         <Icon name="comment-outline" size={18} color="#121" />
         <Text style={styles.reactionText}>{commentCount || 0}</Text>
       </TouchableOpacity>  

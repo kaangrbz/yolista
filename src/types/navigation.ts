@@ -9,18 +9,20 @@ export enum PageName {
   Register = 'Register',
   Followers = 'Followers',
   Following = 'Following',
+  CommentSection = 'CommentSection',
 }
 
 export type NavigationParams = {
   [PageName.RouteDetail]: { routeId: string };
   [PageName.Explore]: { categoryId?: number };
-  [PageName.Profile]: { userid: string };
+  [PageName.Profile]: { userId: string };
   [PageName.AddCategory]: undefined;
   [PageName.CreateRoute]: undefined;
   [PageName.Login]: undefined;
   [PageName.Register]: undefined;
   [PageName.Followers]: { userId: string };
   [PageName.Following]: { userId: string };
+  [PageName.CommentSection]: { routeId: string; parentType: 'routeDetail' | 'bookmarkDetail' | 'homePage' };
 };
 
 export const navigate = (navigation: any, page: PageName, params?: NavigationParams) => {

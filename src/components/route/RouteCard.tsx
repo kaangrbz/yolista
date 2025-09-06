@@ -52,7 +52,8 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const [isExpanded, setIsExpanded] = useState(expandedDescriptions[routeKey] || false);
   const [localLikeCount, setLocalLikeCount] = useState(route.like_count || 0);
   const [localDidLike, setLocalDidLike] = useState(route.did_like || false);
-  const navigation = useNavigation<NavigationProp>();
+  const [localCommentCount, setLocalCommentCount] = useState(route.comment_count || 0);
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const currentRoute = useRoute();
   const isExploreScreen = currentRoute.name === 'ExploreMain';
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -76,7 +77,6 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const downloadImage = async (image_url: string | undefined) => {
     setLoadingImage(true);
 
-    console.log('Downloading image_url:', image_url);
 
     if (!image_url) {
       setImageUri(null);
@@ -95,7 +95,6 @@ const RouteCard: React.FC<RouteCardProps> = ({
         .download(filepath);
 
       if (error) {
-        console.log('Supabase download error:', error);
         throw error;
       }
 
@@ -106,7 +105,6 @@ const RouteCard: React.FC<RouteCardProps> = ({
       };
       reader.readAsDataURL(data);
     } catch (error) {
-      console.log('Error in downloadImage:', error);
       // showToast('error', 'Resim yüklenirken bir hata oluştu');
       setImageUri(null);
     } finally {
@@ -231,7 +229,6 @@ const RouteCard: React.FC<RouteCardProps> = ({
                     style={[styles.row, styles.categoryContainer]}
                     onPress={(e) => {
                       e.stopPropagation();
-                      console.log('Category tapped:', route.categories?.name);
                       navigation.navigate('Explore', { categoryId: route.category_id });
                     }}
                     activeOpacity={0.7}
@@ -276,9 +273,20 @@ const RouteCard: React.FC<RouteCardProps> = ({
             )}
 
             <View style={styles.reactionContainer}>
-              <TouchableOpacity style={styles.reactionItem}>
+              <TouchableOpacity 
+                style={styles.reactionItem} 
+                onPress={() => {
+                  // Optimistically update comment count
+                  setLocalCommentCount((prev: number) => prev + 1);
+                  navigation.navigate('CommentSection', { 
+                    routeId: route.id || '',
+                    parentType: 'routeDetail',
+                    routeOwnerId: route.user_id || '',
+                  });
+                }}
+              >
                 <Icon name="comment-outline" size={18} color="#121" />
-                <Text style={styles.reactionText}>{0}</Text>
+                <Text style={styles.reactionText}>{route.comment_count}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.reactionItem} onPress={async () => {
                 if (!userId || !route.id) return;
