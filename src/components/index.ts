@@ -9,7 +9,6 @@ import { Logo as AppLogo } from './Logo';
 import ReactionSection from "./ReactionSection";
 import SeperatorLine from "./SeperatorLine";
 import StoriesBar from "./StoriesBar";
-import PostCard from "./PostCard";
 import UniversalPost from "./UniversalPost";
 import PostHeader from "./post/PostHeader";
 import ImageCarousel from "./post/ImageCarousel";
@@ -28,7 +27,6 @@ export { Seperator,
     SeperatorLine,
     LoadingFloatingAction,
     StoriesBar,
-    PostCard,
     UniversalPost,
     PostHeader,
     ImageCarousel,

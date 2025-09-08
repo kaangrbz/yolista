@@ -7,6 +7,8 @@ import { FilterScreen } from '../screens/CreateRoute/FilterScreen';
 import { Photo } from '../screens/CreateRoute/PhotoSelectionScreen';
 import { RouteStop } from '../screens/CreateRoute/StopDetailsScreen';
 import { Category, City } from '../screens/CreateRoute/CategorySelectionScreen';
+import { BackHandler } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 export type CreateRouteStackParamList = {
   PhotoSelection: undefined;
@@ -28,6 +30,27 @@ export type CreateRouteStackParamList = {
 const Stack = createStackNavigator<CreateRouteStackParamList>();
 
 export const CreateRouteStack = () => {
+  const navigation = useNavigation();
+
+  // Android geri tuşu yönetimi
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+          return true; // Geri tuşu işlendi
+        } else {
+          // Ana ekrandaysa uygulamadan çık
+          return false; // Varsayılan davranış
+        }
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [navigation])
+  );
+
   return (
     <Stack.Navigator
       initialRouteName="PhotoSelection"

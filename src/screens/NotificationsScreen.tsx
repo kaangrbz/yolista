@@ -17,6 +17,96 @@ import NotificationModel, { NotificationType, NotificationEntityType } from '../
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { getTimeAgo } from '../utils/timeAgo';
+import { useProfileImageDownload } from '../hooks/useImageDownload';
+
+// Helper functions for notification rendering
+const renderNotificationIcon = (type: NotificationEntityType) => {
+  switch (type) {
+    case 'like':
+      return <Icon name="heart" size={20} color="#FF3B30" />;
+    case 'comment':
+      return <Icon name="comment" size={20} color="#34C759" />;
+    case 'follow':
+      return <Icon name="account-plus" size={20} color="#007AFF" />;
+    case 'mention':
+      return <Icon name="at" size={20} color="#AF52DE" />;
+    default:
+      return <Icon name="bell" size={20} color="#8E8E93" />;
+  }
+};
+
+const getNotificationColor = (type: NotificationEntityType) => {
+  switch (type) {
+    case 'like':
+      return '#FF3B30';
+    case 'comment':
+      return '#34C759';
+    case 'follow':
+      return '#007AFF';
+    case 'mention':
+      return '#AF52DE';
+    default:
+      return '#8E8E93';
+  }
+};
+
+// NotificationItem component with profile image download
+const NotificationItem = ({ item, action, label, navigation }: { 
+  item: NotificationType; 
+  action: () => void; 
+  label: string; 
+  navigation: any;
+}) => {
+  const { imageUri, loading, error } = useProfileImageDownload(
+    item.profiles.image_url,
+    item.sender_id
+  );
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.notificationItem,
+        !item.is_read && styles.unreadNotification,
+      ]}
+      activeOpacity={0.7}
+      onPress={action}
+    >
+      <View style={styles.notificationLeft}>
+        <View style={[styles.iconContainer, { backgroundColor: getNotificationColor(item.entity_type) + '20' }]}>
+          {renderNotificationIcon(item.entity_type)}
+        </View>
+        <View style={styles.notificationContent}>
+          <View style={styles.notificationText}>
+            <TouchableOpacity style={styles.username} onPress={() => {
+              navigation.navigate('ProfileMain', { userId: item.sender_id });
+            }}>
+              <Text style={styles.username}>{item.profiles.username}</Text>
+            </TouchableOpacity>
+            <Text style={styles.message}>{label}</Text>
+          </View>
+
+          <Text style={styles.timeText}>{getTimeAgo(item.created_at)}</Text>
+        </View>
+      </View>
+      <View style={styles.userImageContainer}>
+        {loading ? (
+          <View style={styles.defaultAvatar}>
+            <ActivityIndicator size="small" color="#8E8E93" />
+          </View>
+        ) : imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.userImage}
+          />
+        ) : (
+          <View style={styles.defaultAvatar}>
+            <Icon name="account" size={24} color="#8E8E93" />
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 const NotificationsScreen = () => {
   const { user, setUnreadNotificationCount } = useAuth();
@@ -68,35 +158,6 @@ const NotificationsScreen = () => {
     fetchNotifications();
   }, [user?.id]);
 
-  const renderNotificationIcon = (type: NotificationEntityType) => {
-    switch (type) {
-      case 'like':
-        return <Icon name="heart" size={20} color="#FF3B30" />;
-      case 'comment':
-        return <Icon name="comment" size={20} color="#34C759" />;
-      case 'follow':
-        return <Icon name="account-plus" size={20} color="#007AFF" />;
-      case 'mention':
-        return <Icon name="at" size={20} color="#AF52DE" />;
-      default:
-        return <Icon name="bell" size={20} color="#8E8E93" />;
-    }
-  };
-
-  const getNotificationColor = (type: NotificationEntityType) => {
-    switch (type) {
-      case 'like':
-        return '#FF3B30';
-      case 'comment':
-        return '#34C759';
-      case 'follow':
-        return '#007AFF';
-      case 'mention':
-        return '#AF52DE';
-      default:
-        return '#8E8E93';
-    }
-  };
 
   type NotificationAction = {
     action: () => void;
@@ -138,38 +199,12 @@ const NotificationsScreen = () => {
     const { action, label } = getNotificationHandler(item, navigation);
 
     return (
-      <TouchableOpacity
-        style={[
-          styles.notificationItem,
-          !item.is_read && styles.unreadNotification,
-        ]}
-        activeOpacity={0.7}
-        onPress={action}
-      >
-        <View style={styles.notificationLeft}>
-          <View style={[styles.iconContainer, { backgroundColor: getNotificationColor(item.entity_type) + '20' }]}>
-            {renderNotificationIcon(item.entity_type)}
-          </View>
-          <View style={styles.notificationContent}>
-            <View style={styles.notificationText}>
-              <TouchableOpacity style={styles.username} onPress={() => {
-                navigation.navigate('ProfileMain', { userId: item.sender_id });
-              }}>
-                <Text style={styles.username}>{item.profiles.username}</Text>
-              </TouchableOpacity>
-              <Text style={styles.message}>{label}</Text>
-            </View>
-
-            <Text style={styles.timeText}>{getTimeAgo(item.created_at)}</Text>
-          </View>
-        </View>
-        {item.profiles.image_url && (
-          <Image
-            source={{ uri: item.profiles.image_url }}
-            style={styles.userImage}
-          />
-        )}
-      </TouchableOpacity>
+      <NotificationItem 
+        item={item} 
+        action={action} 
+        label={label} 
+        navigation={navigation}
+      />
     );
   };
 
@@ -306,11 +341,25 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     marginTop: 4,
   },
+  userImageContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
   userImage: {
     width: 44,
     height: 44,
     borderRadius: 22,
     backgroundColor: '#F0F0F0',
+  },
+  defaultAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyContainer: {
     flex: 1,

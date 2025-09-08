@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import { PlatformPressable } from '@react-navigation/elements';
+import { BackHandler } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 // Import your screens
 import { HomeScreen } from '../screens/HomeScreen';
@@ -69,6 +71,26 @@ const NotificationStack = createStackNavigator<NotificationStackParamList>();
 const ProfileStackScreen = () => {
   // You would typically get the current user ID from your auth context
   const currentUserId = useAuth().user?.id || '';
+  const navigation = useNavigation();
+
+  // Android geri tuşu yönetimi
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+          return true; // Geri tuşu işlendi
+        } else {
+          // Ana ekrandaysa uygulamadan çık
+          return false; // Varsayılan davranış
+        }
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [navigation])
+  );
 
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
@@ -109,6 +131,27 @@ const ProfileStackScreen = () => {
 
 // Create a stack navigator for the Home tab
 const HomeStackScreen = () => {
+  const navigation = useNavigation();
+
+  // Android geri tuşu yönetimi
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+          return true; // Geri tuşu işlendi
+        } else {
+          // Ana ekrandaysa uygulamadan çık
+          return false; // Varsayılan davranış
+        }
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [navigation])
+  );
+
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen 
@@ -152,6 +195,27 @@ const HomeStackScreen = () => {
 
 // Create a stack navigator for the Explore tab
 const ExploreStackScreen = () => {
+  const navigation = useNavigation();
+
+  // Android geri tuşu yönetimi
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+          return true; // Geri tuşu işlendi
+        } else {
+          // Ana ekrandaysa uygulamadan çık
+          return false; // Varsayılan davranış
+        }
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [navigation])
+  );
+
   return (
     <ExploreStack.Navigator screenOptions={{ headerShown: false }}>
       <ExploreStack.Screen 
@@ -185,8 +249,29 @@ const ExploreStackScreen = () => {
   );
 };
 
-// Create a stack navigator for the Explore tab
+// Create a stack navigator for the Notification tab
 const NotificationStackScreen = () => {
+  const navigation = useNavigation();
+
+  // Android geri tuşu yönetimi
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+          return true; // Geri tuşu işlendi
+        } else {
+          // Ana ekrandaysa uygulamadan çık
+          return false; // Varsayılan davranış
+        }
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [navigation])
+  );
+
   return (
     <NotificationStack.Navigator screenOptions={{ headerShown: false }}>
       <NotificationStack.Screen 

@@ -191,6 +191,7 @@ const UniversalPost: React.FC<PostProps> = ({
         username={post.profiles?.username || 'unknown'}
         title={post.title}
         description={post.description}
+        likeCount={likeCount}
         commentCount={commentCount}
         timeAgo={formatTimeAgo(post.created_at)}
         onComment={handleCommentPress}

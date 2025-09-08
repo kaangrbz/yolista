@@ -6,6 +6,7 @@ const PostCaption: React.FC<PostCaptionProps> = ({
   username,
   title,
   description,
+  likeCount,
   commentCount,
   timeAgo,
   onComment,
@@ -15,8 +16,9 @@ const PostCaption: React.FC<PostCaptionProps> = ({
   return (
     <View style={styles.container}>
       {/* Likes Count */}
-      {/* <Text style={styles.likesText}>
-      </Text> */}
+      <Text style={styles.likesText}>
+        {likeCount} beğeni
+      </Text>
 
       {/* Caption */}
       <View style={styles.captionContainer}>

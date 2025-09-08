@@ -16,7 +16,7 @@
 ```tsx
 import { usePostImageDownload } from '../hooks/useImageDownload';
 
-const PostCard = ({ route }) => {
+const PostComponent = ({ route }) => {
   const { imageUri, loading, error } = usePostImageDownload(
     route.image_url, 
     route.user_id

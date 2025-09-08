@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
-import { StyleSheet, Text, View, ActivityIndicator, Button, Linking, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator, Button, Linking, TouchableOpacity, Alert, BackHandler } from 'react-native';
 import { Logo } from '../components/Logo';
 import MainTabNavigator from './MainTabNavigator';
 import { supabase } from '../lib/supabase';
@@ -84,6 +84,19 @@ export const AppNavigator = () => {
   useEffect(() => {
     checkAppVersion();
   }, []);
+
+  // Android geri tuşu yönetimi - sadece giriş yapmamış kullanıcılar için
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      const backAction = () => {
+        // Giriş yapmamış kullanıcılar için uygulamadan çık
+        return false; // Varsayılan davranış (uygulamadan çık)
+      };
+
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+      return () => backHandler.remove();
+    }
+  }, [isAuthenticated, user]);
 
    // Handle loading timeout - sadece version kontrolü için
   useEffect(() => {

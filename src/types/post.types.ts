@@ -72,6 +72,7 @@ export interface PostCaptionProps {
   username: string;
   title: string;
   description?: string;
+  likeCount: number;
   commentCount: number;
   timeAgo: string;
   onComment: () => void;
