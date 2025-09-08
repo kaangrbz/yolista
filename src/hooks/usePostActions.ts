@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import RouteModel from '../model/routes.model';
 
@@ -51,13 +51,13 @@ export const usePostActions = (postId: string, userId: string | null, postOwnerI
     // Save logic will be implemented here
   };
 
-  const updatePostData = (postData: any) => {
+  const updatePostData = useCallback((postData: any) => {
     if (postData) {
       setIsLiked(postData.did_like || false);
       setLikeCount(postData.like_count || 0);
       setCommentCount(postData.comment_count || 0);
     }
-  };
+  }, []);
 
   return {
     isLiked,

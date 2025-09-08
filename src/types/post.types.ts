@@ -44,11 +44,16 @@ export interface ImageCarouselProps {
   currentIndex: number;
   onIndexChange: (index: number) => void;
   height?: number;
+  dynamicHeight?: boolean;
+  maxHeight?: number;
+  minHeight?: number;
+  onDoubleTap?: () => void;
 }
 
 export interface PostHeaderProps {
   username: string;
   userImage?: string;
+  userId?: string;
   location?: string;
   onProfilePress: () => void;
 }

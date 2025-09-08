@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -7,12 +7,15 @@ import {
   StyleSheet, 
   Dimensions,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
+  Animated
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../model/routes.model';
 import { supabase } from '../lib/supabase';
 import { DefaultAvatar, NoImage } from '../assets';
+import { useImages } from '../hooks/useImages';
+import { useProfileImageDownload } from '../hooks/useImageDownload';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -37,35 +40,30 @@ const PostCard: React.FC<PostCardProps> = ({
   onProfilePress,
   showFullScreen = false
 }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [images, setImages] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
   const [localLikeCount, setLocalLikeCount] = useState(route.like_count || 0);
   const [localDidLike, setLocalDidLike] = useState(route.did_like || false);
+  
+  // Double tap animation
+  const heartScale = useRef(new Animated.Value(0)).current;
+  const heartOpacity = useRef(new Animated.Value(0)).current;
 
-  // Mock images for demonstration (10 adede kadar)
-  const mockImages = [
-    'https://picsum.photos/400/600?random=' + Math.round(Math.random() * 1000),
-    'https://picsum.photos/400/600?random=' + Math.round(Math.random() * 1000),
-    'https://picsum.photos/400/600?random=' + Math.round(Math.random() * 1000),
-    'https://picsum.photos/400/600?random=' + Math.round(Math.random() * 1000),
-    'https://picsum.photos/400/600?random=' + Math.round(Math.random() * 1000),
-  ];
+  // Use the new useImages hook for real images
+  const { 
+    images, 
+    loading: imagesLoading, 
+    error: imagesError, 
+    currentIndex: currentImageIndex, 
+    handleImageScroll, 
+    goToImage 
+  } = useImages(route.id || '', route.user_id);
 
-  useEffect(() => {
-    // Simulate loading images
-    setLoading(true);
-    setTimeout(() => {
-      setImages(mockImages);
-      setLoading(false);
-    }, 500);
-  }, [route.id]);
+  // Use profile image download hook for profile image
+  const { imageUri: profileImageUri } = useProfileImageDownload(
+    route.profiles?.image_url, 
+    route.user_id || ''
+  );
 
-  const handleImageScroll = (event: any) => {
-    const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffsetX / screenWidth);
-    setCurrentImageIndex(index);
-  };
+  // Images are now handled by useImages hook
 
   const handleLike = () => {
     if (!userId || !route.id) return;
@@ -73,6 +71,41 @@ const PostCard: React.FC<PostCardProps> = ({
     setLocalLikeCount(prev => localDidLike ? prev - 1 : prev + 1);
     setLocalDidLike(prev => !prev);
     onLike?.(route.id, !localDidLike);
+  };
+
+  const lastTap = useRef<number>(0);
+  const doubleTapDelay = 300; // milliseconds
+
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    if (now - lastTap.current < doubleTapDelay) {
+      // Double tap detected
+      if (!localDidLike) {
+        handleLike();
+        showHeartAnimation();
+      }
+    }
+    lastTap.current = now;
+  };
+
+  const showHeartAnimation = () => {
+    // Reset animation values
+    heartScale.setValue(0);
+    heartOpacity.setValue(1);
+
+    // Animate heart
+    Animated.parallel([
+      Animated.timing(heartScale, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(heartOpacity, {
+        toValue: 0,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -86,15 +119,7 @@ const PostCard: React.FC<PostCardProps> = ({
     return `${Math.floor(diffInSeconds / 86400)}g`;
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, showFullScreen && styles.fullScreen]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0095f6" />
-        </View>
-      </View>
-    );
-  }
+  // Loading is now handled by useImages hook
 
   return (
     <View style={[styles.container, showFullScreen && styles.fullScreen]}>
@@ -105,8 +130,9 @@ const PostCard: React.FC<PostCardProps> = ({
           onPress={() => onProfilePress?.(route.user_id || '')}
         >
           <Image 
-            source={route.profiles?.image_url ? { uri: route.profiles.image_url } : DefaultAvatar}
+            source={profileImageUri ? { uri: profileImageUri } : DefaultAvatar}
             style={styles.profileImage}
+            resizeMode="cover"
           />
           <View style={styles.userDetails}>
             <Text style={styles.username}>{route.profiles?.username || 'unknown'}</Text>
@@ -120,35 +146,83 @@ const PostCard: React.FC<PostCardProps> = ({
 
       {/* Image Carousel */}
       <View style={styles.imageContainer}>
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleImageScroll}
-          style={styles.imageScrollView}
-        >
-          {images.map((imageUri, index) => (
-            <Image
-              key={index}
-              source={{ uri: imageUri }}
-              style={styles.postImage}
-              resizeMode="cover"
-            />
-          ))}
-        </ScrollView>
-        
-        {/* Image Indicators */}
-        {images.length > 1 && (
-          <View style={styles.imageIndicators}>
-            {images.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.indicator,
-                  index === currentImageIndex && styles.activeIndicator
-                ]}
-              />
-            ))}
+        {/* Loading State */}
+        {imagesLoading && (
+          <View style={styles.imageLoadingContainer}>
+            <ActivityIndicator size="large" color="#666" />
+            {/* <Text style={styles.imageLoadingText}>Resimler yükleniyor...</Text> */}
+          </View>
+        )}
+
+        {/* Error State */}
+        {imagesError && !imagesLoading && (
+          <View style={styles.imageErrorContainer}>
+            <Text style={styles.imageErrorText}>{imagesError}</Text>
+          </View>
+        )}
+
+        {/* Images */}
+        {!imagesLoading && !imagesError && images.length > 0 && (
+          <>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(event) => handleImageScroll(event, screenWidth)}
+              style={styles.imageScrollView}
+            >
+              {images.map((imageUri, index) => (
+                <TouchableOpacity
+                  key={index}
+                  activeOpacity={1}
+                  hitSlop={20}
+                  onPress={handleDoubleTap}
+                  style={styles.imageTouchable}
+                >
+                  <Image
+                    source={{ uri: imageUri }}
+                    style={styles.postImage}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            {/* Image Indicators */}
+            {images.length > 1 && (
+              <View style={styles.imageIndicators}>
+                {images.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.indicator,
+                      index === currentImageIndex && styles.activeIndicator
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+
+            {/* Heart Animation */}
+            <Animated.View
+              style={[
+                styles.heartAnimation,
+                {
+                  opacity: heartOpacity,
+                  transform: [{ scale: heartScale }],
+                },
+              ]}
+              pointerEvents="none"
+            >
+              <Icon name="heart" size={80} color="#ed4956" />
+            </Animated.View>
+          </>
+        )}
+
+        {/* No Images State */}
+        {!imagesLoading && !imagesError && images.length === 0 && (
+          <View style={styles.noImagesContainer}>
+            <Text style={styles.noImagesText}>Bu gönderi için resim bulunamadı</Text>
           </View>
         )}
       </View>
@@ -347,6 +421,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 8,
     textTransform: 'uppercase',
+  },
+  imageLoadingContainer: {
+    height: 400,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  imageLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+  },
+  imageErrorContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 20,
+  },
+  imageErrorText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  noImagesContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 20,
+  },
+  noImagesText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  imageTouchable: {
+    width: screenWidth,
+    height: '100%',
+  },
+  heartAnimation: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -40,
+    marginLeft: -40,
+    zIndex: 1000,
   },
 });
 

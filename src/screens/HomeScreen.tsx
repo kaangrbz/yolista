@@ -1,28 +1,18 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { RouteWithProfile } from '../model/routes.model';
-import { CityState, useCityStore } from '../store/cityStore';
 import { checkFirstTime } from '../utils/welcome';
 import { supabase } from '../lib/supabase';
 import { HomeHeader } from '../components/header/Header';
-import { useRoute } from '@react-navigation/native';
-import { showToast } from '../utils/alert';
 import StoriesBar from '../components/StoriesBar';
 import UniversalPost from '../components/UniversalPost';
 import { useHomePosts } from '../hooks/usePosts';
-import RouteModel from '../model/routes.model';
 
 
 export const HomeScreen = () => {
-  const [expandedDescriptions, setExpandedDescriptions] = useState<{ [key: string]: boolean }>({});
   const [userId, setUserId] = useState<string>('');
-  const [userIdLoaded, setUserIdLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const navigation = useNavigation();
-  const selectedCityId = useCityStore((state: CityState) => state.selectedCityId);
-  const route = useRoute();
 
   // Mock stories data
   const [stories] = useState([
@@ -68,14 +58,6 @@ export const HomeScreen = () => {
     }
   }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
-
-  const handleToggleDescription = useCallback((routeId: string) => {
-    setExpandedDescriptions(prev => ({
-      ...prev,
-      [routeId]: !prev[routeId]
-    }));
-  }, []);
-
   const handleStoryPress = (storyId: string) => {
     // Story görüntüleme logic'i buraya gelecek
   };
@@ -83,44 +65,7 @@ export const HomeScreen = () => {
   const handleAddStory = () => {
     // Hikaye ekleme logic'i buraya gelecek
   };
-
-  const handleLike = async (routeId: string, isLiked: boolean) => {
-    if (!userId || !routeId) return;
-
-    try {
-      if (isLiked) {
-        await RouteModel.likeRoute(routeId, '', userId);
-      } else {
-        await RouteModel.unlikeRoute(routeId, userId);
-      }
-    } catch (error) {
-      console.error('Error toggling like:', error);
-    }
-  };
-
-  const handleComment = (routeId: string) => {
-    (navigation as any).navigate('CommentSection', { 
-      routeId,
-      parentType: 'routeDetail',
-      routeOwnerId: '',
-    });
-  };
-
-  const handleShare = (routeId: string) => {
-    // Paylaşım logic'i buraya gelecek
-  };
-
-  const handleSave = (routeId: string) => {
-    // Kaydetme logic'i buraya gelecek
-  };
-
-  const handleProfilePress = (userId: string) => {
-    (navigation as any).navigate('ProfileMain', { 
-      userId, 
-      currentUserId: userId 
-    });
-  };
-
+  
   const renderPost = ({ item }: { item: RouteWithProfile }) => (
     <UniversalPost
       postId={item.id || ''}
@@ -138,7 +83,7 @@ export const HomeScreen = () => {
       );
     }
     
-    if (!hasMore) {
+    if (!hasMore && !isLoading) {
       return (
         <View style={styles.endContainer}>
           <Text style={styles.endText}>✨ Tüm içerikleri gördün!</Text>

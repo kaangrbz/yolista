@@ -1,11 +1,9 @@
 import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../model/routes.model';
-import CachedImage from '../common/CachedImage';
 import ProfilePostsGridSkeleton from './ProfilePostsGridSkeleton';
-
-const { width } = Dimensions.get('window');
+import ProfileGridItem from './ProfileGridItem';
 
 interface ProfilePostsGridProps {
   routes: RouteWithProfile[];
@@ -26,18 +24,11 @@ const ProfilePostsGrid: React.FC<ProfilePostsGridProps> = ({
   );
 
   const renderGridItem = ({ item, index }: { item: RouteWithProfile; index: number }) => (
-    <TouchableOpacity
-      style={styles.gridItem}
-      onPress={() => onRoutePress(item.id || '')}
-    >
-      <CachedImage
-        source={{ uri: 'https://picsum.photos/400/400?random=' + index }}
-        style={styles.gridImage}
-        resizeMode="cover"
-        showRetryButton={false}
-        fallbackSource={{ uri: 'https://via.placeholder.com/400x400/f0f0f0/999?text=No+Image' }}
-      />
-    </TouchableOpacity>
+    <ProfileGridItem
+      item={item}
+      index={index}
+      onRoutePress={onRoutePress}
+    />
   );
 
   if (loading) {
@@ -69,16 +60,6 @@ const styles = StyleSheet.create({
   },
   gridContent: {
     flexGrow: 1,
-  },
-  gridItem: {
-    width: width / 3,
-    height: width / 3,
-    borderWidth: 0.5,
-    borderColor: '#fff',
-  },
-  gridImage: {
-    width: '100%',
-    height: '100%',
   },
   emptyPosts: {
     alignItems: 'center',

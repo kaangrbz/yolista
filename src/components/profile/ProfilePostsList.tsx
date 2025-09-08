@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../model/routes.model';
-import UniversalPost from '../UniversalPost';
+import ProfilePostItem from './ProfilePostItem';
 
 interface ProfilePostsListProps {
   routes: RouteWithProfile[];
@@ -21,10 +21,9 @@ const ProfilePostsList: React.FC<ProfilePostsListProps> = ({
   );
 
   const renderPostItem = ({ item }: { item: RouteWithProfile }) => (
-    <UniversalPost
-      key={item.id}
-      postId={item.id || ''}
-      userId={currentUserId}
+    <ProfilePostItem
+      item={item}
+      currentUserId={currentUserId}
     />
   );
 

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Clipboard from '@react-native-clipboard/clipboard';
+import { useGlobalAlert } from '../hooks/useGlobalAlert';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -35,6 +36,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 }) => {
   const [customMessage, setCustomMessage] = useState('');
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const { copyToClipboard, showAlert } = useGlobalAlert();
 
   const generatePostUrl = () => {
     // Gerçek uygulamada bu URL dinamik olarak oluşturulacak
@@ -66,12 +68,11 @@ const ShareModal: React.FC<ShareModalProps> = ({
   const handleCopyLink = async () => {
     try {
       const url = postUrl || generatePostUrl();
-      await Clipboard.setString(url);
-      Alert.alert('Başarılı', 'Link panoya kopyalandı!');
+      await copyToClipboard(url, 'Link panoya kopyalandı!');
       onClose();
     } catch (error) {
       console.error('Error copying link:', error);
-      Alert.alert('Hata', 'Link kopyalanırken bir hata oluştu');
+      showAlert('Link kopyalanırken bir hata oluştu');
     }
   };
 

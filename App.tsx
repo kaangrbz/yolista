@@ -7,12 +7,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Text, ActivityIndicator, Animated } from 'react-native';
+import { useAlert } from './src/context/AlertContext';
 import {AuthProvider} from './src/context/AuthContext';
+import {AlertProvider} from './src/context/AlertContext';
 import {AppNavigator} from './src/navigation/AppNavigator';
 import Toast, {BaseToast} from 'react-native-toast-message';
 import { LogBox } from 'react-native';
 import { Logo } from './src/components/Logo';
 import { ImageService } from './src/services/ImageService';
+import GlobalAlert from './src/components/common/GlobalAlert';
 
 LogBox.ignoreAllLogs(); // Disables all warnings in the app
 
@@ -40,6 +43,7 @@ const AppContent = (): React.JSX.Element => {
   const [isLoading, setIsLoading] = useState(true);
   const fadeAnim = new Animated.Value(0);
   const scaleAnim = new Animated.Value(0.8);
+  const { currentAlert, hideAlert } = useAlert();
 
   useEffect(() => {
     // Fade in animasyonu
@@ -96,6 +100,10 @@ const AppContent = (): React.JSX.Element => {
     <>
       <AppNavigator />
       <Toast config={toastConfig}/>
+      <GlobalAlert 
+        alert={currentAlert} 
+        onDismiss={hideAlert} 
+      />
     </>
   );
 };
@@ -103,7 +111,9 @@ const AppContent = (): React.JSX.Element => {
 function App(): React.JSX.Element {
   return (
     <AuthProvider>
-      <AppContent />
+      <AlertProvider>
+        <AppContent />
+      </AlertProvider>
     </AuthProvider>
   );
 }

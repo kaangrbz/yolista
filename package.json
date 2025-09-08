@@ -6,7 +6,7 @@
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",
-    "start": "react-native start",
+    "start": "watchman watch-del-all && react-native start",
     "pod": "cd ios && pod install && cd ..",
     "test": "jest",
     "release": "cd android && ./gradlew assembleRelease",

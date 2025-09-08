@@ -131,38 +131,99 @@ export class ImageService {
     }
   }
 
-  // Mock images with caching for posts
+  // Get multiple post images for a route (deprecated - use useImages hook instead)
   static async getPostImages(postId: string, userId: string): Promise<string[]> {
+    console.warn('getPostImages is deprecated. Use useImages hook instead.');
+    return [];
+  }
+
+  // Generic download image helper - best practice implementation
+  static async downloadImage(
+    imageUrl: string | undefined,
+    bucketName: string,
+    userId: string,
+    onStateChange?: (state: ImageLoadState & { imageUri: string | null }) => void
+  ): Promise<string | null> {
+    if (!imageUrl) {
+      onStateChange?.({ loading: false, error: null, retryCount: 0, imageUri: null });
+      return null;
+    }
+
+    const cacheKey = `${bucketName}/${userId}/${imageUrl}`;
+    
     try {
-      const cacheKey = `post_images_${postId}`;
+      // Check cache first
       const cached = this.cache.get(cacheKey);
-      
       if (cached && Date.now() < cached.expiresAt) {
-        return JSON.parse(cached.uri);
+        onStateChange?.({ loading: false, error: null, retryCount: 0, imageUri: cached.uri });
+        return cached.uri;
       }
 
-      // Generate mock images
-      const mockImages = [
-        'https://picsum.photos/400/600?random=' + Math.round(Math.random() * 1000),
-        'https://picsum.photos/400/600?random=' + Math.round(Math.random() * 1000),
-        'https://picsum.photos/400/600?random=' + Math.round(Math.random() * 1000),
-        'https://picsum.photos/400/600?random=' + Math.round(Math.random() * 1000),
-        'https://picsum.photos/400/600?random=' + Math.round(Math.random() * 1000),
-      ];
-      
+      onStateChange?.({ loading: true, error: null, retryCount: 0, imageUri: null });
+
+      const { data, error } = await supabase
+        .storage
+        .from(bucketName)
+        .download(`${userId}/${imageUrl}`);
+
+      if (error) throw error;
+
+      // Convert Blob to Base64
+      const reader = new FileReader();
+      const uri = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(data);
+      });
+
       // Cache the result
       this.cache.set(cacheKey, {
-        uri: JSON.stringify(mockImages),
+        uri,
         timestamp: Date.now(),
         expiresAt: Date.now() + this.CACHE_DURATION
       });
 
       await this.saveCache();
-      return mockImages;
+      onStateChange?.({ loading: false, error: null, retryCount: 0, imageUri: uri });
+
+      return uri;
     } catch (error) {
-      console.error('Error getting post images:', error);
-      return [];
+      console.error('Error downloading image:', error);
+      onStateChange?.({ 
+        loading: false, 
+        error: 'Resim yüklenirken bir hata oluştu', 
+        retryCount: 0, 
+        imageUri: null 
+      });
+      return null;
     }
+  }
+
+  // Post image download helper
+  static async downloadPostImage(
+    imageUrl: string | undefined,
+    userId: string,
+    onStateChange?: (state: ImageLoadState & { imageUri: string | null }) => void
+  ): Promise<string | null> {
+    return this.downloadImage(imageUrl, 'routes', userId, onStateChange);
+  }
+
+  // Profile image download helper
+  static async downloadProfileImage(
+    imageUrl: string | undefined,
+    userId: string,
+    onStateChange?: (state: ImageLoadState & { imageUri: string | null }) => void
+  ): Promise<string | null> {
+    return this.downloadImage(imageUrl, 'profiles', userId, onStateChange);
+  }
+
+  // Profile background image download helper
+  static async downloadProfileBackground(
+    imageUrl: string | undefined,
+    userId: string,
+    onStateChange?: (state: ImageLoadState & { imageUri: string | null }) => void
+  ): Promise<string | null> {
+    return this.downloadImage(imageUrl, 'profiles', userId, onStateChange);
   }
 
   static async uploadImage(imageUri: string, userId: string, postId: string): Promise<string | null> {

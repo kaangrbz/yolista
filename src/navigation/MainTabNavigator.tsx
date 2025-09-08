@@ -8,6 +8,7 @@ import { PlatformPressable } from '@react-navigation/elements';
 // Import your screens
 import { HomeScreen } from '../screens/HomeScreen';
 import { CreateRouteScreen } from '../screens/CreateRouteScreen';
+import { CreateRouteStack } from './CreateRouteStack';
 import ProfileScreen from '../screens/ProfileScreen';
 import { RouteDetailScreen } from '../screens/RouteDetailScreen';
 import { AddCategoryScreen } from '../screens/AddCategoryScreen';
@@ -267,7 +268,7 @@ const MainTabNavigator = () => {
       />
       <Tab.Screen
         name="CreateRoute"
-        component={CreateRouteScreen}
+        component={CreateRouteStack}
         options={{
           tabBarShowLabel: false,
           tabBarIcon: ({ color, size }) => (

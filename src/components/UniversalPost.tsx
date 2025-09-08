@@ -32,7 +32,7 @@ const UniversalPost: React.FC<PostProps> = ({
     updatePostData 
   } = usePostActions(postId, userId, post?.user_id || '');
   
-  const { images, currentIndex, handleImageScroll } = useImages(postId);
+  const { images, loading: imagesLoading, error: imagesError, currentIndex, handleImageScroll, refreshImages } = useImages(postId, post?.user_id);
 
   // Update post actions when post data changes
   useEffect(() => {
@@ -41,7 +41,7 @@ const UniversalPost: React.FC<PostProps> = ({
       // Reset expansion state when post changes
       setIsExpanded(false);
     }
-  }, [post, updatePostData]);
+  }, [post?.id, updatePostData]); // Only depend on post.id, not the entire post object
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -133,16 +133,49 @@ const UniversalPost: React.FC<PostProps> = ({
       <PostHeader
         username={post.profiles?.username || 'unknown'}
         userImage={post.profiles?.image_url}
+        userId={post.user_id}
         location={post.cities?.name}
         onProfilePress={handleProfilePress}
       />
 
-      <ImageCarousel
-        images={images}
-        currentIndex={currentIndex}
-        onIndexChange={(index) => handleImageScroll({ nativeEvent: { contentOffset: { x: index * 400 } } }, 400)}
-        height={400}
-      />
+      {/* Image Loading State */}
+      {imagesLoading && (
+        <View style={styles.imageLoadingContainer}>
+          <ActivityIndicator size="large" color="#666" />
+          {/* <Text style={styles.imageLoadingText}>Resimler yükleniyor...</Text> */}
+        </View>
+      )}
+
+      {/* Image Error State */}
+      {imagesError && !imagesLoading && (
+        <View style={styles.imageErrorContainer}>
+          <Text style={styles.imageErrorText}>{imagesError}</Text>
+          <Text style={styles.imageRetryText} onPress={refreshImages}>
+            Tekrar Dene
+          </Text>
+        </View>
+      )}
+
+      {/* Image Carousel */}
+      {!imagesLoading && !imagesError && images.length > 0 && (
+        <ImageCarousel
+          images={images}
+          currentIndex={currentIndex}
+          onIndexChange={(index) => handleImageScroll({ nativeEvent: { contentOffset: { x: index * 400 } } }, 400)}
+          height={400}
+          dynamicHeight={true}
+          maxHeight={1080}
+          minHeight={250}
+          onDoubleTap={handleLikePress}
+        />
+      )}
+
+      {/* No Images State */}
+      {!imagesLoading && !imagesError && images.length === 0 && (
+        <View style={styles.noImagesContainer}>
+          <Text style={styles.noImagesText}>Bu gönderi için resim bulunamadı</Text>
+        </View>
+      )}
 
       <PostActions
         isLiked={isLiked}
@@ -201,6 +234,47 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: '#666',
+  },
+  imageLoadingContainer: {
+    height: 400,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  imageLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+  },
+  imageErrorContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 20,
+  },
+  imageErrorText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  imageRetryText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  noImagesContainer: {
+    height: 300,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 20,
+  },
+  noImagesText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 

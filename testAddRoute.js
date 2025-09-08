@@ -18,6 +18,31 @@ const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cC
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Yüklenen fotoğraf dosya adları
+const uploadedPhotos = [
+  "manzara_1.jpg",
+  "manzara_2.jpg",
+  "manzara_3.jpg",
+  "manzara_4.jpg",
+  "manzara_5.jpg",
+  "manzara_6.jpg",
+  "manzara_7.jpg",
+  "manzara_8.jpg",
+  "manzara_9.jpg",
+  "manzara_10.jpg",
+  "manzara_11.jpg",
+  "manzara_12.jpg",
+  "manzara_13.jpg",
+  "manzara_14.jpg",
+  "manzara_15.jpg",
+  "manzara_16.jpg",
+  "manzara_17.jpg",
+  "manzara_18.jpg",
+  "manzara_19.jpg",
+  "manzara_20.jpg",
+  "manzara_21.jpg"
+];
+
 // Rastgele başlık listesi
 const randomTitles = [
   "İstanbul'un Gizli Köşeleri",
@@ -102,11 +127,18 @@ function randomString(length) {
 
 // Rastgele route noktaları oluşturucu
 function generateRandomRoutePoints(userId) {
-  const pointCount = getRandomInt(2, 5); // 2-5 nokta arası
+  const pointCount = getRandomInt(2, 4); // 2-4 nokta arası
   const points = [];
+  
+  // Kullanılacak fotoğrafları karıştır ve kopya olmayacak şekilde seç
+  const shuffledPhotos = [...uploadedPhotos].sort(() => Math.random() - 0.5);
   
   for (let i = 0; i < pointCount; i++) {
     const coords = getRandomCoordinates();
+    
+    // Her nokta için sadece 1 fotoğraf (kopya olmasın)
+    const selectedPhoto = shuffledPhotos[i];
+    
     points.push({
       title: i === 0 ? getRandomElement(randomTitles) : `Durak ${i + 1}`,
       description: i === 0 ? getRandomElement(randomDescriptions) : `Bu durakta ${getRandomInt(5, 30)} dakika kalabilirsiniz.`,
@@ -115,7 +147,8 @@ function generateRandomRoutePoints(userId) {
       order_index: i,
       user_id: userId,
       is_deleted: false,
-      is_hidden: false
+      is_hidden: false,
+      image_url: selectedPhoto || null
     });
   }
   
@@ -250,6 +283,13 @@ async function addRandomRoute() {
     console.log('- Kategori ID:', categoryId);
     console.log('- Nokta sayısı:', routePoints.length);
     console.log('- Kullanıcı ID:', userId);
+    
+    // Fotoğraf bilgilerini göster
+    routePoints.forEach((point, index) => {
+      if (point.image_url) {
+        console.log(`- Nokta ${index + 1} fotoğrafı: ${point.image_url}`);
+      }
+    });
     
     // Route oluştur
     console.log('🚀 Route oluşturuluyor...');

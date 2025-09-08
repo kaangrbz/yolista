@@ -9,7 +9,7 @@ import RouteModel from '../model/routes.model';
 import { showToast } from '../utils/alert';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { DefaultAvatar, NoImage } from '../assets';
-import { supabase } from '../lib/supabase';
+import { useProfileImageDownload } from '../hooks/useImageDownload';
 
 const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId, cityName }: {
   fullName: string;
@@ -26,7 +26,10 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
   const [visibleDropdown, setVisibleDropdown] = useState(false);
   const navigation = useNavigation();
   const screenName = useNavigationState((state) => state.routes[state.index].name)
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  
+  // Use the new profile image download hook
+  const { imageUri, loading: imageLoading, error: imageError } = useProfileImageDownload(image_url, authorId);
+  console.log("🚀 ~ AuthorInfo ~ imageUri:", imageUri)
 
   const handleDeleteRoute = async () => {
     try {
@@ -97,53 +100,16 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
   }
 
 
-  // Function to download the image
-  const downloadImage = async (image_url: string | undefined) => {
-
-    if (!image_url) {
-      setImageUri(null);
-      return;
-    } 
-
-    try {
-      // If public URL fails, try to download the file
-      const { data, error } = await supabase
-        .storage
-        .from('profiles')
-        .download(`${authorId}/${image_url}`);
-
-      if (error) {
-        console.error('Supabase download error:', error);
-        throw error;
-      }
-
-      // Convert Blob to Base64
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageUri(reader.result as string);
-      };
-      reader.readAsDataURL(data);
-    } catch (error) {
-      console.error('Error in downloadImage:', error);
-      // showToast('error', 'Resim yüklenirken bir hata oluştu');
-      setImageUri(null);
-    } finally {
-    }
-  };
-
-  // Trigger the function when the component is mounted or image_url changes
-  useEffect(() => {
-    downloadImage(image_url);
-  }, [image_url]);
+  // Image loading is now handled by the hook automatically
 
   return (
     <View style={styles.authorContainer}>
       <View style={styles.authorInfo}>
-        <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('ProfileMain', { userId: authorId })}>
+        <TouchableOpacity style={styles.row} onPress={() => (navigation as any).navigate('ProfileMain', { userId: authorId })}>
           <Image
             source={imageUri ? { uri: imageUri } : DefaultAvatar}
             style={styles.authorImage}
-            resizeMode="cover"
+            resizeMode="contain"
           />
           <Text style={styles.authorName}>
             {fullName}

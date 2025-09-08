@@ -264,6 +264,15 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     setUser(updatedProfile);
   };
 
+  // Handle image update
+  const handleImageUpdate = (type: 'profile' | 'header', newImageUri: string) => {
+    if (type === 'profile') {
+      setImageUri(newImageUri);
+    } else if (type === 'header') {
+      setHeaderImageUri(newImageUri);
+    }
+  };
+
   // Event handlers
   const handleRoutePress = (routeId: string) => {
     navigation.navigate('RouteDetail', { routeId });
@@ -403,6 +412,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           imageUri={imageUri}
           headerImageUri={headerImageUri}
           onUpdate={handleProfileUpdate}
+          onImageUpdate={handleImageUpdate}
         />
       )}
 

@@ -3,19 +3,35 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { DefaultAvatar } from '../../assets';
 import { PostHeaderProps } from '../../types/post.types';
+import { useProfileImageDownload } from '../../hooks/useImageDownload';
 
 const PostHeader: React.FC<PostHeaderProps> = ({
   username,
   userImage,
+  userId,
   location,
   onProfilePress,
 }) => {
+  // Use the profile image download hook if userId is provided
+  const { imageUri: downloadedImageUri, loading: imageLoading } = useProfileImageDownload(
+    userId ? userImage : undefined, 
+    userId || ''
+  );
+
+  // Use downloaded image if available, otherwise fallback to userImage or DefaultAvatar
+  const profileImageSource = downloadedImageUri 
+    ? { uri: downloadedImageUri } 
+    : userImage 
+    ? { uri: userImage } 
+    : DefaultAvatar;
+
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.userInfo} onPress={onProfilePress}>
         <Image 
-          source={userImage ? { uri: userImage } : DefaultAvatar}
+          source={profileImageSource}
           style={styles.profileImage}
+          resizeMode="cover"
         />
         <View style={styles.userDetails}>
           <Text style={styles.username}>{username}</Text>
