@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { usePost } from '../hooks/usePost';
 import { usePostActions } from '../hooks/usePostActions';
@@ -10,6 +10,8 @@ import PostActions from './post/PostActions';
 import PostCaption from './post/PostCaption';
 import ShareModal from './ShareModal';
 import { PostProps } from '../types/post.types';
+import RouteModel from '../model/routes.model';
+import { useGlobalAlert } from '../hooks/useGlobalAlert';
 
 const UniversalPost: React.FC<PostProps> = ({
   postId,
@@ -33,6 +35,7 @@ const UniversalPost: React.FC<PostProps> = ({
   } = usePostActions(postId, userId, post?.user_id || '');
   
   const { images, loading: imagesLoading, error: imagesError, currentIndex, handleImageScroll, refreshImages } = useImages(postId, post?.user_id);
+  const { showAlert } = useGlobalAlert();
 
   // Update post actions when post data changes
   useEffect(() => {
@@ -107,6 +110,125 @@ const UniversalPost: React.FC<PostProps> = ({
     setIsExpanded(!isExpanded);
   };
 
+  // Dropdown menu actions
+  const handleEditPost = () => {
+    Alert.alert(
+      'Düzenle',
+      'Bu özellik yakında eklenecek',
+      [{ text: 'Tamam' }]
+    );
+  };
+
+  const handleDeletePost = async () => {
+    if (!post) return;
+    
+    Alert.alert(
+      'Gönderiyi Sil',
+      'Bu gönderiyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+      [
+        { text: 'İptal', style: 'cancel' },
+        { 
+          text: 'Sil', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { data, error } = await RouteModel.deleteRoute(postId);
+              
+              if (error) {
+                console.error('Error deleting post:', error);
+                showAlert('Gönderi silinirken bir hata oluştu');
+                return;
+              }
+
+              showAlert('Gönderi başarıyla silindi');
+              
+              // Navigate back or refresh the feed
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                // Refresh the current screen or navigate to home
+                navigation.navigate('HomeStack' as never);
+              }
+            } catch (error) {
+              console.error('Error deleting post:', error);
+              showAlert('Gönderi silinirken bir hata oluştu');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleReportPost = () => {
+    Alert.alert(
+      'Şikayet Et',
+      'Bu gönderiyi şikayet etmek istediğinizden emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        { 
+          text: 'Şikayet Et', 
+          style: 'destructive',
+          onPress: () => {
+            console.log('Post reported:', postId);
+            // TODO: Implement report functionality
+          }
+        }
+      ]
+    );
+  };
+
+  const handleBlockUser = () => {
+    if (!post) return;
+    Alert.alert(
+      'Engelle',
+      `${post.profiles?.username || 'Bu kullanıcıyı'} engellemek istediğinizden emin misiniz?`,
+      [
+        { text: 'İptal', style: 'cancel' },
+        { 
+          text: 'Engelle', 
+          style: 'destructive',
+          onPress: () => {
+            console.log('User blocked:', post.user_id);
+            // TODO: Implement block functionality
+          }
+        }
+      ]
+    );
+  };
+
+  const handleFollowUser = () => {
+    if (!post) return;
+    console.log('Following user:', post.user_id);
+    // TODO: Implement follow functionality
+    Alert.alert('Takip Edildi', `${post.profiles?.username || 'Kullanıcı'} takip edildi`);
+  };
+
+  const handleUnfollowUser = () => {
+    if (!post) return;
+    Alert.alert(
+      'Takibi Bırak',
+      `${post.profiles?.username || 'Bu kullanıcının'} takibini bırakmak istediğinizden emin misiniz?`,
+      [
+        { text: 'İptal', style: 'cancel' },
+        { 
+          text: 'Takibi Bırak', 
+          style: 'destructive',
+          onPress: () => {
+            console.log('Unfollowed user:', post.user_id);
+            // TODO: Implement unfollow functionality
+          }
+        }
+      ]
+    );
+  };
+
+  const handleCopyLink = () => {
+    const link = `https://roulista.com/post/${postId}`;
+    // TODO: Implement clipboard functionality
+    console.log('Link copied:', link);
+    Alert.alert('Link Kopyalandı', 'Gönderi linki panoya kopyalandı');
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -136,6 +258,17 @@ const UniversalPost: React.FC<PostProps> = ({
         userId={post.user_id}
         location={post.cities?.name}
         onProfilePress={handleProfilePress}
+        isOwnPost={post.user_id === userId}
+        isFollowing={false} // TODO: Implement following status
+        onMorePress={handleEditPost}
+        onReportPress={handleReportPost}
+        onBlockPress={handleBlockUser}
+        onFollowPress={handleFollowUser}
+        onUnfollowPress={handleUnfollowUser}
+        onEditPress={handleEditPost}
+        onDeletePress={handleDeletePost}
+        onSharePress={handleSharePress}
+        onCopyLinkPress={handleCopyLink}
       />
 
       {/* Image Loading State */}

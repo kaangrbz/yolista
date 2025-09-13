@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { DefaultAvatar } from '../../assets';
 import { PostHeaderProps } from '../../types/post.types';
 import { useProfileImageDownload } from '../../hooks/useImageDownload';
+import PostDropdownMenu from '../PostDropdownMenu';
 
 const PostHeader: React.FC<PostHeaderProps> = ({
   username,
@@ -11,6 +11,17 @@ const PostHeader: React.FC<PostHeaderProps> = ({
   userId,
   location,
   onProfilePress,
+  onMorePress,
+  onReportPress,
+  onBlockPress,
+  onFollowPress,
+  onUnfollowPress,
+  onEditPress,
+  onDeletePress,
+  onSharePress,
+  onCopyLinkPress,
+  isOwnPost = false,
+  isFollowing = false,
 }) => {
   // Use the profile image download hook if userId is provided
   const { imageUri: downloadedImageUri, loading: imageLoading } = useProfileImageDownload(
@@ -38,9 +49,18 @@ const PostHeader: React.FC<PostHeaderProps> = ({
           {location && <Text style={styles.location}>{location}</Text>}
         </View>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.moreButton}>
-        <Icon name="dots-horizontal" size={24} color="#262626" />
-      </TouchableOpacity>
+      <PostDropdownMenu
+        isOwnPost={isOwnPost}
+        isFollowing={isFollowing}
+        onReport={onReportPress}
+        onBlock={onBlockPress}
+        onFollow={onFollowPress}
+        onUnfollow={onUnfollowPress}
+        onEdit={onEditPress}
+        onDelete={onDeletePress}
+        onShare={onSharePress}
+        onCopyLink={onCopyLinkPress}
+      />
     </View>
   );
 };
@@ -75,9 +95,6 @@ const styles = StyleSheet.create({
   location: {
     fontSize: 12,
     color: '#8e8e8e',
-  },
-  moreButton: {
-    padding: 4,
   },
 });
 

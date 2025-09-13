@@ -9,7 +9,6 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 // Import your screens
 import { HomeScreen } from '../screens/HomeScreen';
-import { CreateRouteScreen } from '../screens/CreateRouteScreen';
 import { CreateRouteStack } from './CreateRouteStack';
 import ProfileScreen from '../screens/ProfileScreen';
 import { RouteDetailScreen } from '../screens/RouteDetailScreen';

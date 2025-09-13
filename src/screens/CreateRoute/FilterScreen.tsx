@@ -8,7 +8,6 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -17,6 +16,13 @@ import { FilterPreview } from '../../components/route/FilterPreview';
 import { Photo } from './PhotoSelectionScreen';
 import { RouteStop } from './StopDetailsScreen';
 import { Category, City } from './CategorySelectionScreen';
+import { supabase } from '../../lib/supabase';
+import { showToast } from '../../utils/alert';
+import { uploadImage } from '../../utils/imageUtils';
+import RouteModel, { RoutePoint } from '../../model/routes.model';
+import { randomString } from '../../utils/randomString';
+import RNFS from 'react-native-fs';
+import { decode } from 'base64-arraybuffer';
 
 const DEMO_FILTERS = [
   { id: 'none', name: 'Orijinal', icon: 'image' },
@@ -50,27 +56,103 @@ export const FilterScreen = () => {
   };
 
   const handlePublish = async () => {
+    console.log('🎯 [FilterScreen] Route oluşturma başlatıldı');
     setIsPublishing(true);
 
     try {
-      // Simulate publishing process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        showToast('error', 'Lütfen tekrar giriş yapınız', 'Hata');
+        return;
+      }
 
-      Alert.alert(
-        'Rota Yayınlandı! 🎉',
-        'Rotanız başarıyla oluşturuldu ve yayınlandı.',
-        [
-          {
-            text: 'Tamam',
-            onPress: () => {
-              // Navigate to home or route detail
-              navigation.navigate('HomeStack');
-            },
-          },
-        ],
+      // Convert routeStops to RoutePoint format
+      const routePoints: RoutePoint[] = routeStops.map((stop, index) => ({
+        client_id: randomString(16),
+        title: stop.title,
+        description: stop.description || '',
+        image_url: selectedPhotos[index]?.uri || '',
+        order_index: index,
+        is_deleted: false,
+        city_id: selectedCity?.id || null,
+        user_id: user.id,
+      }));
+
+      // Upload images in parallel
+      console.log('📤 [FilterScreen] Yüklenecek resimler:', selectedPhotos.map(p => ({ uri: p.uri, hasUri: !!p.uri })));
+      
+      const uploadPromises = selectedPhotos
+        .filter(photo => photo.uri)
+        .map(async (photo, index) => {
+          console.log(`📤 [FilterScreen] Resim ${index} yükleniyor:`, photo.uri);
+          const fileName = `${randomString(16)}.jpg`;
+          const filePath = `${user.id}/${fileName}`;
+          
+          try {
+            // Read the image file as a binary array
+            const image_base64 = await RNFS.readFile(photo.uri, 'base64');
+            console.log(`📤 [FilterScreen] Resim ${index} base64 okundu, boyut:`, image_base64.length);
+            
+            const { data, error } = await supabase.storage
+              .from('routes')
+              .upload(filePath, decode(image_base64), {
+                cacheControl: '3600',
+                upsert: false,
+                contentType: 'image/jpeg',
+              });
+
+            if (error) {
+              console.error(`❌ [FilterScreen] Resim ${index} upload hatası:`, error);
+              throw error;
+            }
+            
+            console.log(`✅ [FilterScreen] Resim ${index} başarıyla yüklendi:`, data);
+            return { data, client_id: routePoints[index].client_id, fileName };
+          } catch (error) {
+            console.error(`❌ [FilterScreen] Resim ${index} yükleme hatası:`, error);
+            return null;
+          }
+        });
+
+      const uploadResults = await Promise.all(uploadPromises);
+      const validUploadResults = uploadResults.filter(result => result !== null);
+      console.log('📤 [FilterScreen] Resimler yüklendi:', validUploadResults.length);
+
+      // Update routePoints with uploaded image URLs
+      const finalRoutePoints = routePoints.map(point => {
+        const uploadResult = validUploadResults.find(result => 
+          result && result.client_id === point.client_id
+        );
+        return uploadResult 
+          ? { ...point, image_url: uploadResult.fileName }
+          : point;
+      });
+
+      // Create route
+      const { data, error } = await RouteModel.createRoute(
+        finalRoutePoints,
+        selectedCity?.id || 0,
+        selectedCategory?.id || null,
       );
+
+      if (error) {
+        console.error('Route oluşturma hatası:', error);
+        showToast('error', 'Rota eklenirken bir hata oluştu', 'Hata');
+        return;
+      }
+
+      console.log('✅ [FilterScreen] Route başarıyla oluşturuldu');
+      showToast('success', 'Rota başarıyla eklendi', 'Başarılı');
+      
+      // Navigate to HomeStack with success message
+      (navigation as any).navigate('HomeStack', { 
+        showSuccessMessage: true,
+        successMessage: 'Rota başarıyla paylaşıldı! 🎉'
+      });
     } catch (error) {
-      Alert.alert('Hata', 'Rota yayınlanırken bir hata oluştu.');
+      console.error('Route oluşturma hatası:', error);
+      showToast('error', 'Rota oluşturulurken bir hata oluştu');
     } finally {
       setIsPublishing(false);
     }

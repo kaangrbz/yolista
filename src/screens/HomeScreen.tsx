@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, RefreshControl, ActivityIndicator, Animated } from 'react-native';
 import { RouteWithProfile } from '../model/routes.model';
 import { checkFirstTime } from '../utils/welcome';
 import { supabase } from '../lib/supabase';
@@ -7,12 +7,18 @@ import { HomeHeader } from '../components/header/Header';
 import StoriesBar from '../components/StoriesBar';
 import UniversalPost from '../components/UniversalPost';
 import { useHomePosts } from '../hooks/usePosts';
+import { useRoute } from '@react-navigation/native';
 
 
 export const HomeScreen = () => {
   const [userId, setUserId] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const fadeAnim = useState(new Animated.Value(0))[0];
+  
+  const route = useRoute();
 
   // Mock stories data
   const [stories] = useState([
@@ -41,6 +47,35 @@ export const HomeScreen = () => {
     fetchUserId();
     checkFirstTime();
   }, []);
+
+  // Check for success message from navigation params
+  useEffect(() => {
+    const params = route.params as { showSuccessMessage?: boolean; successMessage?: string } | undefined;
+    if (params?.showSuccessMessage) {
+      setSuccessMessage(params.successMessage || 'Rota başarıyla paylaşıldı! 🎉');
+      setShowSuccessMessage(true);
+      
+      // Show success message with animation
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+
+      // Hide message after 3 seconds
+      const timer = setTimeout(() => {
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setShowSuccessMessage(false);
+        });
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [route.params, fadeAnim]);
 
   
   const onRefresh = useCallback(async () => {
@@ -106,6 +141,13 @@ export const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <HomeHeader />
+      
+      {/* Success Message */}
+      {showSuccessMessage && (
+        <Animated.View style={[styles.successMessage, { opacity: fadeAnim }]}>
+          <Text style={styles.successText}>{successMessage}</Text>
+        </Animated.View>
+      )}
       
       <FlatList
         data={routes}
@@ -280,5 +322,27 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 12,
     paddingHorizontal: 16,
+  },
+  successMessage: {
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  successText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

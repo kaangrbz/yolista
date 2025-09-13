@@ -56,6 +56,17 @@ export interface PostHeaderProps {
   userId?: string;
   location?: string;
   onProfilePress: () => void;
+  onMorePress?: () => void;
+  onReportPress?: () => void;
+  onBlockPress?: () => void;
+  onFollowPress?: () => void;
+  onUnfollowPress?: () => void;
+  onEditPress?: () => void;
+  onDeletePress?: () => void;
+  onSharePress?: () => void;
+  onCopyLinkPress?: () => void;
+  isOwnPost?: boolean;
+  isFollowing?: boolean;
 }
 
 export interface PostActionsProps {
