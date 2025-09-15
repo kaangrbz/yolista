@@ -19,7 +19,7 @@ export async function requestFilePermission(): Promise<boolean> {
       for (const permission of permissions) {
         const result = await check(permission);
         console.log('Permission result:', permission, result);
-        
+
         switch (result) {
           case RESULTS.UNAVAILABLE:
             showToast('error', 'Permission Unavailable', 'This feature is not available on your device.');
@@ -53,8 +53,8 @@ export async function requestFilePermission(): Promise<boolean> {
       return allGranted;
     } else {
       // For iOS and Android 12 and below
-      const permission = isIOS 
-        ? PERMISSIONS.IOS.PHOTO_LIBRARY 
+      const permission = isIOS
+        ? PERMISSIONS.IOS.PHOTO_LIBRARY
         : PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE;
 
       const result = await check(permission);

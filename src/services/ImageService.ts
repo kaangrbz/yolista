@@ -53,13 +53,13 @@ export class ImageService {
 
   // Enhanced image loading with caching and retry
   static async loadImageWithCache(
-    imageUrl: string, 
-    bucketName: string, 
+    imageUrl: string,
+    bucketName: string,
     userId: string,
     onStateChange?: (state: ImageLoadState) => void
   ): Promise<string | null> {
     const cacheKey = `${bucketName}/${userId}/${imageUrl}`;
-    
+
     // Check cache first
     const cached = this.cache.get(cacheKey);
     if (cached && Date.now() < cached.expiresAt) {
@@ -86,7 +86,7 @@ export class ImageService {
         .from(bucketName)
         .download(`${userId}/${imageUrl}`);
 
-      if (error) throw error;
+      if (error) {throw error;}
 
       const reader = new FileReader();
       const uri = await new Promise<string>((resolve, reject) => {
@@ -99,7 +99,7 @@ export class ImageService {
       this.cache.set(cacheKey, {
         uri,
         timestamp: Date.now(),
-        expiresAt: Date.now() + this.CACHE_DURATION
+        expiresAt: Date.now() + this.CACHE_DURATION,
       });
 
       await this.saveCache();
@@ -108,23 +108,23 @@ export class ImageService {
       return uri;
     } catch (error) {
       console.error(`Error loading image (attempt ${retryCount + 1}):`, error);
-      
+
       if (retryCount < this.MAX_RETRIES) {
-        onStateChange?.({ 
-          loading: false, 
-          error: `Retrying... (${retryCount + 1}/${this.MAX_RETRIES})`, 
-          retryCount: retryCount + 1 
+        onStateChange?.({
+          loading: false,
+          error: `Retrying... (${retryCount + 1}/${this.MAX_RETRIES})`,
+          retryCount: retryCount + 1,
         });
-        
+
         // Wait before retry
         await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY * (retryCount + 1)));
-        
+
         return this.loadImageWithRetry(imageUrl, bucketName, userId, cacheKey, onStateChange, retryCount + 1);
       } else {
-        onStateChange?.({ 
-          loading: false, 
-          error: 'Failed to load image after multiple attempts', 
-          retryCount 
+        onStateChange?.({
+          loading: false,
+          error: 'Failed to load image after multiple attempts',
+          retryCount,
         });
         return null;
       }
@@ -150,7 +150,7 @@ export class ImageService {
     }
 
     const cacheKey = `${bucketName}/${userId}/${imageUrl}`;
-    
+
     try {
       // Check cache first
       const cached = this.cache.get(cacheKey);
@@ -166,7 +166,7 @@ export class ImageService {
         .from(bucketName)
         .download(`${userId}/${imageUrl}`);
 
-      if (error) throw error;
+      if (error) {throw error;}
 
       // Convert Blob to Base64
       const reader = new FileReader();
@@ -180,7 +180,7 @@ export class ImageService {
       this.cache.set(cacheKey, {
         uri,
         timestamp: Date.now(),
-        expiresAt: Date.now() + this.CACHE_DURATION
+        expiresAt: Date.now() + this.CACHE_DURATION,
       });
 
       await this.saveCache();
@@ -189,11 +189,11 @@ export class ImageService {
       return uri;
     } catch (error) {
       console.error('Error downloading image:', error);
-      onStateChange?.({ 
-        loading: false, 
-        error: 'Resim yüklenirken bir hata oluştu', 
-        retryCount: 0, 
-        imageUri: null 
+      onStateChange?.({
+        loading: false,
+        error: 'Resim yüklenirken bir hata oluştu',
+        retryCount: 0,
+        imageUri: null,
       });
       return null;
     }

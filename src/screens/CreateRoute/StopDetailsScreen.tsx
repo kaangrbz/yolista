@@ -15,6 +15,7 @@ import { StopForm } from '../../components/route/StopForm';
 // import { RouteMap } from '../../components/route/RouteMap';
 import { Photo } from './PhotoSelectionScreen';
 import { showToast } from '../../utils/alert';
+import KeyboardAwareContainer from '../../components/common/KeyboardAwareContainer';
 
 export interface RouteStop {
   id: string;
@@ -76,7 +77,7 @@ export const StopDetailsScreen = () => {
 
   const handleContinue = () => {
     // Validate that at least one stop has required info (photo is already guaranteed)
-    const hasValidStop = routeStops.some(stop => 
+    const hasValidStop = routeStops.some(stop =>
       selectedPhotos.some(photo => photo.id === stop.photoId)
     );
 
@@ -86,11 +87,11 @@ export const StopDetailsScreen = () => {
     }
 
     // Navigate to next step
-    navigation.navigate('CategorySelection', { 
-      selectedPhotos, 
-      routeStops: routeStops.filter(stop => 
+    (navigation as any).navigate('CategorySelection', {
+      selectedPhotos,
+      routeStops: routeStops.filter(stop =>
         selectedPhotos.some(photo => photo.id === stop.photoId)
-      )
+      ),
     });
   };
 
@@ -103,9 +104,9 @@ export const StopDetailsScreen = () => {
       description: '',
     }));
 
-    navigation.navigate('CategorySelection', { 
-      selectedPhotos, 
-      routeStops: minimalStops 
+    (navigation as any).navigate('CategorySelection', {
+      selectedPhotos,
+      routeStops: minimalStops,
     });
   };
 
@@ -130,9 +131,15 @@ export const StopDetailsScreen = () => {
         </Text>
       </View>
 
-      {/* Main Content */}
-      <View style={styles.content}>
-        {/* Image Carousel - %40 of screen */}
+      {/* KeyboardAware Main Content */}
+      <KeyboardAwareContainer
+        style={styles.keyboardContainer}
+        keyboardVerticalOffset={120} // Header + progress yüksekliği için
+        scrollViewProps={{
+          contentContainerStyle: styles.scrollContent,
+        }}
+      >
+        {/* Image Carousel */}
         <View style={styles.carouselContainer}>
           <ImageCarousel
             photos={selectedPhotos}
@@ -141,7 +148,7 @@ export const StopDetailsScreen = () => {
           />
         </View>
 
-        {/* Stop Form - %30 of screen */}
+        {/* Stop Form */}
         <View style={styles.formContainer}>
           <StopForm
             stop={currentStop}
@@ -149,7 +156,7 @@ export const StopDetailsScreen = () => {
           />
         </View>
 
-        {/* Map - %30 of screen */}
+        {/* Map - Collapsed when keyboard is active */}
         <View style={styles.mapContainer}>
           {/* <RouteMap
             stops={routeStops}
@@ -157,28 +164,28 @@ export const StopDetailsScreen = () => {
             onLocationSelect={handleLocationSelect}
           /> */}
         </View>
-      </View>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={[styles.button, styles.skipButton]}
-            onPress={handleSkip}>
-            <Text style={[styles.buttonText, styles.skipButtonText]}>
-              Atla
-            </Text>
-          </TouchableOpacity>
+        {/* Footer - Inside KeyboardAware */}
+        <View style={styles.footer}>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.button, styles.skipButton]}
+              onPress={handleSkip}>
+              <Text style={[styles.buttonText, styles.skipButtonText]}>
+                Atla
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.button, styles.continueButton]}
-            onPress={handleContinue}>
-            <Text style={styles.buttonText}>
-              Devam Et
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.continueButton]}
+              onPress={handleContinue}>
+              <Text style={styles.buttonText}>
+                Devam Et
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </KeyboardAwareContainer>
     </SafeAreaView>
   );
 };
@@ -204,22 +211,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  content: {
+  keyboardContainer: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
   carouselContainer: {
-    height: screenHeight * 0.4,
+    height: screenHeight * 0.35, // Biraz küçült
     backgroundColor: '#000',
+    marginHorizontal: 20,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 16,
   },
   formContainer: {
-    height: screenHeight * 0.3,
+    minHeight: 200, // Fixed height yerine minimum height
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: '#fff',
+    flex: 1, // Form'un genişleyebilmesini sağla
   },
   mapContainer: {
-    height: screenHeight * 0.3,
+    height: 120, // Küçült, keyboard açıkken gizlenebilir
     backgroundColor: '#f8f9fa',
+    marginHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 10,
+    marginBottom: 16,
   },
   footer: {
     paddingHorizontal: 20,

@@ -33,12 +33,12 @@ export const RouteMap: React.FC<RouteMapProps> = ({
   const [isSelecting, setIsSelecting] = useState(false);
 
   const currentStop = stops[currentStopIndex];
-  
+
   // Filter stops that have coordinates
   const stopsWithCoordinates = stops.filter(stop => stop.coordinate);
 
   const handleMapPress = (event: any) => {
-    if (!isSelecting) return;
+    if (!isSelecting) {return;}
 
     const { coordinate } = event.nativeEvent;
     onLocationSelect(coordinate);
@@ -68,7 +68,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
   };
 
   const getMarkerColor = (stopIndex: number) => {
-    if (stopIndex === currentStopIndex) return '#ff4444';
+    if (stopIndex === currentStopIndex) {return '#ff4444';}
     return '#4CAF50';
   };
 
@@ -91,10 +91,10 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               isSelecting && styles.actionButtonActive,
             ]}
             onPress={handleStartLocationSelection}>
-            <Icon 
-              name={isSelecting ? "crosshairs-gps" : "map-marker-plus"} 
-              size={16} 
-              color={isSelecting ? "#fff" : "#666"} 
+            <Icon
+              name={isSelecting ? 'crosshairs-gps' : 'map-marker-plus'}
+              size={16}
+              color={isSelecting ? '#fff' : '#666'}
             />
             <Text style={[
               styles.actionButtonText,
@@ -117,7 +117,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         showsMyLocationButton={false}
         showsCompass={false}
         toolbarEnabled={false}>
-        
+
         {/* Stop Markers */}
         {stopsWithCoordinates.map((stop, index) => {
           const originalIndex = stops.findIndex(s => s.id === stop.id);

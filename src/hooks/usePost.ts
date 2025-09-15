@@ -12,17 +12,17 @@ export const usePost = (postId: string, userId: string | null) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const routes = await RouteModel.getRoutesById(postId, userId || undefined);
-      
+
       if (routes && routes.length > 0) {
         const postData = routes[0];
-        
+
         if (postData.is_deleted) {
           setError('Bu gönderi silinmiş veya artık mevcut değil.');
           return;
         }
-        
+
         setPost(postData);
       } else {
         setError('Gönderi bulunamadı.');

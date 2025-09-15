@@ -52,7 +52,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   onCloseImageViewer,
   onCloseHeaderImageViewer,
 }) => {
-  if (!user) return null;
+  if (!user) {return null;}
 
   return (
     <View style={styles.container}>
@@ -73,7 +73,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               <Icon name="image-outline" size={48} color="rgba(255,255,255,0.7)" />
             </View>
           )}
-          
+
           {/* Dark Overlay */}
           <View style={styles.darkOverlay} />
         </TouchableOpacity>
@@ -102,10 +102,10 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Icon 
-                    name={isFollowing ? "account-minus" : "account-plus"} 
-                    size={16} 
-                    color="#fff" 
+                  <Icon
+                    name={isFollowing ? 'account-minus' : 'account-plus'}
+                    size={16}
+                    color="#fff"
                   />
                   <Text style={styles.followButtonText}>
                     {isFollowing ? 'Takibi Bırak' : 'Takip Et'}
@@ -157,10 +157,10 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           <TouchableOpacity
             onPress={() => {
               if (user.website) {
-                const url = user.website.startsWith('http://') 
+                const url = user.website.startsWith('http://')
                   ? user.website.replace('http://', 'https://')
-                  : user.website.startsWith('https://') 
-                    ? user.website 
+                  : user.website.startsWith('https://')
+                    ? user.website
                     : `https://${user.website}`;
                 Linking.openURL(url);
               }

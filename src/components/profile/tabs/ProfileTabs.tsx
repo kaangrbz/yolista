@@ -49,20 +49,20 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
   ];
 
   return (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.container,
         {
           opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }]
-        }
+          transform: [{ scale: scaleAnim }],
+        },
       ]}
     >
       <View style={styles.tabsContainer}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           const IconComponent = tab.iconType === 'MaterialIcons' ? MaterialIcons : Icon;
-          
+
           return (
             <TouchableOpacity
               key={tab.key}
@@ -72,17 +72,17 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
             >
               <View style={[
                 styles.tabIconContainer,
-                isActive && { backgroundColor: tab.color }
+                isActive && { backgroundColor: tab.color },
               ]}>
                 <IconComponent
                   name={tab.icon}
                   size={20}
-                  color={isActive ? "#fff" : "#666"}
+                  color={isActive ? '#fff' : '#666'}
                 />
               </View>
               <Text style={[
                 styles.tabLabel,
-                isActive && styles.activeTabLabel
+                isActive && styles.activeTabLabel,
               ]}>
                 {tab.label}
               </Text>

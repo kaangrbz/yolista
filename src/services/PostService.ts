@@ -5,17 +5,17 @@ export class PostService {
   static async getPost(postId: string, userId?: string): Promise<Post | null> {
     try {
       const routes = await RouteModel.getRoutesById(postId, userId);
-      
+
       if (routes && routes.length > 0) {
         const postData = routes[0];
-        
+
         if (postData.is_deleted) {
           throw new Error('Bu gönderi silinmiş veya artık mevcut değil.');
         }
-        
+
         return postData;
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error getting post:', error);

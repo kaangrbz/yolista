@@ -11,7 +11,7 @@ const ProfileHeaderSkeleton: React.FC = () => {
         borderRadius={0}
         style={styles.headerImage}
       />
-      
+
       {/* Action buttons skeleton */}
       <View style={styles.actionButtons}>
         <SimpleSkeletonLoader

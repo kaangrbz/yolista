@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
-import Animated, { 
-  useAnimatedStyle, 
-  withRepeat, 
+import Animated, {
+  useAnimatedStyle,
+  withRepeat,
   withTiming,
   useSharedValue,
   withSequence,
-  Easing
+  Easing,
 } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
@@ -76,7 +76,7 @@ const RouteCardSkeleton: React.FC<RouteCardSkeletonProps> = ({ isExploreScreen =
           <View style={styles.categorySkeleton} />
           <View style={styles.descriptionSkeleton} />
           <View style={styles.descriptionSkeleton} />
-          
+
           {/* Reactions Skeleton */}
           <View style={styles.reactionsContainer}>
             {[1, 2, 3, 4, 5].map((_, index) => (
@@ -233,4 +233,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default RouteCardSkeleton; 
+export default RouteCardSkeleton;

@@ -33,10 +33,10 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
           style={[styles.tab, activeTab === tab.index && styles.activeTab]}
           onPress={() => onTabChange(tab.index)}
         >
-          <Icon 
-            name={tab.icon} 
-            size={20} 
-            color={activeTab === tab.index ? '#1DA1F2' : '#666'} 
+          <Icon
+            name={tab.icon}
+            size={20}
+            color={activeTab === tab.index ? '#1DA1F2' : '#666'}
           />
         </TouchableOpacity>
       ))}

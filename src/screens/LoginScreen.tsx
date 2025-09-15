@@ -8,6 +8,7 @@ import {
   StatusBar,
   Animated,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -60,50 +61,58 @@ export const LoginScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
-      <KeyboardAvoidingView 
+
+      <KeyboardAvoidingView
         style={styles.keyboardContainer}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
         {/* Background Gradient Effect */}
         <View style={styles.backgroundContainer}>
           <View style={styles.gradientOverlay} />
         </View>
 
-        {/* Header */}
-        <LoginHeader 
-          fadeAnim={fadeAnim}
-          scaleAnim={scaleAnim}
-        />
-
-        {/* Form */}
-        <LoginForm
-          onLogin={handleLogin}
-          onNavigateToRegister={handleNavigateToRegister}
-          fadeAnim={fadeAnim}
-          scaleAnim={scaleAnim}
-        />
-
-        {/* Footer */}
-        <Animated.View 
-          style={[
-            styles.footer,
-            {
-              opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }]
-            }
-          ]}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollViewContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
         >
-          <View style={styles.footerContent}>
-            <View style={styles.footerText}>
-              <Text style={styles.footerTitle}>Yolista</Text>
-              <Text style={styles.footerSubtitle}>
-                Seyahat deneyimlerinizi paylaşın, yeni rotalar keşfedin
-              </Text>
+          {/* Header */}
+          <LoginHeader
+            fadeAnim={fadeAnim}
+            scaleAnim={scaleAnim}
+          />
+
+          {/* Form */}
+          <LoginForm
+            onLogin={handleLogin}
+            onNavigateToRegister={handleNavigateToRegister}
+            fadeAnim={fadeAnim}
+            scaleAnim={scaleAnim}
+          />
+
+          {/* Footer */}
+          <Animated.View
+            style={[
+              styles.footer,
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: scaleAnim }],
+              },
+            ]}
+          >
+            <View style={styles.footerContent}>
+              <View style={styles.footerText}>
+                <Text style={styles.footerTitle}>Yolista</Text>
+                <Text style={styles.footerSubtitle}>
+                  Seyahat deneyimlerinizi paylaşın, yeni rotalar keşfedin
+                </Text>
+              </View>
             </View>
-          </View>
-        </Animated.View>
+          </Animated.View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
@@ -116,6 +125,13 @@ const styles = StyleSheet.create({
   },
   keyboardContainer: {
     flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    minHeight: height - (Platform.OS === 'ios' ? 64 : 0),
   },
   backgroundContainer: {
     position: 'absolute',

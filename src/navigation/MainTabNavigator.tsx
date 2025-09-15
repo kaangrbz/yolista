@@ -93,36 +93,36 @@ const ProfileStackScreen = () => {
 
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
-      <ProfileStack.Screen 
-        name="ProfileMain" 
-        component={ProfileScreen} 
+      <ProfileStack.Screen
+        name="ProfileMain"
+        component={ProfileScreen}
         initialParams={{
           userId: currentUserId,
           currentUserId: currentUserId,
         }}
       />
-      <ProfileStack.Screen 
-        name="RouteDetail" 
-        component={RouteDetailScreen} 
+      <ProfileStack.Screen
+        name="RouteDetail"
+        component={RouteDetailScreen}
       />
-      <ProfileStack.Screen 
-        name="Explore" 
-        component={ExploreScreen} 
+      <ProfileStack.Screen
+        name="Explore"
+        component={ExploreScreen}
       />
-      <ProfileStack.Screen 
-        name="Followers" 
-        component={FollowersScreen} 
+      <ProfileStack.Screen
+        name="Followers"
+        component={FollowersScreen}
       />
-      <ProfileStack.Screen 
-        name="Following" 
-        component={FollowingScreen} 
-      />  
-      <ProfileStack.Screen 
-        name="CommentSection" 
+      <ProfileStack.Screen
+        name="Following"
+        component={FollowingScreen}
+      />
+      <ProfileStack.Screen
+        name="CommentSection"
         options={{
           presentation: 'modal',
         }}
-        component={CommentSection as any} 
+        component={CommentSection as any}
       />
     </ProfileStack.Navigator>
   );
@@ -153,40 +153,40 @@ const HomeStackScreen = () => {
 
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
-      <HomeStack.Screen 
-        name="HomeMain" 
-        component={HomeScreen} 
+      <HomeStack.Screen
+        name="HomeMain"
+        component={HomeScreen}
       />
-      <HomeStack.Screen 
-        name="RouteDetail" 
-        component={RouteDetailScreen} 
+      <HomeStack.Screen
+        name="RouteDetail"
+        component={RouteDetailScreen}
       />
-      <HomeStack.Screen 
-        name="AddCategory" 
-        component={AddCategoryScreen} 
+      <HomeStack.Screen
+        name="AddCategory"
+        component={AddCategoryScreen}
       />
-      <HomeStack.Screen 
-        name="Explore" 
-        component={ExploreScreen} 
+      <HomeStack.Screen
+        name="Explore"
+        component={ExploreScreen}
       />
-      <HomeStack.Screen 
-        name="ProfileMain" 
-        component={ProfileScreen} 
+      <HomeStack.Screen
+        name="ProfileMain"
+        component={ProfileScreen}
       />
-      <HomeStack.Screen 
-        name="Followers" 
-        component={FollowersScreen} 
+      <HomeStack.Screen
+        name="Followers"
+        component={FollowersScreen}
       />
-      <HomeStack.Screen 
-        name="Following" 
-        component={FollowingScreen} 
-      />  
-      <HomeStack.Screen 
-        name="CommentSection" 
+      <HomeStack.Screen
+        name="Following"
+        component={FollowingScreen}
+      />
+      <HomeStack.Screen
+        name="CommentSection"
         options={{
           presentation: 'modal',
         }}
-        component={CommentSection as any} 
+        component={CommentSection as any}
       />
     </HomeStack.Navigator>
   );
@@ -217,32 +217,32 @@ const ExploreStackScreen = () => {
 
   return (
     <ExploreStack.Navigator screenOptions={{ headerShown: false }}>
-      <ExploreStack.Screen 
-        name="ExploreMain" 
-        component={ExploreScreen} 
+      <ExploreStack.Screen
+        name="ExploreMain"
+        component={ExploreScreen}
       />
-      <ExploreStack.Screen 
-        name="RouteDetail" 
-        component={RouteDetailScreen} 
+      <ExploreStack.Screen
+        name="RouteDetail"
+        component={RouteDetailScreen}
       />
-      <ExploreStack.Screen 
-        name="ProfileMain" 
-        component={ProfileScreen} 
+      <ExploreStack.Screen
+        name="ProfileMain"
+        component={ProfileScreen}
       />
-      <ExploreStack.Screen 
-        name="Followers" 
-        component={FollowersScreen} 
+      <ExploreStack.Screen
+        name="Followers"
+        component={FollowersScreen}
       />
-      <ExploreStack.Screen 
-        name="Following" 
-        component={FollowingScreen} 
-      />  
-      <ExploreStack.Screen 
-        name="CommentSection" 
+      <ExploreStack.Screen
+        name="Following"
+        component={FollowingScreen}
+      />
+      <ExploreStack.Screen
+        name="CommentSection"
         options={{
           presentation: 'modal',
         }}
-        component={CommentSection as any} 
+        component={CommentSection as any}
       />
     </ExploreStack.Navigator>
   );
@@ -273,32 +273,32 @@ const NotificationStackScreen = () => {
 
   return (
     <NotificationStack.Navigator screenOptions={{ headerShown: false }}>
-      <NotificationStack.Screen 
-        name="NotificationMain" 
-        component={NotificationsScreen} 
+      <NotificationStack.Screen
+        name="NotificationMain"
+        component={NotificationsScreen}
       />
-      <NotificationStack.Screen 
-        name="RouteDetail" 
-        component={RouteDetailScreen} 
+      <NotificationStack.Screen
+        name="RouteDetail"
+        component={RouteDetailScreen}
       />
-      <NotificationStack.Screen 
-        name="ProfileMain" 
-        component={ProfileScreen} 
+      <NotificationStack.Screen
+        name="ProfileMain"
+        component={ProfileScreen}
       />
-      <NotificationStack.Screen 
-        name="Followers" 
-        component={FollowersScreen} 
+      <NotificationStack.Screen
+        name="Followers"
+        component={FollowersScreen}
       />
-      <NotificationStack.Screen 
-        name="Following" 
-        component={FollowingScreen} 
-      />  
-      <NotificationStack.Screen 
-        name="CommentSection" 
+      <NotificationStack.Screen
+        name="Following"
+        component={FollowingScreen}
+      />
+      <NotificationStack.Screen
+        name="CommentSection"
         options={{
           presentation: 'modal',
         }}
-        component={CommentSection as any} 
+        component={CommentSection as any}
       />
     </NotificationStack.Navigator>
   );
@@ -306,7 +306,7 @@ const NotificationStackScreen = () => {
 
 const MainTabNavigator = () => {
   const {unreadNotificationCount} = useAuth();
-  console.log("🚀 ~ MainTabNavigator ~ unreadNotificationCount:", unreadNotificationCount)
+  console.log('🚀 ~ MainTabNavigator ~ unreadNotificationCount:', unreadNotificationCount);
 
   return (
     <Tab.Navigator

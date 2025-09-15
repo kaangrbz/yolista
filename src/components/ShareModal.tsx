@@ -14,6 +14,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useGlobalAlert } from '../hooks/useGlobalAlert';
+import KeyboardAwareContainer from './common/KeyboardAwareContainer';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -46,16 +47,16 @@ const ShareModal: React.FC<ShareModalProps> = ({
   const handleShareLink = async () => {
     try {
       setIsGeneratingLink(true);
-      
+
       const url = postUrl || generatePostUrl();
       const message = customMessage || `"${postTitle}" gönderisini inceleyin: ${url}`;
-      
+
       await RNShare.share({
         message: message,
         url: url,
         title: postTitle,
       });
-      
+
       onClose();
     } catch (error) {
       console.error('Error sharing:', error);
@@ -79,7 +80,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
   const handleSocialShare = (platform: string) => {
     const url = postUrl || generatePostUrl();
     const message = customMessage || `"${postTitle}" gönderisini inceleyin: ${url}`;
-    
+
     // Platform-specific sharing logic
     switch (platform) {
       case 'whatsapp':
@@ -107,7 +108,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
           title: postTitle,
         });
     }
-    
+
     onClose();
   };
 
@@ -168,7 +169,11 @@ const ShareModal: React.FC<ShareModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
+        <KeyboardAwareContainer
+          style={styles.modalContainer}
+          enableScrollView={false}
+          keyboardVerticalOffset={50}
+        >
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Paylaş</Text>
@@ -241,7 +246,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
               </View>
             </View>
           </View>
-        </View>
+        </KeyboardAwareContainer>
       </View>
     </Modal>
   );

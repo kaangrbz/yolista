@@ -4,4 +4,3 @@ export const NOTIFICATION_RATE_LIMITS = {
     like: 60 * 1000,        // 1 dakika
     comment: 60 * 1000,     // 1 dakika
   };
-  

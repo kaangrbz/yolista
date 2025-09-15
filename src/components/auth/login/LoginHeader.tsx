@@ -14,19 +14,19 @@ interface LoginHeaderProps {
 
 const LoginHeader: React.FC<LoginHeaderProps> = ({ fadeAnim, scaleAnim }) => {
   return (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.container,
         {
           opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }]
-        }
+          transform: [{ scale: scaleAnim }],
+        },
       ]}
     >
       <View style={styles.logoContainer}>
         <Logo size="large" color="#1DA1F2" />
       </View>
-      
+
       <View style={styles.textContainer}>
         <Text style={styles.title}>Hoş Geldiniz!</Text>
         <Text style={styles.subtitle}>

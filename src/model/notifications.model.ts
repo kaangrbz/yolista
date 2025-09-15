@@ -1,6 +1,6 @@
-import { NOTIFICATION_RATE_LIMITS } from "../config/notificationConfig";
-import { supabase } from "../lib/supabase";
-import { showToast } from "../utils/alert";
+import { NOTIFICATION_RATE_LIMITS } from '../config/notificationConfig';
+import { supabase } from '../lib/supabase';
+import { showToast } from '../utils/alert';
 
 export type NotificationEntityType = 'follow' | 'like' | 'comment' | 'mention';
 
@@ -31,7 +31,7 @@ const NotificationModel = {
    */
   async getNotifications({ userId, lastCreatedAt }: { userId: string, lastCreatedAt?: string | null }): Promise<NotificationType[]> {
     const query = supabase
-      .from("notifications")
+      .from('notifications')
       .select(`
         *,
         profiles!notifications_sender_id_fkey (
@@ -43,8 +43,8 @@ const NotificationModel = {
           is_deleted
         )
       `)
-      .eq("recipient_id", userId)
-      .order("created_at", { ascending: false })
+      .eq('recipient_id', userId)
+      .order('created_at', { ascending: false });
 
     // if (lastCreatedAt) {
     //   query.gte("created_at", lastCreatedAt);
@@ -54,7 +54,7 @@ const NotificationModel = {
 
     console.log('notification data',data, error);
     if (error) {
-      showToast("error", "Bildirimler alınamadı");
+      showToast('error', 'Bildirimler alınamadı');
       throw error;
     }
     return data as NotificationType[];
@@ -88,25 +88,25 @@ const NotificationModel = {
     }
 
     // Rate limit uygulanacak tipler
-    const rateLimitTypes = ["follow"];
-  
+    const rateLimitTypes = ['follow'];
+
     if (senderId && rateLimitTypes.includes(entityType)) {
       const limitMs = NOTIFICATION_RATE_LIMITS[entityType as keyof typeof NOTIFICATION_RATE_LIMITS];
-  
+
       const { data: recentNotifications, error: fetchError } = await supabase
-        .from("notifications")
-        .select("created_at")
-        .eq("recipient_id", recipientId)
-        .eq("sender_id", senderId)
-        .eq("entity_type", entityType)
-        .order("created_at", { ascending: false })
+        .from('notifications')
+        .select('created_at')
+        .eq('recipient_id', recipientId)
+        .eq('sender_id', senderId)
+        .eq('entity_type', entityType)
+        .order('created_at', { ascending: false })
         .limit(1);
-  
+
       if (fetchError) {
-        showToast("error", "Bildirim kontrolü sırasında hata oluştu");
+        showToast('error', 'Bildirim kontrolü sırasında hata oluştu');
         throw fetchError;
       }
-  
+
       if (
         recentNotifications.length > 0 &&
         new Date().getTime() - new Date(recentNotifications[0].created_at).getTime() < limitMs
@@ -115,10 +115,10 @@ const NotificationModel = {
         return null;
       }
     }
-  
+
     // Bildirimi oluştur
     const { data, error } = await supabase
-      .from("notifications")
+      .from('notifications')
       .insert({
         sender_id: senderId || null,
         recipient_id: recipientId,
@@ -127,8 +127,8 @@ const NotificationModel = {
         message: message || null,
         is_read: false,
       })
-      .select("*");
-  
+      .select('*');
+
     if (error) {
       // showToast("error", "Bildirim oluşturulurken bir hata oluştu");
       throw error;
@@ -143,14 +143,14 @@ const NotificationModel = {
    */
   async markAsRead({ userId }: { userId: string }): Promise<NotificationType[]> {
     const { data, error } = await supabase
-      .from("notifications")
+      .from('notifications')
       .update({ is_read: true })
-      .eq("recipient_id", userId)
-      .eq("is_read", false)
-      .select("*");
+      .eq('recipient_id', userId)
+      .eq('is_read', false)
+      .select('*');
 
     if (error) {
-      showToast("error", "Bildirim okundu olarak işaretlenirken bir hata oluştu");
+      showToast('error', 'Bildirim okundu olarak işaretlenirken bir hata oluştu');
       throw error;
     }
     return data as NotificationType[];
@@ -163,12 +163,12 @@ const NotificationModel = {
    */
   async deleteNotification({ notificationId }: { notificationId: number }): Promise<void> {
     const { error } = await supabase
-      .from("notifications")
+      .from('notifications')
       .delete()
-      .eq("id", notificationId);
+      .eq('id', notificationId);
 
     if (error) {
-      showToast("error", "Bildirim silinirken bir hata oluştu");
+      showToast('error', 'Bildirim silinirken bir hata oluştu');
       throw error;
     }
 

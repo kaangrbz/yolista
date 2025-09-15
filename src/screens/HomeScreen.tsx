@@ -17,7 +17,7 @@ export const HomeScreen = () => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const fadeAnim = useState(new Animated.Value(0))[0];
-  
+
   const route = useRoute();
 
   // Mock stories data
@@ -54,7 +54,7 @@ export const HomeScreen = () => {
     if (params?.showSuccessMessage) {
       setSuccessMessage(params.successMessage || 'Rota başarıyla paylaşıldı! 🎉');
       setShowSuccessMessage(true);
-      
+
       // Show success message with animation
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -77,7 +77,7 @@ export const HomeScreen = () => {
     }
   }, [route.params, fadeAnim]);
 
-  
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refreshPosts();
@@ -100,7 +100,7 @@ export const HomeScreen = () => {
   const handleAddStory = () => {
     // Hikaye ekleme logic'i buraya gelecek
   };
-  
+
   const renderPost = ({ item }: { item: RouteWithProfile }) => (
     <UniversalPost
       postId={item.id || ''}
@@ -117,7 +117,7 @@ export const HomeScreen = () => {
         </View>
       );
     }
-    
+
     if (!hasMore && !isLoading) {
       return (
         <View style={styles.endContainer}>
@@ -126,7 +126,7 @@ export const HomeScreen = () => {
         </View>
       );
     }
-    
+
     return null;
   };
 
@@ -141,14 +141,14 @@ export const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <HomeHeader />
-      
+
       {/* Success Message */}
       {showSuccessMessage && (
         <Animated.View style={[styles.successMessage, { opacity: fadeAnim }]}>
           <Text style={styles.successText}>{successMessage}</Text>
         </Animated.View>
       )}
-      
+
       <FlatList
         data={routes}
         renderItem={renderPost}

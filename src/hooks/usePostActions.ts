@@ -8,13 +8,13 @@ export const usePostActions = (postId: string, userId: string | null, postOwnerI
   const [commentCount, setCommentCount] = useState(0);
 
   const handleLike = async () => {
-    if (!userId || !postId) return;
-    
+    if (!userId || !postId) {return;}
+
     try {
       // Optimistic update
       const newIsLiked = !isLiked;
       const newLikeCount = newIsLiked ? likeCount + 1 : likeCount - 1;
-      
+
       setIsLiked(newIsLiked);
       setLikeCount(newLikeCount);
 

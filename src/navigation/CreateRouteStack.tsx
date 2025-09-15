@@ -71,7 +71,7 @@ export const CreateRouteStack = () => {
           };
         },
       }}>
-      
+
       <Stack.Screen
         name="PhotoSelection"
         component={PhotoSelectionScreen}
@@ -79,7 +79,7 @@ export const CreateRouteStack = () => {
           title: 'Fotoğraf Seçimi',
         }}
       />
-      
+
       <Stack.Screen
         name="StopDetails"
         component={StopDetailsScreen}
@@ -87,7 +87,7 @@ export const CreateRouteStack = () => {
           title: 'Durak Bilgileri',
         }}
       />
-      
+
       <Stack.Screen
         name="CategorySelection"
         component={CategorySelectionScreen}
@@ -95,7 +95,7 @@ export const CreateRouteStack = () => {
           title: 'Kategori ve Şehir',
         }}
       />
-      
+
       <Stack.Screen
         name="FilterScreen"
         component={FilterScreen}
@@ -103,7 +103,7 @@ export const CreateRouteStack = () => {
           title: 'Filtreler',
         }}
       />
-      
+
     </Stack.Navigator>
   );
 };

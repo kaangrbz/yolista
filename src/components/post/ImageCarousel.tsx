@@ -25,7 +25,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
 }) => {
   const [imageDimensions, setImageDimensions] = useState<ImageDimensions[]>([]);
   const [calculatedHeight, setCalculatedHeight] = useState(height);
-  
+
   // Double tap animation
   const heartScale = useRef(new Animated.Value(0)).current;
   const heartOpacity = useRef(new Animated.Value(0)).current;
@@ -35,7 +35,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
     if (dynamicHeight && images.length > 0) {
       const loadImageDimensions = async () => {
         const dimensions: ImageDimensions[] = [];
-        
+
         for (const imageUri of images) {
           // Check cache first
           if (imageDimensionsCache.has(imageUri)) {
@@ -51,18 +51,18 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
                   // Calculate aspect ratio and adjust for screen width
                   const aspectRatio = height / width;
                   const adjustedHeight = screenWidth * aspectRatio;
-                  
+
                   // Clamp height between min and max
                   const clampedHeight = Math.max(
                     minHeight,
                     Math.min(maxHeight, adjustedHeight)
                   );
-                  
+
                   const result = { width: screenWidth, height: clampedHeight };
-                  
+
                   // Cache the result
                   imageDimensionsCache.set(imageUri, result);
-                  
+
                   resolve(result);
                 },
                 (error) => {
@@ -73,7 +73,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
                 }
               );
             });
-            
+
             dimensions.push(dim);
           } catch (error) {
             console.warn('Error processing image:', error);
@@ -82,9 +82,9 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
             dimensions.push(fallback);
           }
         }
-        
+
         setImageDimensions(dimensions);
-        
+
         // Set height to current image's height
         if (dimensions[currentIndex]) {
           setCalculatedHeight(dimensions[currentIndex].height);
@@ -179,18 +179,18 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
             <Image
               source={{ uri: imageUri }}
               style={[
-                styles.image, 
-                { 
+                styles.image,
+                {
                   height: getImageHeight(index),
-                  width: screenWidth 
-                }
+                  width: screenWidth,
+                },
               ]}
               resizeMode="cover"
             />
           </TouchableOpacity>
         ))}
       </ScrollView>
-      
+
       {/* Image Indicators */}
       {images.length > 1 && (
         <View style={styles.indicators}>
@@ -199,7 +199,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               key={index}
               style={[
                 styles.indicator,
-                index === currentIndex && styles.activeIndicator
+                index === currentIndex && styles.activeIndicator,
               ]}
             />
           ))}

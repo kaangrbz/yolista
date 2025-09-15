@@ -48,7 +48,7 @@ export const useImages = (postId: string, userId?: string) => {
 
         // Download images using ImageService
         const downloadedImages: string[] = [];
-        
+
         for (const route of routes) {
           if (route.image_url && route.user_id) {
             try {
@@ -57,7 +57,7 @@ export const useImages = (postId: string, userId?: string) => {
                 route.image_url,
                 route.user_id
               );
-              
+
               if (imageUri) {
                 console.log(`✅ Successfully downloaded image for route ${route.id}`);
                 downloadedImages.push(imageUri);
@@ -69,20 +69,20 @@ export const useImages = (postId: string, userId?: string) => {
               // Continue with other images even if one fails
             }
           } else {
-            console.warn(`⚠️ Route ${route.id} missing image_url or user_id:`, { 
-              image_url: route.image_url, 
-              user_id: route.user_id 
+            console.warn(`⚠️ Route ${route.id} missing image_url or user_id:`, {
+              image_url: route.image_url,
+              user_id: route.user_id,
             });
           }
         }
 
         console.log(`🎯 useImages: Downloaded ${downloadedImages.length} images for postId: ${postId}`);
         setImages(downloadedImages);
-        
+
         if (downloadedImages.length === 0) {
           setError('Bu gönderi için resim bulunamadı');
         }
-        
+
       } catch (error) {
         console.error('Error in loadRouteImages:', error);
         setError('Resimler yüklenirken beklenmeyen bir hata oluştu');
@@ -113,10 +113,10 @@ export const useImages = (postId: string, userId?: string) => {
       const cacheKey = `post_images_${postId}`;
       ImageService.clearCache(); // Clear all cache for now, can be optimized later
     }
-    
+
     // Reload images
     const loadRouteImages = async () => {
-      if (!postId) return;
+      if (!postId) {return;}
 
       setLoading(true);
       setError(null);
@@ -131,17 +131,17 @@ export const useImages = (postId: string, userId?: string) => {
           .not('image_url', 'is', null)
           .order('order_index', { ascending: true });
 
-        if (routesError) throw routesError;
+        if (routesError) {throw routesError;}
 
         const downloadedImages: string[] = [];
-        
+
         for (const route of routes || []) {
           if (route.image_url && route.user_id) {
             const imageUri = await ImageService.downloadPostImage(
               route.image_url,
               route.user_id
             );
-            
+
             if (imageUri) {
               downloadedImages.push(imageUri);
             }

@@ -33,8 +33,8 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
   return (
     <SafeAreaView style={styles.container}>
       <RouteDetailHeader navigation={navigation} />
-      
-      <ScrollView 
+
+      <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         bounces={true}

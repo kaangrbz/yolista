@@ -15,6 +15,7 @@ interface StopFormProps {
 }
 
 export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
+  // Note: This component is used within KeyboardAwareContainer in StopDetailsScreen
   return (
     <View style={styles.container}>
       {/* Title Input */}
@@ -62,7 +63,7 @@ export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
           <Icon name="map" size={16} color="#666" />
           <Text style={styles.locationLabel}>Konum Bilgisi</Text>
         </View>
-        
+
         {stop.coordinate ? (
           <View style={styles.locationDetails}>
             <Text style={styles.coordinatesText}>

@@ -41,12 +41,12 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
 
   // Options değişikliklerini takip et
   const currentOptionsString = JSON.stringify(options);
-  
+
   useEffect(() => {
     if (currentOptionsString !== lastOptionsRef.current) {
       optionsRef.current = options;
       lastOptionsRef.current = currentOptionsString;
-      
+
       // Options değiştiğinde posts'ları sıfırla ve yeniden yükle
       if (isInitialized) {
         setCurrentPage(0);
@@ -59,16 +59,16 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
 
   // Limit'i hesapla
   const getLimit = (): number => {
-    if (options.homeFeed?.limit) return options.homeFeed.limit;
-    if (options.exploreFeed?.limit) return options.exploreFeed.limit;
-    if (options.profileFeed?.limit) return options.profileFeed.limit;
+    if (options.homeFeed?.limit) {return options.homeFeed.limit;}
+    if (options.exploreFeed?.limit) {return options.exploreFeed.limit;}
+    if (options.profileFeed?.limit) {return options.profileFeed.limit;}
     return 10;
   };
 
 
   // Post'ları getir
   const fetchPosts = useCallback(async (reset: boolean = false) => {
-    if (isLoading) return;
+    if (isLoading) {return;}
 
     // Profile feed için userId kontrolü
     const currentOptions = optionsRef.current;
@@ -130,7 +130,7 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
       const limit = getLimit();
       const hasMoreData = newPosts.length === limit;
       setHasMore(hasMoreData);
-      
+
       if (!reset) {
         setCurrentPage(prev => prev + 1);
       } else {
@@ -179,18 +179,18 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
 // Yardımcı hook'lar
 export const useHomePosts = (loggedUserId: string, limit?: number) => {
   return usePosts({
-    homeFeed: { loggedUserId, limit }
+    homeFeed: { loggedUserId, limit },
   });
 };
 
 export const useExplorePosts = (categoryId?: number, searchQuery?: string, limit?: number) => {
   return usePosts({
-    exploreFeed: { categoryId, searchQuery, limit }
+    exploreFeed: { categoryId, searchQuery, limit },
   });
 };
 
 export const useProfilePosts = (userId: string, limit?: number) => {
   return usePosts({
-    profileFeed: { userId, limit }
+    profileFeed: { userId, limit },
   });
 };

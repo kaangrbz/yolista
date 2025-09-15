@@ -28,13 +28,13 @@ const ProfileStats: React.FC<ProfileStatsProps> = ({
   scaleAnim,
 }) => {
   return (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.container,
         {
           opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }]
-        }
+          transform: [{ scale: scaleAnim }],
+        },
       ]}
     >
       <View style={styles.statsRow}>

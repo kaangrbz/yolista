@@ -14,19 +14,19 @@ interface RegisterHeaderProps {
 
 const RegisterHeader: React.FC<RegisterHeaderProps> = ({ fadeAnim, scaleAnim }) => {
   return (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.container,
         {
           opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }]
-        }
+          transform: [{ scale: scaleAnim }],
+        },
       ]}
     >
       <View style={styles.logoContainer}>
         <Logo size="large" color="#1DA1F2" />
       </View>
-      
+
       <View style={styles.textContainer}>
         <Text style={styles.title}>Hesap Oluşturun</Text>
         <Text style={styles.subtitle}>

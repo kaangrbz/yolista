@@ -72,15 +72,15 @@ const ProfilePosts: React.FC<ProfilePostsProps> = ({
   const renderMasonryView = () => (
     <View style={styles.masonryContainer}>
       {routes.map((route, index) => (
-        <View 
-          key={route.id} 
+        <View
+          key={route.id}
           style={[
-            styles.masonryItem, 
-            { 
+            styles.masonryItem,
+            {
               width: (width - 60) / 2,
               height: index % 3 === 0 ? 200 : 150,
-              marginTop: index > 1 ? 10 : 0
-            }
+              marginTop: index > 1 ? 10 : 0,
+            },
           ]}
         >
           <UniversalPost
@@ -130,13 +130,13 @@ const ProfilePosts: React.FC<ProfilePostsProps> = ({
   return (
     <View style={styles.container}>
       {/* View Type Selector */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.viewTypeContainer,
           {
             opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }]
-          }
+            transform: [{ scale: scaleAnim }],
+          },
         ]}
       >
         <TouchableOpacity
@@ -175,13 +175,13 @@ const ProfilePosts: React.FC<ProfilePostsProps> = ({
         }
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View 
+        <Animated.View
           style={[
             styles.postsContainer,
             {
               opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }]
-            }
+              transform: [{ scale: scaleAnim }],
+            },
           ]}
         >
           {renderPosts()}

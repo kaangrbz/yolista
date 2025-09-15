@@ -27,7 +27,7 @@ const UserModel = {
   //* Get users by username
   async getUsers(searchQuery?: string, limit: number = 10) {
     const { data: users, error } = await supabase
-    .rpc('search_profiles', { term: `%${searchQuery}%`, lim: limit });        
+    .rpc('search_profiles', { term: `%${searchQuery}%`, lim: limit });
 
     if (error) {
       console.error('Error fetching users:', error);
@@ -41,7 +41,7 @@ const UserModel = {
   //* Get logged user
   async getLoggedUser() {
     const { data: user, error } = await supabase.auth.getUser();
-    if (error) throw error;
+    if (error) {throw error;}
     return user?.user;
   },
 
@@ -54,7 +54,7 @@ const UserModel = {
       .eq('followed_type', 'profile');
 
     if (error) {
-      console.error("Error fetching followers:", error);
+      console.error('Error fetching followers:', error);
       throw error;
     }
 
@@ -70,7 +70,7 @@ const UserModel = {
       .eq('followed_type', 'profile');
 
     if (error) {
-      console.error("Error fetching followers count:", error);
+      console.error('Error fetching followers count:', error);
       throw error;
     }
 
@@ -86,7 +86,7 @@ const UserModel = {
       .eq('followed_type', 'profile');
 
     if (error) {
-      console.error("Error fetching followings:", error);
+      console.error('Error fetching followings:', error);
       throw error;
     }
 
@@ -102,7 +102,7 @@ const UserModel = {
       .eq('followed_type', 'profile');
 
     if (error) {
-      console.error("Error fetching followings count:", error);
+      console.error('Error fetching followings count:', error);
       throw error;
     }
 
@@ -120,7 +120,7 @@ const UserModel = {
       .single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 is the error code for no rows returned
-      console.error("Error checking follow status:", error);
+      console.error('Error checking follow status:', error);
       throw error;
     }
 
@@ -135,23 +135,23 @@ const UserModel = {
     if (isAlreadyFollowing) {
       return {
         success: false,
-        message: 'Zaten takip ediyorsunuz'
+        message: 'Zaten takip ediyorsunuz',
       };
     }
     const data: FollowType = {
       follower_id: followerId,
       followed_id: followingId,
-      followed_type: 'profile'
-    }
+      followed_type: 'profile',
+    };
     const { error } = await supabase
       .from('follows')
       .insert(data);
 
     if (error) {
-      console.error("Error following user:", error);
+      console.error('Error following user:', error);
       return {
         success: false,
-        message: 'Takip edilirken bir hata oluştu'
+        message: 'Takip edilirken bir hata oluştu',
       };
     }
 
@@ -163,7 +163,7 @@ const UserModel = {
 
     return {
       success: true,
-      message: 'Kullanıcı takip edildi'
+      message: 'Kullanıcı takip edildi',
     };
   },
 
@@ -176,16 +176,16 @@ const UserModel = {
       .eq('followed_id', followingId);
 
     if (error) {
-      console.error("Error unfollowing user:", error);
+      console.error('Error unfollowing user:', error);
       return {
         success: false,
-        message: 'Takipten çıkarılırken bir hata oluştu'
+        message: 'Takipten çıkarılırken bir hata oluştu',
       };
     }
 
     return {
       success: true,
-      message: 'Takipten çıkarıldı'
+      message: 'Takipten çıkarıldı',
     };
   },
 
@@ -213,7 +213,7 @@ const UserModel = {
       .eq('id', userId);
 
     if (error) {
-      console.error("Error updating user profile:", error);
+      console.error('Error updating user profile:', error);
       return false;
     }
 

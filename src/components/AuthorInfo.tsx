@@ -25,11 +25,11 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
 }) => {
   const [visibleDropdown, setVisibleDropdown] = useState(false);
   const navigation = useNavigation();
-  const screenName = useNavigationState((state) => state.routes[state.index].name)
-  
+  const screenName = useNavigationState((state) => state.routes[state.index].name);
+
   // Use the new profile image download hook
   const { imageUri, loading: imageLoading, error: imageError } = useProfileImageDownload(image_url, authorId);
-  console.log("🚀 ~ AuthorInfo ~ imageUri:", imageUri)
+  console.log('🚀 ~ AuthorInfo ~ imageUri:', imageUri);
 
   const handleDeleteRoute = async () => {
     try {
@@ -87,17 +87,17 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
       console.error('Error hiding route:', error);
       showToast('error', 'Rota gizleme işlemi sırasında bir hata oluştu');
     }
-  }
+  };
 
   const handleEditRoute = async () => {
-    showToast('warning', 'Düzenleme özelliği henüz aktif değil')
+    showToast('warning', 'Düzenleme özelliği henüz aktif değil');
     setVisibleDropdown(false);
-  }
+  };
 
   const handleReportRoute = async () => {
-    showToast('warning', 'Raporlama özelliği henüz aktif değil')
+    showToast('warning', 'Raporlama özelliği henüz aktif değil');
     setVisibleDropdown(false);
-  }
+  };
 
 
   // Image loading is now handled by the hook automatically
@@ -162,7 +162,7 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
         }
       </DropdownMenu>
     </View>
-  )
+  );
 };
 
 export default AuthorInfo;
@@ -177,12 +177,12 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2
+    gap: 2,
   },
   authorInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2
+    gap: 2,
   },
   authorImage: {
     width: 40,

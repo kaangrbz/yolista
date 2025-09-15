@@ -11,6 +11,7 @@ import { DefaultAvatar, NoImage } from '../../assets';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../utils/alert';
 import ImageViewer from '../ImageViewer';
+import KeyboardAwareContainer from '../common/KeyboardAwareContainer';
 
 // Define the navigation param list type
 type RootStackParamList = {
@@ -155,7 +156,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
           )}
           <View style={styles.exploreOverlay}>
             <View style={styles.likeContainer}>
-              <Icon name={localDidLike ? "heart" : "heart-outline"} size={16} color="#fff" />
+              <Icon name={localDidLike ? 'heart' : 'heart-outline'} size={16} color="#fff" />
               <Text style={styles.likeCount}>{localLikeCount}</Text>
             </View>
           </View>
@@ -273,12 +274,12 @@ const RouteCard: React.FC<RouteCardProps> = ({
             )}
 
             <View style={styles.reactionContainer}>
-              <TouchableOpacity 
-                style={styles.reactionItem} 
+              <TouchableOpacity
+                style={styles.reactionItem}
                 onPress={() => {
                   // Optimistically update comment count
                   setLocalCommentCount((prev: number) => prev + 1);
-                  navigation.navigate('CommentSection', { 
+                  navigation.navigate('CommentSection', {
                     routeId: route.id || '',
                     parentType: 'routeDetail',
                     routeOwnerId: route.user_id || '',
@@ -289,7 +290,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
                 <Text style={styles.reactionText}>{route.comment_count}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.reactionItem} onPress={async () => {
-                if (!userId || !route.id) return;
+                if (!userId || !route.id) {return;}
 
                 // Optimistically update UI
                 setLocalLikeCount(prev => localDidLike ? prev - 1 : prev + 1);
@@ -305,7 +306,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
                   setLocalDidLike(prev => !prev);
                 }
               }}>
-                <Icon name={localDidLike ? "heart" : "heart-outline"} size={18} color="#c00" />
+                <Icon name={localDidLike ? 'heart' : 'heart-outline'} size={18} color="#c00" />
                 <Text style={styles.reactionText}>{localLikeCount}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.reactionItem}>
@@ -320,7 +321,10 @@ const RouteCard: React.FC<RouteCardProps> = ({
               </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.commentInputContainer}>
+          <KeyboardAwareContainer
+            enableScrollView={false}
+            style={styles.commentInputContainer}
+          >
             <Image
               source={DefaultAvatar}
               style={styles.commentImage}
@@ -333,7 +337,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
             <TouchableOpacity>
               <Icon name="send" size={20} color="#121" />
             </TouchableOpacity>
-          </View>
+          </KeyboardAwareContainer>
         </View>
       </TouchableOpacity>
 

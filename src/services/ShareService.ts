@@ -18,7 +18,7 @@ export class ShareService {
     try {
       const url = options.url || this.generatePostUrl(options.postId);
       const message = options.message || `"${options.title}" gönderisini inceleyin: ${url}`;
-      
+
       const result = await RNShare.share({
         message: message,
         url: url,
@@ -37,7 +37,7 @@ export class ShareService {
     try {
       const url = options.url || this.generatePostUrl(options.postId);
       const message = `${options.message || `"${options.title}" gönderisini inceleyin`} ${url}`;
-      
+
       const result = await RNShare.share({
         message: message,
         url: url,
@@ -54,7 +54,7 @@ export class ShareService {
     try {
       const url = options.url || this.generatePostUrl(options.postId);
       const message = `${options.message || `"${options.title}" gönderisini inceleyin`} ${url}`;
-      
+
       const result = await RNShare.share({
         message: message,
         url: url,
@@ -71,7 +71,7 @@ export class ShareService {
     try {
       const url = options.url || this.generatePostUrl(options.postId);
       const message = `${options.message || `"${options.title}" gönderisini inceleyin`} ${url}`;
-      
+
       const result = await RNShare.share({
         message: message,
         url: url,
@@ -87,10 +87,10 @@ export class ShareService {
   static async copyToClipboard(options: ShareOptions): Promise<boolean> {
     try {
       const url = options.url || this.generatePostUrl(options.postId);
-      
+
       await Clipboard.setString(url);
       Alert.alert('Başarılı', 'Link panoya kopyalandı!');
-      
+
       return true;
     } catch (error) {
       console.error('Error copying to clipboard:', error);

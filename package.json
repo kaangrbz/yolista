@@ -5,7 +5,7 @@
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
-    "lint": "eslint .",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "start": "watchman watch-del-all && react-native start",
     "pod": "cd ios && pod install && cd ..",
     "test": "jest",
@@ -20,7 +20,14 @@
     "clean:all": "yarn clean && yarn install && cd ios && pod install && cd ..",
     "reset": "yarn clean && yarn install && cd ios && pod install && cd .. && yarn start --reset-cache",
     "deep-start": "rm -rf node_modules ios/Pods ios/Podfile.lock yarn.lock && yarn install && cd ios && pod install && cd .. && yarn start",
-    "deep-clean": "rm -rf node_modules ios/Pods ios/Podfile.lock yarn.lock && yarn install && cd ios && pod install && cd .."
+    "deep-clean": "rm -rf node_modules ios/Pods ios/Podfile.lock yarn.lock && yarn install && cd ios && pod install && cd ..",
+    "analyze-bundle": "node scripts/analyzeBundleSize.js",
+    "clean-unused": "yarn remove @gorhom/bottom-sheet @react-navigation/drawer @react-navigation/material-top-tabs react-content-loader react-native-collapsible-tab-view react-native-dropdown-picker react-native-pager-view react-native-snap-carousel react-native-tab-view react-native-url-polyfill supabase uuid yum",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "lint:keyboard": "node scripts/checkKeyboardAwareness.js",
+    "type-check": "tsc --noEmit",
+    "pre-commit": "yarn lint:keyboard && yarn type-check",
+    "prepare": "husky"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.1.4",
@@ -81,13 +88,16 @@
     "@types/jest": "^29.5.13",
     "@types/react": "^19.0.0",
     "@types/react-test-renderer": "^19.0.0",
+    "babel-plugin-transform-remove-console": "^6.9.4",
     "eslint": "^8.19.0",
+    "glob": "^11.0.3",
+    "husky": "^9.1.7",
     "jest": "^29.6.3",
     "prettier": "2.8.8",
     "react-test-renderer": "19.0.0",
     "typescript": "5.0.4"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   }
 }

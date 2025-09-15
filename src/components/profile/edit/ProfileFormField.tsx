@@ -26,13 +26,14 @@ const ProfileFormField: React.FC<ProfileFormFieldProps> = ({
   style,
   ...textInputProps
 }) => {
+  // Note: This component should be used within KeyboardAwareContainer in parent modal/screen
   return (
     <View style={styles.container}>
       <View style={styles.labelContainer}>
         <Text style={styles.label}>{label}</Text>
         {required && <Text style={styles.required}>*</Text>}
       </View>
-      
+
       <TextInput
         style={[
           styles.input,
@@ -47,7 +48,7 @@ const ProfileFormField: React.FC<ProfileFormFieldProps> = ({
         placeholderTextColor="#999"
         {...textInputProps}
       />
-      
+
       {error && <Text style={styles.errorText}>{error}</Text>}
       {success && <Text style={styles.successText}>{success}</Text>}
     </View>

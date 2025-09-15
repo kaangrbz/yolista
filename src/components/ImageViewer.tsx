@@ -55,8 +55,8 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
       <TouchableOpacity onPress={onRequestClose} style={styles.button}>
         <Icon name="close" size={24} color="#fff" />
       </TouchableOpacity>
-      <TouchableOpacity 
-        onPress={() => handleSave(images[imageIndex].uri)} 
+      <TouchableOpacity
+        onPress={() => handleSave(images[imageIndex].uri)}
         style={styles.button}
       >
         <Icon name="download" size={24} color="#fff" />
@@ -96,4 +96,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ImageViewer; 
+export default ImageViewer;

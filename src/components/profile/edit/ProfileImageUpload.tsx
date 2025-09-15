@@ -46,7 +46,7 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
             <Image
               source={imageUri ? { uri: imageUri } : NoImage}
               style={[styles.image, isHeader && styles.headerImage]}
-              resizeMode={isHeader ? "cover" : "contain"}
+              resizeMode={isHeader ? 'cover' : 'contain'}
             />
             <View style={styles.overlay}>
               <View style={styles.iconContainer}>

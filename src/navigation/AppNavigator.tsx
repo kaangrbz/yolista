@@ -138,7 +138,7 @@ export const AppNavigator = () => {
   //     <View style={styles.loadingContainer}>
   //       <Logo size="large" color="#1DA1F2" />
   //       <ActivityIndicator size="large" color="#1DA1F2" />
-        
+
   //       {showTimeoutAlert && !showAggressiveAlert && (
   //         <View style={styles.timeoutContainer}>
   //           <Text style={styles.timeoutText}>

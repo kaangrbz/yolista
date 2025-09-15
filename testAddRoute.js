@@ -1,10 +1,10 @@
 /**
- * Rastgele başlık ve açıklama ile post ekleyen Node.js test komutuibilgileri 
- * 
- * 
+ * Rastgele başlık ve açıklama ile post ekleyen Node.js test komutuibilgileri
+ *
+ *
  * Kullanım:
  * node testAddRoute.js
- * 
+ *
  * Veya belirli sayıda post eklemek için:
  * node testAddRoute.js 5
  */
@@ -20,36 +20,36 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Yüklenen fotoğraf dosya adları
 const uploadedPhotos = [
-  "manzara_1.jpg",
-  "manzara_2.jpg",
-  "manzara_3.jpg",
-  "manzara_4.jpg",
-  "manzara_5.jpg",
-  "manzara_6.jpg",
-  "manzara_7.jpg",
-  "manzara_8.jpg",
-  "manzara_9.jpg",
-  "manzara_10.jpg",
-  "manzara_11.jpg",
-  "manzara_12.jpg",
-  "manzara_13.jpg",
-  "manzara_14.jpg",
-  "manzara_15.jpg",
-  "manzara_16.jpg",
-  "manzara_17.jpg",
-  "manzara_18.jpg",
-  "manzara_19.jpg",
-  "manzara_20.jpg",
-  "manzara_21.jpg"
+  'manzara_1.jpg',
+  'manzara_2.jpg',
+  'manzara_3.jpg',
+  'manzara_4.jpg',
+  'manzara_5.jpg',
+  'manzara_6.jpg',
+  'manzara_7.jpg',
+  'manzara_8.jpg',
+  'manzara_9.jpg',
+  'manzara_10.jpg',
+  'manzara_11.jpg',
+  'manzara_12.jpg',
+  'manzara_13.jpg',
+  'manzara_14.jpg',
+  'manzara_15.jpg',
+  'manzara_16.jpg',
+  'manzara_17.jpg',
+  'manzara_18.jpg',
+  'manzara_19.jpg',
+  'manzara_20.jpg',
+  'manzara_21.jpg',
 ];
 
 // Rastgele başlık listesi
 const randomTitles = [
   "İstanbul'un Gizli Köşeleri",
-  "Boğaz Manzaralı Yürüyüş Rotası",
-  "Tarihi Yarımada Keşfi",
+  'Boğaz Manzaralı Yürüyüş Rotası',
+  'Tarihi Yarımada Keşfi',
   "Moda'dan Kadıköy'e",
-  "Galata Kulesi Çevresi",
+  'Galata Kulesi Çevresi',
   "Sultanahmet'te Bir Gün",
   "Beyoğlu'nun Arka Sokakları",
   "Üsküdar'da Nostaljik Tur",
@@ -60,10 +60,10 @@ const randomTitles = [
   "Beşiktaş'ta Spor ve Kültür",
   "Şişli'nin Modern Yüzü",
   "Kadıköy'ün Renkli Sokakları",
-  "Bostancı Sahil Yürüyüşü",
+  'Bostancı Sahil Yürüyüşü',
   "Maltepe'den Pendik'e",
   "Kartal'ın Doğal Güzellikleri",
-  "Pendik Marina Turu",
+  'Pendik Marina Turu',
   "Tuzla'nın Sakin Köşeleri",
   "Ankara'nın Tarihi Yolları",
   "İzmir'in Ege Manzaraları",
@@ -74,26 +74,26 @@ const randomTitles = [
   "Gaziantep'in Lezzet Durakları",
   "Konya'nın Mistik Atmosferi",
   "Samsun'un Karadeniz Rüzgarı",
-  "Adana'nın Sıcak İklimi"
+  "Adana'nın Sıcak İklimi",
 ];
 
 // Rastgele açıklama listesi
 const randomDescriptions = [
   "Bu rota İstanbul'un en güzel manzaralarını sunuyor. Tarihi dokuyu modern yaşamla harmanlayan bu yürüyüş rotası, şehrin farklı yüzlerini keşfetmenizi sağlayacak.",
-  "Doğa ile şehir hayatının buluştuğu bu rota, hem dinlendirici hem de keşif dolu bir deneyim sunuyor. Fotoğraf çekmeyi unutmayın!",
+  'Doğa ile şehir hayatının buluştuğu bu rota, hem dinlendirici hem de keşif dolu bir deneyim sunuyor. Fotoğraf çekmeyi unutmayın!',
   "Tarihi mekanları ve modern yaşam alanlarını bir arada görebileceğiniz bu rota, İstanbul'un çok katmanlı yapısını yansıtıyor.",
-  "Bu yürüyüş rotası size şehrin farklı mahallelerini keşfetme fırsatı veriyor. Her köşede yeni bir sürpriz sizi bekliyor.",
-  "Deniz manzaralı bu rota, hem doğa severler hem de şehir hayatını sevenler için ideal. Temiz hava ve güzel manzaralar eşliğinde keyifli bir yürüyüş.",
+  'Bu yürüyüş rotası size şehrin farklı mahallelerini keşfetme fırsatı veriyor. Her köşede yeni bir sürpriz sizi bekliyor.',
+  'Deniz manzaralı bu rota, hem doğa severler hem de şehir hayatını sevenler için ideal. Temiz hava ve güzel manzaralar eşliğinde keyifli bir yürüyüş.',
   "Kültürel mirasımızı ve modern yaşamı bir arada görebileceğiniz bu rota, İstanbul'un zengin tarihini keşfetmenizi sağlayacak.",
-  "Bu rota boyunca hem tarihi yapıları hem de doğal güzellikleri görebilirsiniz. Şehrin farklı dönemlerinden izler taşıyan bu yürüyüş rotası çok özel.",
-  "Sakin ve huzurlu bir ortamda yürümek isteyenler için ideal olan bu rota, şehrin gürültüsünden uzaklaşmanızı sağlayacak.",
+  'Bu rota boyunca hem tarihi yapıları hem de doğal güzellikleri görebilirsiniz. Şehrin farklı dönemlerinden izler taşıyan bu yürüyüş rotası çok özel.',
+  'Sakin ve huzurlu bir ortamda yürümek isteyenler için ideal olan bu rota, şehrin gürültüsünden uzaklaşmanızı sağlayacak.',
   "Bu yürüyüş rotası size İstanbul'un farklı kültürlerini tanıma fırsatı veriyor. Her adımda yeni bir keşif sizi bekliyor.",
-  "Deniz kenarında yürümeyi sevenler için mükemmel olan bu rota, hem temiz hava hem de güzel manzaralar sunuyor.",
-  "Bu rota, şehrin en popüler turistik mekanlarını içeriyor. Yerli ve yabancı turistlerin mutlaka görmesi gereken yerler burada.",
-  "Gastronomi tutkunları için hazırlanmış bu rota, şehrin en lezzetli duraklarını keşfetmenizi sağlayacak.",
-  "Sanat ve kültür severler için özel olarak tasarlanmış bu rota, müzeler, galeriler ve tarihi mekanları içeriyor.",
-  "Aileler için güvenli ve eğlenceli bu rota, çocukların da keyif alabileceği aktiviteler sunuyor.",
-  "Romantik bir yürüyüş için ideal olan bu rota, çiftlerin unutulmaz anılar biriktirmesini sağlayacak."
+  'Deniz kenarında yürümeyi sevenler için mükemmel olan bu rota, hem temiz hava hem de güzel manzaralar sunuyor.',
+  'Bu rota, şehrin en popüler turistik mekanlarını içeriyor. Yerli ve yabancı turistlerin mutlaka görmesi gereken yerler burada.',
+  'Gastronomi tutkunları için hazırlanmış bu rota, şehrin en lezzetli duraklarını keşfetmenizi sağlayacak.',
+  'Sanat ve kültür severler için özel olarak tasarlanmış bu rota, müzeler, galeriler ve tarihi mekanları içeriyor.',
+  'Aileler için güvenli ve eğlenceli bu rota, çocukların da keyif alabileceği aktiviteler sunuyor.',
+  'Romantik bir yürüyüş için ideal olan bu rota, çiftlerin unutulmaz anılar biriktirmesini sağlayacak.',
 ];
 
 // Kategori ID'si null (opsiyonel)
@@ -129,16 +129,16 @@ function randomString(length) {
 function generateRandomRoutePoints(userId) {
   const pointCount = getRandomInt(2, 4); // 2-4 nokta arası
   const points = [];
-  
+
   // Kullanılacak fotoğrafları karıştır ve kopya olmayacak şekilde seç
   const shuffledPhotos = [...uploadedPhotos].sort(() => Math.random() - 0.5);
-  
+
   for (let i = 0; i < pointCount; i++) {
     const coords = getRandomCoordinates();
-    
+
     // Her nokta için sadece 1 fotoğraf (kopya olmasın)
     const selectedPhoto = shuffledPhotos[i];
-    
+
     points.push({
       title: i === 0 ? getRandomElement(randomTitles) : `Durak ${i + 1}`,
       description: i === 0 ? getRandomElement(randomDescriptions) : `Bu durakta ${getRandomInt(5, 30)} dakika kalabilirsiniz.`,
@@ -148,10 +148,10 @@ function generateRandomRoutePoints(userId) {
       user_id: userId,
       is_deleted: false,
       is_hidden: false,
-      image_url: selectedPhoto || null
+      image_url: selectedPhoto || null,
     });
   }
-  
+
   return points;
 }
 
@@ -160,9 +160,9 @@ async function getTestUser() {
   try {
     const testEmail = 'test@gmail.com';
     const testPassword = 'test123';
-    
+
     console.log('🔐 Test kullanıcısı ile giriş yapılıyor...');
-    
+
     // Kullanıcı girişi
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: testEmail,
@@ -172,7 +172,7 @@ async function getTestUser() {
     if (authError) {
       console.error('❌ Giriş hatası:', authError);
       console.log('🔄 Kullanıcı kaydı deneniyor...');
-      
+
       // Giriş başarısızsa kayıt olmayı dene
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: testEmail,
@@ -211,7 +211,7 @@ async function createRoute(routePoints, cityId, categoryId) {
   try {
     // Önce ana rotayı bul
     const mainRoute = routePoints.find(route => route.order_index === 0);
-    
+
     if (!mainRoute) {
       throw new Error('Ana rota bulunamadı');
     }
@@ -235,7 +235,7 @@ async function createRoute(routePoints, cityId, categoryId) {
 
     // Diğer rotaları ekle
     const otherRoutes = routePoints.filter(route => route.order_index !== 0);
-    
+
     if (otherRoutes.length > 0) {
       otherRoutes.forEach(route => {
         route.parent_id = mainRouteId;
@@ -263,19 +263,19 @@ async function createRoute(routePoints, cityId, categoryId) {
 async function addRandomRoute() {
   try {
     console.log('🎯 Rastgele route ekleme başlıyor...');
-    
+
     // Test kullanıcısını al
     const userId = await getTestUser();
     if (!userId) {
       console.error('❌ Kullanıcı bulunamadı veya oluşturulamadı');
       return;
     }
-    
+
     // Rastgele veriler oluştur
     const routePoints = generateRandomRoutePoints(userId);
     const cityId = getRandomElement(cityIds);
     const categoryId = getRandomElement(categoryIds);
-    
+
     console.log('📊 Oluşturulan veriler:');
     console.log('- Başlık:', routePoints[0].title);
     console.log('- Açıklama:', routePoints[0].description.substring(0, 50) + '...');
@@ -283,18 +283,18 @@ async function addRandomRoute() {
     console.log('- Kategori ID:', categoryId);
     console.log('- Nokta sayısı:', routePoints.length);
     console.log('- Kullanıcı ID:', userId);
-    
+
     // Fotoğraf bilgilerini göster
     routePoints.forEach((point, index) => {
       if (point.image_url) {
         console.log(`- Nokta ${index + 1} fotoğrafı: ${point.image_url}`);
       }
     });
-    
+
     // Route oluştur
     console.log('🚀 Route oluşturuluyor...');
     const { data, error } = await createRoute(routePoints, cityId, categoryId);
-    
+
     if (error) {
       console.error('❌ Route oluşturma hatası:', error);
     } else {
@@ -305,12 +305,12 @@ async function addRandomRoute() {
         title: data?.title,
         city_id: data?.city_id,
         category_id: data?.category_id,
-        created_at: data?.created_at
+        created_at: data?.created_at,
       });
     }
-    
+
     return { success: !error, data, error };
-    
+
   } catch (err) {
     console.error('❌ Beklenmeyen hata:', err);
     return { success: false, data: null, error: err };
@@ -320,25 +320,25 @@ async function addRandomRoute() {
 // Toplu test fonksiyonu
 async function addMultipleRandomRoutes(count = 5) {
   console.log(`🎯 ${count} adet rastgele route ekleme başlıyor...`);
-  
+
   let successCount = 0;
   let errorCount = 0;
-  
+
   for (let i = 1; i <= count; i++) {
     console.log(`\n📝 ${i}/${count} route ekleniyor...`);
     const result = await addRandomRoute();
-    
+
     if (result.success) {
       successCount++;
     } else {
       errorCount++;
     }
-    
+
     // Kısa bir bekleme
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  
-  console.log(`\n🎉 İşlem tamamlandı!`);
+
+  console.log('\n🎉 İşlem tamamlandı!');
   console.log(`✅ Başarılı: ${successCount}`);
   console.log(`❌ Hatalı: ${errorCount}`);
   console.log(`📊 Toplam: ${count}`);
@@ -358,16 +358,16 @@ function showRandomData() {
 async function main() {
   const args = process.argv.slice(2);
   const count = args[0] ? parseInt(args[0]) : 1;
-  
+
   console.log('🚀 Yolista Test Route Ekleme Aracı');
   console.log('=====================================');
-  
+
   if (count > 1) {
     await addMultipleRandomRoutes(count);
   } else {
     await addRandomRoute();
   }
-  
+
   console.log('\n✨ İşlem tamamlandı!');
 }
 
@@ -382,5 +382,5 @@ module.exports = {
   addMultipleRandomRoutes,
   showRandomData,
   generateRandomRoutePoints,
-  getTestUser
+  getTestUser,
 };

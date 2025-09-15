@@ -22,7 +22,7 @@ export const AlertProvider: React.FC<AlertProviderProps> = ({ children }) => {
       ...config,
       id,
     };
-    
+
     setCurrentAlert(newAlert);
   }, []);
 

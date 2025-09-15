@@ -23,17 +23,17 @@ const UniversalPost: React.FC<PostProps> = ({
   const { post, loading, error } = usePost(postId, userId);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
-  const { 
-    isLiked, 
-    likeCount, 
-    commentCount, 
-    handleLike, 
-    handleComment, 
-    handleShare, 
+  const {
+    isLiked,
+    likeCount,
+    commentCount,
+    handleLike,
+    handleComment,
+    handleShare,
     handleSave,
-    updatePostData 
+    updatePostData,
   } = usePostActions(postId, userId, post?.user_id || '');
-  
+
   const { images, loading: imagesLoading, error: imagesError, currentIndex, handleImageScroll, refreshImages } = useImages(postId, post?.user_id);
   const { showAlert } = useGlobalAlert();
 
@@ -50,22 +50,22 @@ const UniversalPost: React.FC<PostProps> = ({
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
-    if (diffInSeconds < 60) return 'şimdi';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}d`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}s`;
+
+    if (diffInSeconds < 60) {return 'şimdi';}
+    if (diffInSeconds < 3600) {return `${Math.floor(diffInSeconds / 60)}d`;}
+    if (diffInSeconds < 86400) {return `${Math.floor(diffInSeconds / 3600)}s`;}
     return `${Math.floor(diffInSeconds / 86400)}g`;
   };
 
   const handleProfilePress = () => {
-    if (!post?.user_id) return;
-    
+    if (!post?.user_id) {return;}
+
     if (actions?.onProfilePress) {
       actions.onProfilePress(post.user_id);
     } else {
-      (navigation as any).navigate('ProfileMain', { 
-        userId: post.user_id, 
-        currentUserId: userId || '' 
+      (navigation as any).navigate('ProfileMain', {
+        userId: post.user_id,
+        currentUserId: userId || '',
       });
     }
   };
@@ -74,7 +74,7 @@ const UniversalPost: React.FC<PostProps> = ({
     if (actions?.onComment) {
       actions.onComment(postId);
     } else {
-      (navigation as any).navigate('CommentSection', { 
+      (navigation as any).navigate('CommentSection', {
         routeId: postId,
         parentType: 'routeDetail',
         routeOwnerId: post?.user_id || '',
@@ -120,20 +120,20 @@ const UniversalPost: React.FC<PostProps> = ({
   };
 
   const handleDeletePost = async () => {
-    if (!post) return;
-    
+    if (!post) {return;}
+
     Alert.alert(
       'Gönderiyi Sil',
       'Bu gönderiyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
       [
         { text: 'İptal', style: 'cancel' },
-        { 
-          text: 'Sil', 
+        {
+          text: 'Sil',
           style: 'destructive',
           onPress: async () => {
             try {
               const { data, error } = await RouteModel.deleteRoute(postId);
-              
+
               if (error) {
                 console.error('Error deleting post:', error);
                 showAlert('Gönderi silinirken bir hata oluştu');
@@ -141,7 +141,7 @@ const UniversalPost: React.FC<PostProps> = ({
               }
 
               showAlert('Gönderi başarıyla silindi');
-              
+
               // Navigate back or refresh the feed
               if (navigation.canGoBack()) {
                 navigation.goBack();
@@ -153,8 +153,8 @@ const UniversalPost: React.FC<PostProps> = ({
               console.error('Error deleting post:', error);
               showAlert('Gönderi silinirken bir hata oluştu');
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -165,59 +165,59 @@ const UniversalPost: React.FC<PostProps> = ({
       'Bu gönderiyi şikayet etmek istediğinizden emin misiniz?',
       [
         { text: 'İptal', style: 'cancel' },
-        { 
-          text: 'Şikayet Et', 
+        {
+          text: 'Şikayet Et',
           style: 'destructive',
           onPress: () => {
             console.log('Post reported:', postId);
             // TODO: Implement report functionality
-          }
-        }
+          },
+        },
       ]
     );
   };
 
   const handleBlockUser = () => {
-    if (!post) return;
+    if (!post) {return;}
     Alert.alert(
       'Engelle',
       `${post.profiles?.username || 'Bu kullanıcıyı'} engellemek istediğinizden emin misiniz?`,
       [
         { text: 'İptal', style: 'cancel' },
-        { 
-          text: 'Engelle', 
+        {
+          text: 'Engelle',
           style: 'destructive',
           onPress: () => {
             console.log('User blocked:', post.user_id);
             // TODO: Implement block functionality
-          }
-        }
+          },
+        },
       ]
     );
   };
 
   const handleFollowUser = () => {
-    if (!post) return;
+    if (!post) {return;}
     console.log('Following user:', post.user_id);
     // TODO: Implement follow functionality
     Alert.alert('Takip Edildi', `${post.profiles?.username || 'Kullanıcı'} takip edildi`);
   };
 
   const handleUnfollowUser = () => {
-    if (!post) return;
+    if (!post) {return;}
     Alert.alert(
       'Takibi Bırak',
       `${post.profiles?.username || 'Bu kullanıcının'} takibini bırakmak istediğinizden emin misiniz?`,
       [
         { text: 'İptal', style: 'cancel' },
-        { 
-          text: 'Takibi Bırak', 
+        {
+          text: 'Takibi Bırak',
           style: 'destructive',
           onPress: () => {
             console.log('Unfollowed user:', post.user_id);
             // TODO: Implement unfollow functionality
-          }
-        }
+          },
+        },
       ]
     );
   };

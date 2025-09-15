@@ -26,9 +26,9 @@ const ProfileEditHeader: React.FC<ProfileEditHeaderProps> = ({
       <TouchableOpacity onPress={onClose} style={styles.closeButton}>
         <Icon name="close" size={24} color="#666" />
       </TouchableOpacity>
-      
+
       <Text style={styles.title}>Profili Düzenle</Text>
-      
+
       <TouchableOpacity
         onPress={onSave}
         disabled={loading || !canSave}

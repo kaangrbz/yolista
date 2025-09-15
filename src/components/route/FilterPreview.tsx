@@ -73,8 +73,8 @@ export const FilterPreview: React.FC<FilterPreviewProps> = ({
       <View style={styles.header}>
         <Text style={styles.title}>Önizleme</Text>
         <Text style={styles.subtitle}>
-          {selectedFilter === 'none' 
-            ? 'Orijinal fotoğraflar' 
+          {selectedFilter === 'none'
+            ? 'Orijinal fotoğraflar'
             : `${selectedFilter} filtresi uygulandı`}
         </Text>
       </View>
@@ -85,11 +85,11 @@ export const FilterPreview: React.FC<FilterPreviewProps> = ({
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled>
           <View style={styles.previewGrid}>
-            {photos.slice(0, 9).map((photo, index) => 
+            {photos.slice(0, 9).map((photo, index) =>
               renderPhotoPreview(photo, index)
             )}
           </View>
-          
+
           {photos.length > 9 && (
             <View style={styles.morePhotosIndicator}>
               <Text style={styles.morePhotosText}>

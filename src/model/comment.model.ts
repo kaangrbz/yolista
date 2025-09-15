@@ -50,8 +50,8 @@ const CommentModel = {
           user_id: userId,
           content,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
+          updated_at: new Date().toISOString(),
+        },
       ])
       .select()
       .single();
@@ -70,8 +70,8 @@ const CommentModel = {
         entityType: 'comment',
         entityId: routeId,
       });
-  
-      console.log('Notification:', notification); 
+
+      console.log('Notification:', notification);
     } catch (error) {
       console.error('Error sending notification:', error);
     }
@@ -129,7 +129,7 @@ const CommentModel = {
     }
 
     return data as Comment;
-  }
+  },
 };
 
 export default CommentModel;

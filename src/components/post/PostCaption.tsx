@@ -16,9 +16,11 @@ const PostCaption: React.FC<PostCaptionProps> = ({
   return (
     <View style={styles.container}>
       {/* Likes Count */}
-      <Text style={styles.likesText}>
-        {likeCount} beğeni
-      </Text>
+      {likeCount > 0 && (
+        <Text style={styles.likesText}>
+          {likeCount} beğeni
+        </Text>
+      )}
 
       {/* Caption */}
       <View style={styles.captionContainer}>
@@ -29,15 +31,15 @@ const PostCaption: React.FC<PostCaptionProps> = ({
         </Text>
         {description && (
           <View>
-            <Text 
+            <Text
               style={styles.description}
               numberOfLines={isExpanded ? undefined : 3}
             >
               {description}
             </Text>
             {description.length > 140 && (
-              <TouchableOpacity 
-                style={styles.seeMoreButton} 
+              <TouchableOpacity
+                style={styles.seeMoreButton}
                 onPress={onToggleExpanded}
               >
                 <Text style={styles.seeMoreText}>

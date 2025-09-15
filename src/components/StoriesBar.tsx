@@ -15,15 +15,15 @@ interface StoriesBarProps {
   onAddStory?: () => void;
 }
 
-const StoriesBar: React.FC<StoriesBarProps> = ({ 
-  stories, 
-  onStoryPress, 
-  onAddStory 
+const StoriesBar: React.FC<StoriesBarProps> = ({
+  stories,
+  onStoryPress,
+  onAddStory,
 }) => {
   return (
     <View style={styles.container}>
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
@@ -42,18 +42,18 @@ const StoriesBar: React.FC<StoriesBarProps> = ({
 
         {/* Story Items */}
         {stories.map((story) => (
-          <TouchableOpacity 
-            key={story.id} 
-            style={styles.storyItem} 
+          <TouchableOpacity
+            key={story.id}
+            style={styles.storyItem}
             onPress={() => onStoryPress?.(story.id)}
           >
             <View style={[
               styles.storyImageContainer,
-              story.isViewed ? styles.viewedStory : styles.unviewedStory
+              story.isViewed ? styles.viewedStory : styles.unviewedStory,
             ]}>
-              <Image 
-                source={story.image_url ? { uri: story.image_url } : DefaultAvatar} 
-                style={styles.storyImage} 
+              <Image
+                source={story.image_url ? { uri: story.image_url } : DefaultAvatar}
+                style={styles.storyImage}
               />
             </View>
             <Text style={styles.storyUsername} numberOfLines={1}>

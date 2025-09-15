@@ -52,7 +52,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
         includeBase64: false,
       });
 
-      if (result.didCancel) return;
+      if (result.didCancel) {return;}
 
       if (result.errorCode) {
         console.error('ImagePicker Error: ', result.errorMessage);
@@ -98,7 +98,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
   const renderPhotoItem = (photo: Photo, index: number) => (
     <View key={photo.id} style={styles.photoItem}>
       <Image source={{ uri: photo.uri }} style={styles.photoImage} />
-      
+
       {/* Order number */}
       <View style={styles.orderBadge}>
         <Text style={styles.orderText}>{index + 1}</Text>

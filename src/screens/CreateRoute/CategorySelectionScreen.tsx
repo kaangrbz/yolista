@@ -43,7 +43,7 @@ export const CategorySelectionScreen = () => {
 
   const handleContinue = () => {
     setIsLoading(true);
-    
+
     // Navigate to filter screen
     navigation.navigate('FilterScreen', {
       selectedPhotos,
@@ -51,7 +51,7 @@ export const CategorySelectionScreen = () => {
       selectedCategory,
       selectedCity,
     });
-    
+
     setIsLoading(false);
   };
 
@@ -90,7 +90,7 @@ export const CategorySelectionScreen = () => {
           <Text style={styles.sectionDescription}>
             Rotanız hangi kategoriye uygun? Bu, diğer kullanıcıların rotanızı bulmasına yardımcı olur.
           </Text>
-          
+
           <CategorySelector
             selectedCategory={selectedCategory}
             onCategorySelect={setSelectedCategory}
@@ -107,7 +107,7 @@ export const CategorySelectionScreen = () => {
           <Text style={styles.sectionDescription}>
             Rotanız hangi şehirde? Bu bilgi konum bazlı aramalar için kullanılır.
           </Text>
-          
+
           <CitySelector
             selectedCity={selectedCity}
             onCitySelect={setSelectedCity}

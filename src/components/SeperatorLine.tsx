@@ -5,6 +5,6 @@ const SeperatorLine = () => {
     return (
         <View style={{ height : 1, backgroundColor: '#66666640' }} />
     );
-}
+};
 
 export default SeperatorLine;

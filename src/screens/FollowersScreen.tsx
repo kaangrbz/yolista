@@ -28,7 +28,7 @@ export const FollowersScreen = ({ navigation, route }: { navigation: any, route:
         `)
         .eq('followed_id', userId);
 
-      if (error) throw error;
+      if (error) {throw error;}
 
       const followersList = data.map(item => item.follower);
       setFollowers(followersList);
@@ -75,4 +75,4 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
-}); 
+});

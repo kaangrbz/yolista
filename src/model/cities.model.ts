@@ -13,12 +13,12 @@ async getCities() {
     .order('id', { ascending: true });
 
   if (error) {
-    console.error("Error fetching cities:", error);
+    console.error('Error fetching cities:', error);
     throw error;
   }
 
   return cities as CityItem[];
 },
-}
+};
 
 export default CityModel;

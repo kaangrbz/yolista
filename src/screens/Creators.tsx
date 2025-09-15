@@ -1,4 +1,4 @@
-import { Text, View, ScrollView, StyleSheet, Image } from "react-native"
+import { Text, View, ScrollView, StyleSheet, Image } from 'react-native';
 import ImgOfMe from '../assets/images/creators/img_of_me.png';
 
 const Creators = () => {
@@ -57,8 +57,8 @@ const Creators = () => {
                 </View>
             </View>
         </ScrollView>
-    )
-}
+    );
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -203,6 +203,6 @@ const styles = StyleSheet.create({
         color: '#555',
         marginTop: 8,
     },
-})
+});
 
-export default Creators
+export default Creators;

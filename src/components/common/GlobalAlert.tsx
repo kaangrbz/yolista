@@ -34,7 +34,7 @@ const GlobalAlert: React.FC<GlobalAlertProps> = ({ alert, onDismiss }) => {
   useEffect(() => {
     if (alert) {
       showAlert();
-      
+
       // Auto dismiss after duration
       const timer = setTimeout(() => {
         hideAlert();
@@ -82,7 +82,7 @@ const GlobalAlert: React.FC<GlobalAlertProps> = ({ alert, onDismiss }) => {
     hideAlert();
   };
 
-  if (!alert) return null;
+  if (!alert) {return null;}
 
   return (
     <Animated.View
@@ -98,7 +98,7 @@ const GlobalAlert: React.FC<GlobalAlertProps> = ({ alert, onDismiss }) => {
         <View style={styles.leftContent}>
           <Text style={styles.message}>{alert.message}</Text>
         </View>
-        
+
         <View style={styles.rightContent}>
           {alert.action && (
             <TouchableOpacity
@@ -108,7 +108,7 @@ const GlobalAlert: React.FC<GlobalAlertProps> = ({ alert, onDismiss }) => {
               <Text style={styles.actionText}>{alert.action.label}</Text>
             </TouchableOpacity>
           )}
-          
+
           <TouchableOpacity
             style={styles.dismissButton}
             onPress={handleDismiss}

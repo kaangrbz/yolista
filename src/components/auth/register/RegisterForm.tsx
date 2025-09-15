@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Platform,
   Animated,
-  ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
@@ -33,6 +32,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   fadeAnim,
   scaleAnim,
 }) => {
+  // Note: Parent RegisterScreen already uses KeyboardAvoidingView
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -71,7 +71,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   const handleRegister = async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {return;}
 
     try {
       setIsRegistering(true);
@@ -89,7 +89,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   const getFieldIcon = (field: string) => {
     const isFocused = focusedField === field;
     const color = isFocused ? '#1DA1F2' : '#666';
-    
+
     switch (field) {
       case 'name':
         return <Icon name="account-outline" size={20} color={color} />;
@@ -105,20 +105,15 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   return (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.container,
         {
           opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }]
-        }
+          transform: [{ scale: scaleAnim }],
+        },
       ]}
     >
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
         <View style={styles.formContainer}>
           {/* Error Message */}
           {error ? (
@@ -132,7 +127,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           <View style={styles.inputContainer}>
             <View style={[
               styles.inputWrapper,
-              focusedField === 'name' && styles.inputWrapperFocused
+              focusedField === 'name' && styles.inputWrapperFocused,
             ]}>
               {getFieldIcon('name')}
               <TextInput
@@ -158,7 +153,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           <View style={styles.inputContainer}>
             <View style={[
               styles.inputWrapper,
-              focusedField === 'username' && styles.inputWrapperFocused
+              focusedField === 'username' && styles.inputWrapperFocused,
             ]}>
               {getFieldIcon('username')}
               <TextInput
@@ -183,7 +178,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           <View style={styles.inputContainer}>
             <View style={[
               styles.inputWrapper,
-              focusedField === 'email' && styles.inputWrapperFocused
+              focusedField === 'email' && styles.inputWrapperFocused,
             ]}>
               {getFieldIcon('email')}
               <TextInput
@@ -210,7 +205,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           <View style={styles.inputContainer}>
             <View style={[
               styles.inputWrapper,
-              focusedField === 'password' && styles.inputWrapperFocused
+              focusedField === 'password' && styles.inputWrapperFocused,
             ]}>
               {getFieldIcon('password')}
               <TextInput
@@ -234,10 +229,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
                 onPress={() => setShowPassword(!showPassword)}
                 style={styles.eyeIcon}
               >
-                <Icon 
-                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                  size={20} 
-                  color="#666" 
+                <Icon
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color="#666"
                 />
               </TouchableOpacity>
             </View>
@@ -281,7 +276,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             </Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
     </Animated.View>
   );
 };
@@ -290,9 +284,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
-  },
-  scrollView: {
-    flex: 1,
   },
   formContainer: {
     flex: 1,

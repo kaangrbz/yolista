@@ -68,7 +68,7 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
         {photos.map((photo, index) => (
           <View key={photo.id} style={styles.imageContainer}>
             <Image source={{ uri: photo.uri }} style={styles.image} />
-            
+
             {/* Image overlay with stop number */}
             <View style={styles.overlay}>
               <View style={styles.stopBadge}>
@@ -107,8 +107,7 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
               styles.dot,
               index === currentIndex && styles.activeDot,
             ]}
-            onPress={() => onSwipe(index)}>
-          </TouchableOpacity>
+            onPress={() => onSwipe(index)} />
         ))}
       </View>
 

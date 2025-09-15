@@ -33,7 +33,7 @@ const toastConfig = {
       contentContainerStyle={{ paddingHorizontal: 15 }}
       text1Style={{
         fontSize: 15,
-        fontWeight: '400'
+        fontWeight: '400',
       }}
     />
   ),
@@ -63,7 +63,7 @@ const AppContent = (): React.JSX.Element => {
 
     // Initialize image cache
     ImageService.initializeCache();
-    
+
     // Sadece app initialization - AuthContext loading'i devre dışı
     const timer = setTimeout(() => {
       setIsLoading(false);
@@ -76,13 +76,13 @@ const AppContent = (): React.JSX.Element => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <Animated.View 
+        <Animated.View
           style={[
             styles.loadingContent,
             {
               opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }]
-            }
+              transform: [{ scale: scaleAnim }],
+            },
           ]}
         >
           <Logo size="large" color="#1DA1F2" />
@@ -100,9 +100,9 @@ const AppContent = (): React.JSX.Element => {
     <>
       <AppNavigator />
       <Toast config={toastConfig}/>
-      <GlobalAlert 
-        alert={currentAlert} 
-        onDismiss={hideAlert} 
+      <GlobalAlert
+        alert={currentAlert}
+        onDismiss={hideAlert}
       />
     </>
   );

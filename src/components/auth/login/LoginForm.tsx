@@ -24,6 +24,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
   fadeAnim,
   scaleAnim,
 }) => {
+  // Note: Parent LoginScreen already uses KeyboardAvoidingView
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -49,23 +50,23 @@ const LoginForm: React.FC<LoginFormProps> = ({
   const isFormValid = email.length > 0 && password.length > 0;
 
   return (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.container,
         {
           opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }]
-        }
+          transform: [{ scale: scaleAnim }],
+        },
       ]}
     >
       <View style={styles.formContainer}>
         {/* Email Input */}
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
-            <Icon 
-              name="email-outline" 
-              size={20} 
-              color={emailFocused ? '#1DA1F2' : '#666'} 
+            <Icon
+              name="email-outline"
+              size={20}
+              color={emailFocused ? '#1DA1F2' : '#666'}
               style={styles.inputIcon}
             />
             <TextInput
@@ -94,10 +95,10 @@ const LoginForm: React.FC<LoginFormProps> = ({
         {/* Password Input */}
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
-            <Icon 
-              name="lock-outline" 
-              size={20} 
-              color={passwordFocused ? '#1DA1F2' : '#666'} 
+            <Icon
+              name="lock-outline"
+              size={20}
+              color={passwordFocused ? '#1DA1F2' : '#666'}
               style={styles.inputIcon}
             />
             <TextInput
@@ -124,10 +125,10 @@ const LoginForm: React.FC<LoginFormProps> = ({
               onPress={() => setShowPassword(!showPassword)}
               style={styles.eyeIcon}
             >
-              <Icon 
-                name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                size={20} 
-                color="#666" 
+              <Icon
+                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color="#666"
               />
             </TouchableOpacity>
           </View>

@@ -84,7 +84,7 @@ const RouteList: React.FC<RouteListProps> = ({
           titleColor="#000000"
 
         />
-      } 
+      }
       getItemLayout={(data, index) => ({
         length: 400, // Öğe yüksekliği (örneğin 80 piksel)
         offset: 400 * index, // Her öğenin başlangıç noktası

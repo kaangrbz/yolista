@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Keyboard Awareness kontrolü yapılıyor..."
+yarn lint:keyboard
+
+echo "🔍 TypeScript type kontrolü yapılıyor..."
+yarn type-check

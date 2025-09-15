@@ -31,7 +31,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     try {
       setIsLoading(true);
       const fetchedCategories = await CategoryModel.getCategories();
-      
+
       if (fetchedCategories) {
         // Filter out disabled categories
         const activeCategories = fetchedCategories.filter(cat => !cat.is_disabled);
@@ -84,14 +84,14 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
       )}
 
       {/* Categories Grid */}
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled>
         <View style={styles.grid}>
           {categories.map((category) => {
             const isSelected = selectedCategory?.id === category.id;
-            
+
             return (
               <TouchableOpacity
                 key={category.id}
@@ -101,7 +101,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
                 ]}
                 onPress={() => handleCategoryPress(category)}
                 activeOpacity={0.7}>
-                
+
                 <View style={[
                   styles.iconContainer,
                   isSelected && styles.iconContainerSelected,
@@ -112,14 +112,14 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
                     color={isSelected ? '#fff' : '#666'}
                   />
                 </View>
-                
+
                 <Text style={[
                   styles.categoryText,
                   isSelected && styles.categoryTextSelected,
                 ]}>
                   {category.name}
                 </Text>
-                
+
                 {isSelected && (
                   <View style={styles.checkmark}>
                     <Icon name="check" size={16} color="#4CAF50" />

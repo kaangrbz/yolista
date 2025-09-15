@@ -12,6 +12,7 @@ import Seperator from './Seperator';
 import { DefaultAvatar } from '../assets';
 import { getTimeAgo } from '../utils/timeAgo';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import KeyboardAwareContainer from './common/KeyboardAwareContainer';
 
 type RootStackParamList = {
   ProfileMain: { userId: string };
@@ -51,7 +52,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ item, navigation }) => {
 
         console.log('data', data);
 
-        if (error) throw error;
+        if (error) {throw error;}
 
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -75,9 +76,9 @@ const CommentItem: React.FC<CommentItemProps> = ({ item, navigation }) => {
       {loadingAuthorImage ? (
         <ActivityIndicator size="small" color="#121212" />
       ) : (
-        <Image 
-          source={authorImageUrl ? { uri: authorImageUrl } : DefaultAvatar} 
-          style={styles.commentAuthorImage} 
+        <Image
+          source={authorImageUrl ? { uri: authorImageUrl } : DefaultAvatar}
+          style={styles.commentAuthorImage}
         />
       )}
       </View>
@@ -85,7 +86,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ item, navigation }) => {
         <View style={styles.commentHeader}>
           <TouchableOpacity style={styles.commentAuthorContainer} onPress={() => navigation.navigate('ProfileMain', { userId: item.user_id })}>
             <Text style={styles.commentAuthor}>{item.profiles?.username}</Text>
-            
+
             <Seperator />
             {item.profiles?.is_verified && (
               <>
@@ -93,7 +94,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ item, navigation }) => {
                 <Seperator />
               </>
             )}
-            
+
             <Text style={styles.commentTime}>
               {getTimeAgo(item.created_at)}
             </Text>
@@ -121,7 +122,7 @@ export const CommentSection: React.FC<CommentSectionProps> = () => {
   const navigation = useNavigation<CommentSectionNavigationProp>();
 
 
-  
+
   const MAX_CHARACTERS = 280;
 
   console.log('routeId', routeId);
@@ -133,19 +134,19 @@ export const CommentSection: React.FC<CommentSectionProps> = () => {
       try {
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         // Get current user
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           setCurrentUser(user);
-          
+
           // Get user profile to get avatar
           const { data: profile } = await supabase
             .from('profiles')
             .select('image_url')
             .eq('id', user.id)
             .single();
-            
+
           if (profile?.image_url) {
             setUserAvatar(profile.image_url);
           }
@@ -163,7 +164,7 @@ export const CommentSection: React.FC<CommentSectionProps> = () => {
         setLoading(false);
       }
     };
-    
+
     initializeData();
   }, [routeId]);
 
@@ -178,7 +179,7 @@ export const CommentSection: React.FC<CommentSectionProps> = () => {
       currentUser: currentUser?.id,
       submitting,
       routeId,
-      textLength: commentText.length
+      textLength: commentText.length,
     });
 
     if (!commentText.trim() || !currentUser?.id || submitting || !routeId || commentText.length > MAX_CHARACTERS) {
@@ -187,17 +188,17 @@ export const CommentSection: React.FC<CommentSectionProps> = () => {
         noUser: !currentUser?.id,
         isSubmitting: submitting,
         noRouteId: !routeId,
-        tooLong: commentText.length > MAX_CHARACTERS
+        tooLong: commentText.length > MAX_CHARACTERS,
       });
       return;
     }
-    
+
     setSubmitting(true);
     try {
       console.log('Starting comment submission');
       // Simulate API delay and fake upload
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       // Create a temporary comment for optimistic update
       const tempComment: Comment = {
         id: `temp-${Date.now()}`,
@@ -209,42 +210,42 @@ export const CommentSection: React.FC<CommentSectionProps> = () => {
         profiles: {
           username: currentUser.email?.split('@')[0] || 'user',
           image_url: userAvatar || undefined,
-          full_name: currentUser.email?.split('@')[0] || 'user'
-        }
+          full_name: currentUser.email?.split('@')[0] || 'user',
+        },
       };
 
       console.log('Adding temporary comment');
       // Optimistically add the comment to the list
       setComments(prevComments => [tempComment, ...prevComments]);
       setCommentText('');
-      
+
       console.log('Sending to database');
       // Actually send to database
       const newComment = await CommentModel.addRouteComment(route.params.routeId, currentUser.id, commentText.trim(), routeOwnerId || '');
       console.log('Database response:', newComment);
-      
+
       // Get the full comment with profile data
       const { data: fullComment } = await supabase
         .from('comments')
         .select('*, profiles(username, image_url, full_name)')
         .eq('id', newComment.id)
         .single();
-      
+
       console.log('Full comment data:', fullComment);
       // Replace temporary comment with real one
-      setComments(prevComments => 
-        prevComments.map(comment => 
+      setComments(prevComments =>
+        prevComments.map(comment =>
           comment.id === tempComment.id ? (fullComment as Comment) : comment
         )
       );
-      
+
       // showToast('success', 'Yorum başarıyla eklendi');
     } catch (error) {
       console.error('Error adding comment:', error);
       showToast('error', 'Yorum eklenirken bir hata oluştu');
-      
+
       // Remove temporary comment on error
-      setComments(prevComments => 
+      setComments(prevComments =>
         prevComments.filter(comment => !comment.id.startsWith('temp-'))
       );
     } finally {
@@ -326,13 +327,16 @@ export const CommentSection: React.FC<CommentSectionProps> = () => {
           <Text style={styles.emptyCommentsText}>Henüz yorum yok</Text>
         </View>
       )}
-      
-      {/* Comment input */}
-      <View style={[
-        styles.commentInputContainer,
-        parentType === 'homePage' && styles.homePageCommentContainer,
-        parentType === 'routeDetail' && styles.routeDetailCommentContainer,
-      ]}>
+
+      {/* Comment input - KeyboardAware wrapper for input section */}
+      <KeyboardAwareContainer
+        enableScrollView={false}
+        style={[
+          styles.commentInputContainer,
+          parentType === 'homePage' && styles.homePageCommentContainer,
+          parentType === 'routeDetail' && styles.routeDetailCommentContainer,
+        ]}
+      >
         <TextInput
           placeholder="Yorum yap"
           placeholderTextColor="#666"
@@ -343,11 +347,11 @@ export const CommentSection: React.FC<CommentSectionProps> = () => {
         />
         <Text style={[
           styles.characterCount,
-          commentText.length > MAX_CHARACTERS && styles.characterCountWarning
+          commentText.length > MAX_CHARACTERS && styles.characterCountWarning,
         ]}>
           {commentText.length}/{MAX_CHARACTERS}
         </Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={handleAddComment}
           disabled={submitting || !commentText.trim() || commentText.length > MAX_CHARACTERS}
           style={[styles.sendButton, (!commentText.trim() || commentText.length > MAX_CHARACTERS) && styles.disabledSendButton]}
@@ -355,10 +359,10 @@ export const CommentSection: React.FC<CommentSectionProps> = () => {
           {submitting ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Icon name="send" size={16} color={commentText.trim() ? "#fff" : "#999"} />
+            <Icon name="send" size={16} color={commentText.trim() ? '#fff' : '#999'} />
           )}
         </TouchableOpacity>
-      </View>
+      </KeyboardAwareContainer>
     </View>
   );
 };
@@ -503,7 +507,7 @@ const styles = StyleSheet.create({
     color: '#888',
     paddingHorizontal: 5,
     paddingVertical: 5,
-    borderRadius: 10, 
+    borderRadius: 10,
     zIndex: 1000,
   },
   characterCountWarning: {

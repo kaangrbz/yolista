@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Dimensions } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../model/routes.model';
 import ProfilePostsGridSkeleton from './ProfilePostsGridSkeleton';
@@ -49,6 +49,13 @@ const ProfilePostsGrid: React.FC<ProfilePostsGridProps> = ({
         showsVerticalScrollIndicator={false}
         scrollEnabled={false}
         contentContainerStyle={styles.gridContent}
+        style={styles.flatList}
+        nestedScrollEnabled={true}
+        getItemLayout={(data, index) => ({
+          length: (Dimensions.get('window').width - 4) / 3,
+          offset: ((Dimensions.get('window').width - 4) / 3) * Math.floor(index / 3),
+          index,
+        })}
       />
     </View>
   );
@@ -57,6 +64,10 @@ const ProfilePostsGrid: React.FC<ProfilePostsGridProps> = ({
 const styles = StyleSheet.create({
   gridContainer: {
     flex: 1,
+    minHeight: 300, // Minimum height to ensure visibility
+  },
+  flatList: {
+    flexGrow: 1,
   },
   gridContent: {
     flexGrow: 1,

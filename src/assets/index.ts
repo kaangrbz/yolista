@@ -8,5 +8,5 @@ export {
   NoImage,
   Icon,
   IconWithText,
-  DefaultAvatar
+  DefaultAvatar,
 };

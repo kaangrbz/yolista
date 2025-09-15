@@ -23,28 +23,28 @@ const ReactionSection = ({
   viewCount = 0,
   didLike = false,
   routeId,
-  onLike
+  onLike,
 }: ReactionSectionProps) => {
   // Local state to handle optimistic UI updates
   const [isLiked, setIsLiked] = useState(didLike);
   const [localLikeCount, setLocalLikeCount] = useState(likeCount);
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  
+
   useEffect(() => {
     setIsLiked(didLike);
     setLocalLikeCount(likeCount);
   }, [didLike, likeCount]);
-  
+
   const handleLike = () => {
-    if (!routeId) return;
-    
+    if (!routeId) {return;}
+
     // Toggle like state
     const newLikeState = !isLiked;
     setIsLiked(newLikeState);
-    
+
     // Update count optimistically
     setLocalLikeCount(prev => newLikeState ? prev + 1 : Math.max(0, prev - 1));
-    
+
     // Call parent callback if provided
     if (onLike) {
       onLike(routeId, newLikeState);
@@ -52,21 +52,21 @@ const ReactionSection = ({
   };
 
   const handleComment = () => {
-    if (!routeId) return;
+    if (!routeId) {return;}
     navigation.navigate('CommentSection', { routeId, parentType: 'routeDetail' });
   };
-  
+
   return (
     <View style={styles.reactionContainer}>
       <TouchableOpacity style={styles.reactionItem} onPress={handleComment}>
         <Icon name="comment-outline" size={18} color="#121" />
         <Text style={styles.reactionText}>{commentCount || 0}</Text>
-      </TouchableOpacity>  
+      </TouchableOpacity>
       <TouchableOpacity style={styles.reactionItem} onPress={handleLike}>
-        <Icon 
-          name={isLiked ? "heart" : "heart-outline"} 
-          size={18} 
-          color={isLiked ? "#c00" : "#c00"} 
+        <Icon
+          name={isLiked ? 'heart' : 'heart-outline'}
+          size={18}
+          color={isLiked ? '#c00' : '#c00'}
         />
         <Text style={styles.reactionText}>{localLikeCount}</Text>
       </TouchableOpacity>
@@ -84,7 +84,7 @@ const ReactionSection = ({
   );
 };
 
-export default ReactionSection; 
+export default ReactionSection;
 
 const styles = StyleSheet.create({
   reactionContainer: {

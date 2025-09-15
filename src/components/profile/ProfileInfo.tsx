@@ -23,10 +23,10 @@ const ProfileInfo: React.FC<ProfileInfoProps> = ({
   loading = false,
 }) => {
   const handleWebsitePress = () => {
-    if (!user.website) return;
-    
-    const url = user.website.startsWith('http') 
-      ? user.website 
+    if (!user.website) {return;}
+
+    const url = user.website.startsWith('http')
+      ? user.website
       : `https://${user.website}`;
     Linking.openURL(url);
   };
@@ -62,11 +62,11 @@ const ProfileInfo: React.FC<ProfileInfoProps> = ({
           )}
         </View>
         <Text style={styles.username}>@{user.username || 'kullanici'}</Text>
-        
+
         {user.description && (
           <Text style={styles.description}>{user.description}</Text>
         )}
-        
+
         {user.website && (
           <TouchableOpacity
             onPress={handleWebsitePress}

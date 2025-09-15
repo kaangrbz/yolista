@@ -51,10 +51,10 @@ const getNotificationColor = (type: NotificationEntityType) => {
 };
 
 // NotificationItem component with profile image download
-const NotificationItem = ({ item, action, label, navigation }: { 
-  item: NotificationType; 
-  action: () => void; 
-  label: string; 
+const NotificationItem = ({ item, action, label, navigation }: {
+  item: NotificationType;
+  action: () => void;
+  label: string;
   navigation: any;
 }) => {
   const { imageUri, loading, error } = useProfileImageDownload(
@@ -127,13 +127,13 @@ const NotificationsScreen = () => {
     }
 
     return () => {
-    }
+    };
   }, [isFocused, user?.id]);
 
 
   const fetchNotifications = async (type: 'initial' | 'loadMore' = 'initial') => {
     try {
-      if (!user?.id) return;
+      if (!user?.id) {return;}
 
       const fetchedNotifications = await NotificationModel.getNotifications({ userId: user.id });
       // setLastCreatedAt(fetchedNotifications[fetchedNotifications.length - 1].created_at);
@@ -169,26 +169,26 @@ const NotificationsScreen = () => {
       action: () => {
         navigation.navigate('ProfileMain', { userId: item.sender_id });
       },
-      label: 'seni takip etti'
+      label: 'seni takip etti',
     }),
     like: (item: NotificationType, navigation: any) => ({
       action: () => {
         navigation.navigate('RouteDetail', { routeId: item.entity_id });
       },
-      label: 'rotanı beğendi'
+      label: 'rotanı beğendi',
     }),
     comment: (item: NotificationType, navigation: any) => ({
       action: () => {
         navigation.navigate('RouteDetail', { routeId: item.entity_id });
       },
-      label: 'yorum yaptı'
+      label: 'yorum yaptı',
     }),
     mention: (item: NotificationType, navigation: any) => ({
       action: () => {
         navigation.navigate('RouteDetail', { routeId: item.entity_id });
       },
-      label: 'etiketledi'
-    })
+      label: 'etiketledi',
+    }),
   };
 
   const getNotificationHandler = (item: NotificationType, navigation: any): NotificationAction => {
@@ -199,10 +199,10 @@ const NotificationsScreen = () => {
     const { action, label } = getNotificationHandler(item, navigation);
 
     return (
-      <NotificationItem 
-        item={item} 
-        action={action} 
-        label={label} 
+      <NotificationItem
+        item={item}
+        action={action}
+        label={label}
         navigation={navigation}
       />
     );

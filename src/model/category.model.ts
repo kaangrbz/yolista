@@ -19,12 +19,12 @@ async getCategories(searchQuery?: string, limit: number = 999) {
   const { data: categories, error } = await query;
 
   if (error) {
-    console.error("Error fetching categories:", error);
+    console.error('Error fetching categories:', error);
     throw error;
   }
 
   return categories as CategoryItem[];
 },
-}
+};
 
 export default CategoryModel;

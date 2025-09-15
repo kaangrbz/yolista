@@ -10,6 +10,7 @@ import {
 import {Formik} from 'formik';
 import * as Yup from 'yup';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import KeyboardAwareContainer from '../components/common/KeyboardAwareContainer';
 
 const validationSchema = Yup.object().shape({
   name: Yup.string()
@@ -53,7 +54,7 @@ export const AddCategoryScreen = ({navigation}: any) => {
   };
 
   return (
-    <View style={[styles.container, {backgroundColor: '#fff'}]}>
+    <KeyboardAwareContainer style={StyleSheet.flatten([styles.container, {backgroundColor: '#fff'}])}>
       <Formik
         initialValues={{name: '', icon: '', color: ''}}
         validationSchema={validationSchema}
@@ -150,7 +151,7 @@ export const AddCategoryScreen = ({navigation}: any) => {
           </View>
         )}
       </Formik>
-    </View>
+    </KeyboardAwareContainer>
   );
 };
 

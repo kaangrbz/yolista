@@ -25,21 +25,21 @@ const PostHeader: React.FC<PostHeaderProps> = ({
 }) => {
   // Use the profile image download hook if userId is provided
   const { imageUri: downloadedImageUri, loading: imageLoading } = useProfileImageDownload(
-    userId ? userImage : undefined, 
+    userId ? userImage : undefined,
     userId || ''
   );
 
   // Use downloaded image if available, otherwise fallback to userImage or DefaultAvatar
-  const profileImageSource = downloadedImageUri 
-    ? { uri: downloadedImageUri } 
-    : userImage 
-    ? { uri: userImage } 
+  const profileImageSource = downloadedImageUri
+    ? { uri: downloadedImageUri }
+    : userImage
+    ? { uri: userImage }
     : DefaultAvatar;
 
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.userInfo} onPress={onProfilePress}>
-        <Image 
+        <Image
           source={profileImageSource}
           style={styles.profileImage}
           resizeMode="cover"

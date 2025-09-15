@@ -72,7 +72,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
 
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [usernameSuccess, setUsernameSuccess] = useState<string>('');
-  
+
   // Local image states for modal
   const [localImageUri, setLocalImageUri] = useState<string | null>(imageUri);
   const [localHeaderImageUri, setLocalHeaderImageUri] = useState<string | null>(headerImageUri);
@@ -154,7 +154,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
           });
 
         if (data) {
-          
+
 
           let updateData: any;
           if (type === 'profile') {
@@ -173,14 +173,14 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
             showToast('error', 'Fotoğraf güncellenirken bir hata oluştu');
           } else {
             showToast('success', 'Fotoğraf güncellendi');
-            
+
             // Update local image state in modal
             if (type === 'profile') {
               setLocalImageUri(resizedImage?.uri!);
             } else if (type === 'header') {
               setLocalHeaderImageUri(resizedImage?.uri!);
             }
-            
+
             // Notify parent component about image update
             if (onImageUpdate) {
               onImageUpdate(type, resizedImage?.uri!);
@@ -204,12 +204,12 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
 
   const handleFieldChange = (field: keyof FormState, value: string) => {
     setFormState(prev => ({ ...prev, [field]: value }));
-    
+
     // Clear errors when user starts typing
     if (formErrors[field]) {
       setFormErrors(prev => ({ ...prev, [field]: undefined }));
     }
-    
+
     // Handle username validation
     if (field === 'username') {
       handleUsernameChange(value);
@@ -218,7 +218,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
 
   const handleUsernameChange = (value: string) => {
     setUsernameSuccess('');
-    
+
     if (!validateUsername(value)) {
       setFormErrors(prev => ({
         ...prev,
@@ -280,7 +280,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {throw error;}
 
       if (data) {
         onUpdate(data);
@@ -324,7 +324,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
               canSave={!!canSave}
             />
 
-            <ScrollView 
+            <ScrollView
               style={styles.content}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
@@ -422,4 +422,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProfileEditModal; 
+export default ProfileEditModal;

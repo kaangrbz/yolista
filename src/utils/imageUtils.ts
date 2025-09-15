@@ -50,7 +50,7 @@ export async function resizeImage(
         onlyScaleDown: true,
       },
     );
-    console.log("🚀 ~ resized:", resized)
+    console.log('🚀 ~ resized:', resized);
 
     if (!resized || !resized.uri) {
       console.error('Failed to resize image: No result from ImageResizer');

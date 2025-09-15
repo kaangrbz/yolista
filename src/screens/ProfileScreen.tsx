@@ -66,14 +66,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
   const [isHeaderImageViewerVisible, setIsHeaderImageViewerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
-  
+
   const [savedPosts, setSavedPosts] = useState<RouteWithProfile[]>([]);
   const [likedPosts, setLikedPosts] = useState<RouteWithProfile[]>([]);
-  
+
   // Posts hook
   const { posts: routes, isLoading: postsLoading, refresh: refreshPosts, loadMore, hasMore } = useProfilePosts(profileUserId || '', 20);
-  
-  
+
+
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const isCurrentUserProfile = currentUserId && profileUserId && currentUserId === profileUserId;
 
@@ -85,7 +85,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
       if (currentUser) {
         setCurrentUserId(currentUser.id);
         const targetUserId = routeParams.userId || currentUser.id;
-        
+
         setProfileUserId(targetUserId);
 
         const { data: profileUser, error } = await supabase
@@ -99,7 +99,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           // Download images in parallel
           await Promise.all([
             downloadImage(profileUser.image_url, 'profiles', setImageUri, targetUserId),
-            downloadImage(profileUser.header_image_url, 'headers', setHeaderImageUri, targetUserId)
+            downloadImage(profileUser.header_image_url, 'headers', setHeaderImageUri, targetUserId),
           ]);
         }
 
@@ -142,7 +142,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
         .from(bucketName)
         .download(`${targetUserId}/${image_url}`);
 
-      if (error) throw error;
+      if (error) {throw error;}
 
       const reader = new FileReader();
       const uri = await new Promise<string>((resolve, reject) => {
@@ -150,7 +150,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
         reader.onerror = reject;
         reader.readAsDataURL(data);
       });
-      
+
       setImageUri(uri);
     } catch (error) {
       console.error('Error downloading image:', error);
@@ -161,7 +161,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
   // Kaydedilen postları getir
   const fetchSavedPosts = async () => {
-    if (!currentUserId || !isCurrentUserProfile) return;
+    if (!currentUserId || !isCurrentUserProfile) {return;}
     try {
       // Bu fonksiyon bookmark model'den gelecek
       // Şimdilik boş array
@@ -173,7 +173,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
   // Beğenilen postları getir
   const fetchLikedPosts = async () => {
-    if (!currentUserId || !isCurrentUserProfile) return;
+    if (!currentUserId || !isCurrentUserProfile) {return;}
     try {
       // Bu fonksiyon likes model'den gelecek
       // Şimdilik boş array
@@ -186,7 +186,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   // Fetch followers and following
   const fetchFollowers = async (userId?: string) => {
     const targetUserId = userId || profileUserId;
-    if (!targetUserId) return;
+    if (!targetUserId) {return;}
     try {
       const followers = await UserModel.getFollowers(targetUserId);
       setFollowers(followers || []);
@@ -197,7 +197,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
   const fetchFollowings = async (userId?: string) => {
     const targetUserId = userId || profileUserId;
-    if (!targetUserId) return;
+    if (!targetUserId) {return;}
     try {
       const followings = await UserModel.getFollowings(targetUserId);
       setFollowings(followings || []);
@@ -218,7 +218,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
   // Handle follow toggle
   const handleFollowToggle = async () => {
-    if (!currentUserId || !profileUserId || isCurrentUserProfile) return;
+    if (!currentUserId || !profileUserId || isCurrentUserProfile) {return;}
 
     setIsFollowLoading(true);
     try {
@@ -294,15 +294,15 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const onRefresh = async () => {
     try {
       setRefreshing(true);
-      
+
       // Önce user bilgilerini yükle ki profileUserId güncellensin
       await fetchUser();
-      
+
       // Sonra posts'ları yenile
       if (refreshPosts) {
         await refreshPosts();
       }
-      
+
     } catch (error) {
       console.error('Error refreshing data:', error);
       showToast('error', 'Veriler yenilenirken bir hata oluştu');
@@ -449,8 +449,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabContent: {
-    minHeight: 400,
-    padding: 0,
+    flex: 1,
+    minHeight: 500, // Increased minimum height
+    paddingTop: 10,
   },
 });
 

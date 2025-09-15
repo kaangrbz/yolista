@@ -11,6 +11,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { City } from '../../screens/CreateRoute/CategorySelectionScreen';
 import CityModel from '../../model/cities.model';
+import KeyboardAwareContainer from '../common/KeyboardAwareContainer';
 
 interface CitySelectorProps {
   selectedCity: City | null;
@@ -47,13 +48,13 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
     try {
       setIsLoading(true);
       const fetchedCities = await CityModel.getCities();
-      
+
       if (fetchedCities) {
         // Filter out disabled cities and sort by name
         const activeCities = fetchedCities
           .filter(city => !city.is_disabled)
           .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
-        
+
         setCities(activeCities);
         setFilteredCities(activeCities.slice(0, 10));
       }
@@ -103,7 +104,7 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAwareContainer style={styles.container}>
       {/* Search Input */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
@@ -193,7 +194,7 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
           </View>
         </View>
       )}
-    </View>
+    </KeyboardAwareContainer>
   );
 };
 

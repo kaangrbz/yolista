@@ -84,7 +84,7 @@ const RouteModel = {
     }
 
     if (searchQuery) {
-      const filters = searchQuery.split(' ').map((term) => `title.ilike.%${term}%`).join(",");
+      const filters = searchQuery.split(' ').map((term) => `title.ilike.%${term}%`).join(',');
       query.or(filters);
     }
 
@@ -92,9 +92,9 @@ const RouteModel = {
     const { data: routes, error } = await (onlyMain ? query.eq('order_index', 0).range(offset, offset + limit - 1) : query.range(offset, offset + limit - 1));
 
     console.log('RouteModel.getRoutes - Query result:', { routes: routes?.length || 0, error });
-    
-    if (error) throw new Error(`Failed to fetch routes: ${error.message}`);
-    if (!routes) return [];
+
+    if (error) {throw new Error(`Failed to fetch routes: ${error.message}`);}
+    if (!routes) {return [];}
 
     // Get all route IDs (including parent IDs) for the likes query
     const routeIds = routes.map((route: any) => route.id);
@@ -103,16 +103,16 @@ const RouteModel = {
       .map((route: any) => route.parent_id);
     const allIds = [...new Set([...routeIds, ...parentIds])];
 
-    
+
     const { data: commentCounts, error: commentsError } = await supabase
       .rpc('count_comments_by_route_ids', { route_ids: allIds });
-    
+
     if (commentsError) {
       console.error('Error fetching comment counts:', commentsError);
     }
-    
+
     const commentCountsMap = commentCounts?.reduce((acc: Record<string, number>, comment: any) => {
-      acc[comment.route_id] = comment.comment_count || 0  ;
+      acc[comment.route_id] = comment.comment_count || 0;
       return acc;
     }, {});
 
@@ -122,7 +122,7 @@ const RouteModel = {
       .select('entity_id, user_id')
       .eq('entity_type', 'route')
       .in('entity_id', allIds);
-      
+
 
     if (likesError) {
       console.error('Error fetching likes:', likesError);
@@ -179,7 +179,7 @@ const RouteModel = {
       .order('order_index', { ascending: true });
 
     if (routesError) {
-      console.error("Error fetching routes:", routesError);
+      console.error('Error fetching routes:', routesError);
       throw routesError;
     }
 
@@ -206,8 +206,8 @@ const RouteModel = {
           .eq('is_hidden', false)
           .order('order_index', { ascending: true });
 
-        if (parentError) throw new Error(`Failed to fetch parent route: ${parentError.message}`);
-        if (!parentRoutes) return [];
+        if (parentError) {throw new Error(`Failed to fetch parent route: ${parentError.message}`);}
+        if (!parentRoutes) {return [];}
 
         // Combine the parent routes with the original routes
         const combinedRoutes = [...parentRoutes, ...routes];
@@ -234,7 +234,7 @@ const RouteModel = {
       .in('entity_id', routeIds);
 
     if (likesError) {
-      console.error("Error fetching likes data:", likesError);
+      console.error('Error fetching likes data:', likesError);
       throw likesError;
     }
 
@@ -351,7 +351,7 @@ const RouteModel = {
       .eq('id', routeId)
       .single();
 
-    if (error) throw new Error(`Failed to update route: ${error.message}`);
+    if (error) {throw new Error(`Failed to update route: ${error.message}`);}
     return data as RoutePoint;
   },
 
@@ -360,10 +360,10 @@ const RouteModel = {
       .from('routes')
       .update({ is_deleted: true })
       .eq('id', routeId)
-      .select()
+      .select();
 
-    if (error) throw new Error(`Failed to delete route: ${error.message}`);
-    return { data, error }
+    if (error) {throw new Error(`Failed to delete route: ${error.message}`);}
+    return { data, error };
   },
 
   async hideRoute(routeId: string): Promise<{ data: any, error: any }> {
@@ -371,10 +371,10 @@ const RouteModel = {
       .from('routes')
       .update({ is_hidden: true })
       .eq('id', routeId)
-      .select()
+      .select();
 
-    if (error) throw new Error(`Failed to hide route: ${error.message}`);
-    return { data, error }
+    if (error) {throw new Error(`Failed to hide route: ${error.message}`);}
+    return { data, error };
   },
 
   async likeRoute(routeId: string | undefined, routeOwnerId: string, userId: string | undefined): Promise<{ success: boolean; error?: any; like_count?: number; did_like?: boolean }> {
@@ -394,10 +394,10 @@ const RouteModel = {
         .insert({
           entity_id: routeId,
           user_id: userId,
-          entity_type: 'route'
+          entity_type: 'route',
         });
 
-      if (error) throw error;
+      if (error) {throw error;}
 
       //* Send notification to the user
       NotificationModel.createNotification({
@@ -417,7 +417,7 @@ const RouteModel = {
       return {
         success: true,
         like_count: count || 0,
-        did_like: true
+        did_like: true,
       };
     } catch (error) {
       console.error('Error liking route:', error);
@@ -443,10 +443,10 @@ const RouteModel = {
         .match({
           entity_id: routeId,
           user_id: userId,
-          entity_type: 'route'
+          entity_type: 'route',
         });
 
-      if (error) throw error;
+      if (error) {throw error;}
 
       // Get updated like count
       const { count } = await supabase
@@ -458,7 +458,7 @@ const RouteModel = {
       return {
         success: true,
         like_count: count || 0,
-        did_like: false
+        did_like: false,
       };
     } catch (error) {
       console.error('Error unliking route:', error);

@@ -10,7 +10,7 @@ function getCurrentAndroidVersion() {
     const buildGradleContent = fs.readFileSync(androidBuildGradlePath, 'utf-8');
     const versionCodeMatch = buildGradleContent.match(/versionCode (\d+)/);
     const versionNameMatch = buildGradleContent.match(/versionName "([^"]+)"/);
-    
+
     const currentVersionCode = versionCodeMatch ? parseInt(versionCodeMatch[1], 10) : 0;
     const currentVersionName = versionNameMatch ? versionNameMatch[1] : '';
 
@@ -23,7 +23,7 @@ function getCurrentIOSVersion() {
     const infoPlistContent = fs.readFileSync(iosInfoPlistPath, 'utf-8');
     const iosVersionMatch = infoPlistContent.match(/<key>CFBundleShortVersionString<\/key>\s*<string>(.*?)<\/string>/);
     const iosBuildNumberMatch = infoPlistContent.match(/<key>CFBundleVersion<\/key>\s*<string>(.*?)<\/string>/);
-    
+
     const currentVersionName = iosVersionMatch ? iosVersionMatch[1] : '';
     const currentBuildNumber = iosBuildNumberMatch ? iosBuildNumberMatch[1] : '';
 
@@ -33,7 +33,7 @@ function getCurrentIOSVersion() {
 
 // Check for command line arguments
 if (process.argv.length < 4) {
-    console.info("No arguments provided. Fetching current versions...");
+    console.info('No arguments provided. Fetching current versions...');
     getCurrentAndroidVersion();
     getCurrentIOSVersion();
 } else {
@@ -64,10 +64,10 @@ if (process.argv.length < 4) {
         let infoPlistContent = fs.readFileSync(iosInfoPlistPath, 'utf-8');
         infoPlistContent = infoPlistContent
             .replace(/<key>CFBundleShortVersionString<\/key>\s*<string>.*?<\/string>/, `<key>CFBundleShortVersionString</key>\n<string>${newVersionName}</string>`);
-        
+
         const iosBuildNumber = newBuildNumber ? newBuildNumber : (currentVersionCode + 1);
         infoPlistContent = infoPlistContent.replace(/<key>CFBundleVersion<\/key>\s*<string>.*?<\/string>/, `<key>CFBundleVersion</key>\n<string>${iosBuildNumber}</string>`);
-        
+
         fs.writeFileSync(iosInfoPlistPath, infoPlistContent);
         console.info('Updated iOS version and build number to'.padEnd(45, ' '), newVersionName,  Number(iosBuildNumber));
     }

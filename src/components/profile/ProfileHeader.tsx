@@ -75,10 +75,10 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             {isFollowLoading ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Icon 
-                name={isFollowing ? "account-minus" : "account-plus"} 
-                size={16} 
-                color="#fff" 
+              <Icon
+                name={isFollowing ? 'account-minus' : 'account-plus'}
+                size={16}
+                color="#fff"
               />
             )}
           </TouchableOpacity>

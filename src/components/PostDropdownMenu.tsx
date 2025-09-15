@@ -53,7 +53,7 @@ const PostDropdownMenu: React.FC<PostDropdownMenuProps> = ({
         const screenWidth = Dimensions.get('window').width;
         const menuWidth = 200;
         const rightPosition = screenWidth - px - width - 10;
-        
+
         setPosition({
           x: Math.max(10, rightPosition),
           y: py + height + 5,

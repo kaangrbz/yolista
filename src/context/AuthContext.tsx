@@ -61,8 +61,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const fetchUnreadNotificationCount = async () => {
-      console.log("🚀 ~ fetchUnreadNotificationCount ~ user?.id:", user?.id)
-      if (!user?.id) return;
+      console.log('🚀 ~ fetchUnreadNotificationCount ~ user?.id:', user?.id);
+      if (!user?.id) {return;}
       try {
         const { data, error: countError } = await supabase
           .from('notifications')
@@ -70,8 +70,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           .eq('is_read', false)
           .eq('recipient_id', user.id);
 
-        console.log("🚀 ~ fetchUnreadNotificationCount ~ data:", data)
-        if (countError) throw countError;
+        console.log('🚀 ~ fetchUnreadNotificationCount ~ data:', data);
+        if (countError) {throw countError;}
         setUnreadNotificationCountState(data?.length || 0);
       } catch (error) {
         console.error('Error fetching unread notification count:', error);
@@ -81,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const fetchSessionAndProfile = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
+        if (sessionError) {throw sessionError;}
 
         setIsAuthenticated(!!session);
         setUser(session?.user ?? null);
@@ -146,21 +146,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, []);
 
-  //* Signin 
+  //* Signin
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      if (error) throw error;
+      if (error) {throw error;}
     } catch (error) {
       console.error('Sign in error:', error);
       throw error;
     }
   };
 
-  //* Signup 
+  //* Signup
   const signUp = async (
     email: string,
     password: string,
@@ -168,7 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     username: string,
   ) => {
     try {
-      
+
       console.log('Signing up with:', { email, password, options: { data: { username, full_name, image_url: '' } } });
 
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
@@ -184,7 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       if (signUpError) {
-        console.log("🚀 ~ signUp ~ signUpError:", signUpError)
+        console.log('🚀 ~ signUp ~ signUpError:', signUpError);
         throw signUpError;
       }
 
@@ -227,7 +227,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 const logout = async () => {
   try {
     const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    if (error) {throw error;}
   } catch (error) {
     console.error('Logout error:', error);
     throw error;

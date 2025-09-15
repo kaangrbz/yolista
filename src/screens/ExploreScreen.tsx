@@ -13,7 +13,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { CategoryItem } from '../types/category.types';
 import CategoryModel from '../model/category.model';
-import { ExploreHeader } from '../components/header/Header';  
+import { ExploreHeader } from '../components/header/Header';
 import { RouteWithProfile } from '../model/routes.model';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import UserModel, { User } from '../model/user.model';
@@ -64,7 +64,7 @@ const ExploreScreen = () => {
   const insets = useSafeAreaInsets();
   const [expandedDescriptions, setExpandedDescriptions] = useState<{ [key: string]: boolean }>({});
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  
+
   // Posts hook
   const { posts: routes, isLoading, refresh: refreshPosts, loadMore, hasMore, updateOptions } = useExplorePosts(activeCategory, searchQuery, 20);
 
@@ -92,7 +92,7 @@ const ExploreScreen = () => {
 
       // Posts hook'u güncelle
       updateOptions({
-        exploreFeed: { categoryId: activeCategory, searchQuery: searchQuery, limit: 20 }
+        exploreFeed: { categoryId: activeCategory, searchQuery: searchQuery, limit: 20 },
       });
       await refreshPosts();
 
@@ -169,7 +169,7 @@ const ExploreScreen = () => {
   const handleToggleDescription = (routeId: string) => {
     setExpandedDescriptions(prev => ({
       ...prev,
-      [routeId]: !prev[routeId]
+      [routeId]: !prev[routeId],
     }));
   };
 
@@ -191,7 +191,7 @@ const ExploreScreen = () => {
     if (!item) {
       return null;
     }
-    
+
     return (
       <TouchableOpacity
         style={styles.userItem}
@@ -208,7 +208,7 @@ const ExploreScreen = () => {
       {/* Header */}
       <ExploreHeader onSearch={() => console.log('search')} />
 
-      {/* Search Bar */}
+      {/* Search Bar - Simple search input, keyboard handling not critical */}
       <View style={styles.searchContainer}>
         <Icon name="magnify" size={20} color="#999" style={styles.searchIcon} />
         <TextInput
@@ -218,6 +218,8 @@ const ExploreScreen = () => {
           onChangeText={setSearchQuery}
           placeholderTextColor="#999"
           autoFocus={false}
+          returnKeyType="search"
+          blurOnSubmit={true}
         />
       </View>
 
@@ -239,7 +241,7 @@ const ExploreScreen = () => {
               data={users}
               renderItem={renderUserItem}
               keyExtractor={(item) => item.id}
-              
+
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.usersList}
             />
@@ -280,7 +282,7 @@ const ExploreScreen = () => {
             showsVerticalScrollIndicator={false}
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.1}
-            ListFooterComponent={() => 
+            ListFooterComponent={() =>
               ((isLoading || isLoadingMore) && hasMore) ? <ActivityIndicator size="small" color="#000" style={{padding: 20}} /> : null
             }
           />
@@ -304,7 +306,7 @@ const ExploreScreen = () => {
         )
       }
 
-        <View style={{height: 200}}></View>
+        <View style={{height: 200}} />
           </ScrollView>
     </SafeAreaView>
   );

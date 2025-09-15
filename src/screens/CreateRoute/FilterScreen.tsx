@@ -81,19 +81,19 @@ export const FilterScreen = () => {
 
       // Upload images in parallel
       console.log('📤 [FilterScreen] Yüklenecek resimler:', selectedPhotos.map(p => ({ uri: p.uri, hasUri: !!p.uri })));
-      
+
       const uploadPromises = selectedPhotos
         .filter(photo => photo.uri)
         .map(async (photo, index) => {
           console.log(`📤 [FilterScreen] Resim ${index} yükleniyor:`, photo.uri);
           const fileName = `${randomString(16)}.jpg`;
           const filePath = `${user.id}/${fileName}`;
-          
+
           try {
             // Read the image file as a binary array
             const image_base64 = await RNFS.readFile(photo.uri, 'base64');
             console.log(`📤 [FilterScreen] Resim ${index} base64 okundu, boyut:`, image_base64.length);
-            
+
             const { data, error } = await supabase.storage
               .from('routes')
               .upload(filePath, decode(image_base64), {
@@ -106,7 +106,7 @@ export const FilterScreen = () => {
               console.error(`❌ [FilterScreen] Resim ${index} upload hatası:`, error);
               throw error;
             }
-            
+
             console.log(`✅ [FilterScreen] Resim ${index} başarıyla yüklendi:`, data);
             return { data, client_id: routePoints[index].client_id, fileName };
           } catch (error) {
@@ -121,10 +121,10 @@ export const FilterScreen = () => {
 
       // Update routePoints with uploaded image URLs
       const finalRoutePoints = routePoints.map(point => {
-        const uploadResult = validUploadResults.find(result => 
+        const uploadResult = validUploadResults.find(result =>
           result && result.client_id === point.client_id
         );
-        return uploadResult 
+        return uploadResult
           ? { ...point, image_url: uploadResult.fileName }
           : point;
       });
@@ -144,11 +144,11 @@ export const FilterScreen = () => {
 
       console.log('✅ [FilterScreen] Route başarıyla oluşturuldu');
       showToast('success', 'Rota başarıyla eklendi', 'Başarılı');
-      
+
       // Navigate to HomeStack with success message
-      (navigation as any).navigate('HomeStack', { 
+      (navigation as any).navigate('HomeStack', {
         showSuccessMessage: true,
-        successMessage: 'Rota başarıyla paylaşıldı! 🎉'
+        successMessage: 'Rota başarıyla paylaşıldı! 🎉',
       });
     } catch (error) {
       console.error('Route oluşturma hatası:', error);
@@ -173,7 +173,7 @@ export const FilterScreen = () => {
         <Text style={styles.subtitle}>
           Fotoğraflarınıza filtre uygulayın
         </Text>
-        
+
         {/* Development Notice */}
         <View style={styles.devNotice}>
           <Icon name="wrench" size={16} color="#ff9800" />

@@ -16,10 +16,10 @@ const PostActions: React.FC<PostActionsProps> = ({
     <View style={styles.container}>
       <View style={styles.leftActions}>
         <TouchableOpacity onPress={onLike} style={styles.actionButton}>
-          <Icon 
-            name={isLiked ? "heart" : "heart-outline"} 
-            size={24} 
-            color={isLiked ? "#ed4956" : "#262626"} 
+          <Icon
+            name={isLiked ? 'heart' : 'heart-outline'}
+            size={24}
+            color={isLiked ? '#ed4956' : '#262626'}
           />
         </TouchableOpacity>
         <TouchableOpacity onPress={onComment} style={styles.actionButton}>
