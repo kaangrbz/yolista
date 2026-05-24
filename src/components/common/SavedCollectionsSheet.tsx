@@ -1,3 +1,4 @@
+// keyboard-aware-ignore: BottomSheetModal kendi keyboardBehavior prop'u ile klavyeyi yönetiyor
 import React, { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable } from 'react-native';
 import {
@@ -246,6 +247,9 @@ const SavedCollectionsSheet: React.FC<SavedCollectionsSheetProps> = ({
       ref={sheetRef}
       snapPoints={snapPoints}
       enablePanDownToClose={true}
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
       onDismiss={handleDismiss}
       backdropComponent={renderBackdrop}
       backgroundStyle={styles.sheetBackground}

@@ -20,7 +20,7 @@ class DeepLinkingService {
    */
   setNavigationRef(ref: NavigationContainerRef<any>) {
     this.navigationRef = ref;
-    
+
     // Pending URL varsa işle
     if (this.pendingURL) {
       this.handleDeepLink(this.pendingURL);
@@ -94,7 +94,7 @@ class DeepLinkingService {
   private parseDeepLink(url: string): DeepLinkData | null {
     try {
       const parsedURL = new URL(url);
-      
+
       // yolista://route/123 format
       if (parsedURL.protocol === `${APP_SCHEME}:`) {
         const pathParts = [
@@ -144,7 +144,7 @@ class DeepLinkingService {
    */
   private parseSearchParams(searchParams: URLSearchParams): Record<string, any> {
     const params: Record<string, any> = {};
-    
+
     for (const [key, value] of searchParams.entries()) {
       // JSON parse etmeye çalış
       try {
@@ -153,7 +153,7 @@ class DeepLinkingService {
         params[key] = value;
       }
     }
-    
+
     return params;
   }
 
@@ -170,9 +170,9 @@ class DeepLinkingService {
       switch (linkData.type) {
         case 'route':
           if (linkData.id) {
-            this.navigationRef.navigate('RouteDetail', { 
+            this.navigationRef.navigate('RouteDetail', {
               routeId: linkData.id,
-              ...linkData.params 
+              ...linkData.params,
             });
           }
           break;
@@ -187,9 +187,9 @@ class DeepLinkingService {
           break;
 
         case 'category':
-          this.navigationRef.navigate('ExploreMain', { 
+          this.navigationRef.navigate('ExploreMain', {
             categoryId: linkData.id,
-            ...linkData.params 
+            ...linkData.params,
           });
           break;
 
@@ -206,7 +206,7 @@ class DeepLinkingService {
       console.log('📱 [DeepLink] Navigation successful:', linkData.type);
     } catch (error) {
       console.error('📱 [DeepLink] Navigation error:', error);
-      
+
       // Fallback: Ana sayfaya yönlendir
       this.navigationRef.navigate('HomeMain');
     }
@@ -275,7 +275,7 @@ class DeepLinkingService {
     }
 
     const url = new URL(`${APP_SCHEME}:${path}`);
-    
+
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         url.searchParams.set(key, typeof value === 'object' ? JSON.stringify(value) : String(value));

@@ -420,7 +420,7 @@ const UniversalPost: React.FC<PostProps> = ({
           accessibilityLabel="Tekrar dene"
         >
           <Text style={styles.imageMessageText}>
-            {`Bu gönderi için resim bulunamadı\n\nTekrar dene`}
+            {'Bu gönderi için resim bulunamadı\n\nTekrar dene'}
           </Text>
         </Pressable>
       )}

@@ -29,6 +29,7 @@ const AuthFloatingBackground: React.FC = () => {
       withSequence(
         withTiming(14, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
         withTiming(-8, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
       ),
       -1,
       false,
@@ -38,6 +39,7 @@ const AuthFloatingBackground: React.FC = () => {
       withSequence(
         withTiming(1.12, { duration: 3600, easing: Easing.inOut(Easing.sin) }),
         withTiming(0.92, { duration: 3600, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1, { duration: 3600, easing: Easing.inOut(Easing.sin) }),
       ),
       -1,
       false,

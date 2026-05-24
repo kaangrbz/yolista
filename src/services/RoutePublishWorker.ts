@@ -12,7 +12,7 @@ import type { RoutePublishDraftRecord, RoutePublishEnqueuePayload } from './rout
 import { uploadRoutePhotoToStorage } from './routePhotoStorage';
 
 function getPublishStoreState() {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+
   return require('../store/routePublishStore').useRoutePublishStore.getState();
 }
 
@@ -185,7 +185,7 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
     await clearDraftStorage(record.jobId);
     await clearWizardDraft(record.jobId);
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+
     require('../store/createRouteFlowStore').useCreateRouteFlowStore.getState().completeFlow();
 
     store.workerSuccess({ progress01: 1 });

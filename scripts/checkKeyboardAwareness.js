@@ -36,6 +36,10 @@ class KeyboardAwarenessChecker {
 
       this.checkedFiles++;
 
+      // Bu dosya keyboard-aware kontrolünden muaf tutulmuş mu?
+      const hasIgnoreDirective = /\/\/\s*keyboard-aware-ignore/.test(content);
+      if (hasIgnoreDirective) {return;}
+
       // TextInput kullanımını kontrol et
       const hasTextInput = /\<TextInput/g.test(content);
       if (!hasTextInput) {return;}

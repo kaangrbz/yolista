@@ -25,6 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 import UserCard from '../user/UserCard';
 import { SocialListHeader } from '../header/Header';
 import { SocialListFollowChip } from './SocialListFollowChip';
+import { KeyboardAwareContainer } from '../common';
 
 export type FetchSocialProfilesPage = (
   offset: number,
@@ -371,6 +372,7 @@ export const SocialUserListScreen: React.FC<SocialUserListScreenProps> = ({
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <SocialListHeader navigation={navigation} title={title} />
+      <KeyboardAwareContainer enableScrollView={false} keyboardVerticalOffset={0}>
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -470,6 +472,7 @@ export const SocialUserListScreen: React.FC<SocialUserListScreenProps> = ({
         onEndReachedThreshold={0.35}
         showsVerticalScrollIndicator={false}
       />
+      </KeyboardAwareContainer>
     </SafeAreaView>
   );
 };

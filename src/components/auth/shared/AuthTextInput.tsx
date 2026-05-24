@@ -1,3 +1,4 @@
+// keyboard-aware-ignore: parent ekranlar (AuthLayout) zaten KeyboardAwareContainer sağlıyor
 import React, { useState } from 'react';
 import {
   Platform,

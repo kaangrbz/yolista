@@ -1,4 +1,5 @@
 {
   "extends": "@react-native/typescript-config/tsconfig.json",
-  "exclude": ["supabase/functions/**/*"]
+  "exclude": ["supabase/functions/**/*", "**/node_modules", "**/Pods"],
+  "include": ["**/*.ts", "**/*.tsx"],
 }

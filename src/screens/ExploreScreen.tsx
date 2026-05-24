@@ -31,6 +31,7 @@ import { useAuth } from '../context/AuthContext';
 import { buildProfileNavigationParams } from '../utils/profileSlug';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useExplorePosts } from '../hooks/usePosts';
+import { KeyboardAwareContainer } from '../components/common';
 import {
   EXPLORE_LAYOUT_MODE,
   getExploreGridCardWidth,
@@ -241,6 +242,7 @@ const ExploreScreen = () => {
 
   return (
     <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
+      <KeyboardAwareContainer enableScrollView={false} keyboardVerticalOffset={0}>
       <ExploreHeader />
 
       <View style={styles.searchRow}>
@@ -345,6 +347,7 @@ const ExploreScreen = () => {
 
         <View style={styles.scrollBottomSpacer} />
       </ScrollView>
+      </KeyboardAwareContainer>
     </SafeAreaView>
   );
 };

@@ -1,3 +1,4 @@
+// keyboard-aware-ignore: harita üstünde absolute pozisyonlanmış arama çubuğu; klavye kaldırma davranışı uygun değil
 import React, {
   useCallback,
   useEffect,

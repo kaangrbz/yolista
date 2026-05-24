@@ -1,3 +1,4 @@
+// keyboard-aware-ignore: parent ekran (OtpScreen) zaten KeyboardAwareContainer sağlıyor
 import React, { useRef, useState } from 'react';
 import {
   NativeSyntheticEvent,

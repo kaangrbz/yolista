@@ -1,3 +1,4 @@
+// keyboard-aware-ignore: parent ekran (ProfileEditModal) zaten KeyboardAwareContainer sağlıyor
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,

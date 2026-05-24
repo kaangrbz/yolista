@@ -1,3 +1,4 @@
+// keyboard-aware-ignore: parent ekran (CreateRoute / StopDetailsScreen) zaten KeyboardAwareContainer sağlıyor
 import React from 'react';
 import {
   View,

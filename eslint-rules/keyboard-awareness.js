@@ -24,6 +24,13 @@ const rule = {
     let hasKeyboardAware = false;
     let hasKeyboardAwareImport = false;
 
+    const sourceText = context.getSourceCode().getText();
+    const hasIgnoreDirective = /\/\/\s*keyboard-aware-ignore/.test(sourceText);
+
+    if (hasIgnoreDirective) {
+      return {};
+    }
+
     return {
       // Import kontrolü
       ImportDeclaration(node) {

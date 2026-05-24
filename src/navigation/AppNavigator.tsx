@@ -231,7 +231,7 @@ export const AppNavigator = () => {
   }, [isLoading, isAuthenticated]);
 
   return (
-    <NavigationContainer 
+    <NavigationContainer
       ref={navigationRef}
       theme={LightTheme}
       onReady={() => {

@@ -104,7 +104,7 @@ const AppContent = (): React.JSX.Element => {
       clearTimeout(timer);
       // Deep linking cleanup
       cleanup.then(cleanupFn => {
-        if (cleanupFn) cleanupFn();
+        if (cleanupFn) {cleanupFn();}
       });
     };
   }, []);
