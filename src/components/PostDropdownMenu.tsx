@@ -45,11 +45,11 @@ const PostDropdownMenu: React.FC<PostDropdownMenuProps> = ({
 }) => {
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const triggerRef = useRef<TouchableOpacity>(null);
+  const triggerRef = useRef<View>(null);
 
   const handleOpen = () => {
     if (triggerRef.current) {
-      triggerRef.current.measure((fx, fy, width, height, px, py) => {
+      triggerRef.current.measure((_fx: number, _fy: number, width: number, height: number, px: number, py: number) => {
         const screenWidth = Dimensions.get('window').width;
         const menuWidth = 200;
         const rightPosition = screenWidth - px - width - 10;
@@ -183,13 +183,14 @@ const PostDropdownMenu: React.FC<PostDropdownMenuProps> = ({
 
   return (
     <>
-      <TouchableOpacity
-        ref={triggerRef}
-        style={styles.trigger}
-        onPress={handleOpen}
-        activeOpacity={0.7}>
-        <Icon name="dots-horizontal" size={24} color="#262626" />
-      </TouchableOpacity>
+      <View ref={triggerRef} collapsable={false}>
+        <TouchableOpacity
+          style={styles.trigger}
+          onPress={handleOpen}
+          activeOpacity={0.7}>
+          <Icon name="dots-horizontal" size={24} color="#262626" />
+        </TouchableOpacity>
+      </View>
 
       <Modal
         visible={visible}

@@ -1,24 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
 
-export const checkFirstTime = async () => {
+const WELCOME_STORAGE_KEY = 'has_seen_welcome';
+
+export const shouldShowWelcome = async (): Promise<boolean> => {
   try {
-    const hasSeenWelcome = await AsyncStorage.getItem('has_seen_welcome');
-    if (!hasSeenWelcome) {
-      Alert.alert(
-        "Yolista'ya Hoş Geldiniz! 👋",
-        'Yolista ile şehrinizi keşfedin, yeni rotalar bulun ve unutulmaz deneyimler yaşayın. Şehir içi, doğa ve tarihi rotaları keşfetmeye başlayın!',
-        [
-          {
-            text: 'Harika!',
-            onPress: async () => {
-              await AsyncStorage.setItem('has_seen_welcome', 'true');
-            },
-          },
-        ],
-      );
-    }
+    const hasSeenWelcome = await AsyncStorage.getItem(WELCOME_STORAGE_KEY);
+
+    return !hasSeenWelcome;
   } catch (error) {
-    console.error('Hoş geldiniz mesajı hatası:', error);
+    console.error('Hoş geldiniz durumu okunamadı:', error);
+
+    return false;
+  }
+};
+
+export const markWelcomeSeen = async (): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(WELCOME_STORAGE_KEY, 'true');
+  } catch (error) {
+    console.error('Hoş geldiniz durumu kaydedilemedi:', error);
   }
 };

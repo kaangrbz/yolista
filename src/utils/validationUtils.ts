@@ -1,27 +1,53 @@
 export const validateName = (name: string): boolean => {
   const regex = /^[\p{L}\p{M}\s'-]{3,200}$/u;
+
   return regex.test(name);
 };
 
 export function validateUsername(username: string): boolean {
   const regex = /^(?!.*[._]{2})[a-zA-Z0-9._]{3,30}(?<!\.)$/;
+
   return regex.test(username);
 }
 
 // Validate if a string is a valid email address
 export function validateEmail(email: string): boolean {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   return regex.test(email);
 }
 
-// Validate if a string is a valid password
+type ValidatePasswordGlobalOptions = {
+  minLength?: number;
+  maxLength?: number;
+};
+
+export function validatePasswordGlobal(
+  password: string,
+  options: ValidatePasswordGlobalOptions = {},
+): boolean {
+  const minLength = options.minLength || 8;
+  const maxLength = options.maxLength || 128;
+
+  if (typeof password !== 'string') {
+    return false;
+  }
+
+  if (password.length < minLength || password.length > maxLength) {
+    return false;
+  }
+
+  return true;
+}
+
+// Default password validation used app-wide
 export function validatePassword(password: string): boolean {
-  const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-  return regex.test(password);
+  return validatePasswordGlobal(password);
 }
 
 export function validatePhone(phone: string): boolean {
   const regex = /^\d{10}$/;
+
   return regex.test(phone);
 }
 
@@ -53,7 +79,7 @@ export function getValidationMessage(
   if (type === 'password') {
     return validatePassword(value)
       ? 'Şifre geçerli.'
-        : 'Şifre en az 8 karakter uzunluğunda olmalıdır ve en az bir küçük harf, bir büyük harf ve bir sayı içermelidir.';
+      : 'Şifre 8-128 karakter olmalıdır.';
   }
 
   if (type === 'phone') {

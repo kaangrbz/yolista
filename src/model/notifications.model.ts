@@ -18,9 +18,10 @@ export interface NotificationType {
         full_name: string,
         username: string,
         image_url: string,
+        image_preview_url?: string | null,
         is_verified: boolean,
         is_deleted: boolean,
-    }
+    } | null;
 }
 
 const NotificationModel = {
@@ -39,6 +40,7 @@ const NotificationModel = {
           full_name,
           username,
           image_url,
+          image_preview_url,
           is_verified,
           is_deleted
         )
@@ -52,7 +54,6 @@ const NotificationModel = {
 
     const { data, error } = await query.limit(50);
 
-    console.log('notification data',data, error);
     if (error) {
       showToast('error', 'Bildirimler alınamadı');
       throw error;

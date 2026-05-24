@@ -12,6 +12,7 @@ export interface Comment {
   profiles?: {
     username: string;
     image_url?: string;
+    image_preview_url?: string;
     full_name?: string;
     user_id?: string;
     is_verified?: boolean;
@@ -23,7 +24,7 @@ const CommentModel = {
   async getRouteComments(routeId: string): Promise<Comment[]> {
     const { data, error } = await supabase
       .from('comments')
-      .select('*, profiles(username, image_url, full_name)')
+      .select('*, profiles(username, image_url, image_preview_url, full_name)')
       .eq('route_id', routeId)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -95,7 +96,8 @@ const CommentModel = {
     const { error } = await supabase
       .from('comments')
       .delete()
-      .eq('id', commentId);
+      .eq('id', commentId)
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error deleting comment:', error);

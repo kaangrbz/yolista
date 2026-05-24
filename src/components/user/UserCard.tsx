@@ -8,32 +8,38 @@ import { DefaultAvatar } from '../../assets';
 interface UserCardProps {
   user: Profile;
   onPress: () => void;
+  compact?: boolean;
+  /** Sadece compact + sağda aksiyon (ör. takip) için satır ikiye bölünür */
+  endAdornment?: React.ReactNode;
 }
 
-const UserCard: React.FC<UserCardProps> = ({ user, onPress }) => {
+const UserCard: React.FC<UserCardProps> = ({
+  user,
+  onPress,
+  compact = false,
+  endAdornment,
+}) => {
   const [imageUri, setImageUri] = useState<string | null>(null);
 
-    const downloadImage = async () => {
-    let image_url: string | undefined = user?.image_url;
+  const downloadImage = async () => {
+    const relativePath = user?.image_preview_url || user?.image_url;
 
-    if (!image_url) {
+    if (!relativePath) {
       setImageUri(null);
       return;
     }
 
     try {
-      // If public URL fails, try to download the file
       const { data, error } = await supabase
         .storage
         .from('profiles')
-        .download(`${user.id}/${image_url}`);
+        .download(`${user.id}/${relativePath}`);
 
       if (error) {
         console.error('Supabase download error:', error);
         return;
       }
 
-      // Convert Blob to Base64
       const reader = new FileReader();
       reader.onloadend = () => {
         setImageUri(reader.result as string);
@@ -41,31 +47,68 @@ const UserCard: React.FC<UserCardProps> = ({ user, onPress }) => {
       reader.readAsDataURL(data);
     } catch (error) {
       console.error('Error in downloadImage:', error);
-      // showToast('error', 'Resim yüklenirken bir hata oluştu');
       setImageUri(null);
     }
   };
 
-  // Trigger the function when the component is mounted or image_url changes
   useEffect(() => {
     downloadImage();
-  }, []);
+  }, [user?.image_url, user?.image_preview_url, user?.id]);
 
-  return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+  const mainContent = (
+    <>
       <Image
         source={imageUri ? { uri: imageUri } : DefaultAvatar}
-        style={styles.avatar}
+        style={[styles.avatar, compact && styles.avatarCompact]}
       />
       <View style={styles.userInfo}>
         <View style={styles.nameContainer}>
-          <Text style={styles.fullName}>{user.full_name}</Text>
+          <Text style={[styles.fullName, compact && styles.fullNameCompact]}>
+            {user.full_name}
+          </Text>
           {user.is_verified && (
-            <Icon name="check-decagram" size={16} color="#1DA1F2" style={styles.verifiedIcon} />
+            <Icon
+              name="check-decagram"
+              size={compact ? 14 : 16}
+              color="#1DA1F2"
+              style={styles.verifiedIcon}
+            />
           )}
         </View>
-        <Text style={styles.username}>@{user.username}</Text>
+        <Text style={[styles.username, compact && styles.usernameCompact]}>
+          @{user.username}
+        </Text>
       </View>
+    </>
+  );
+
+  if (compact && endAdornment != null) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.containerCompact,
+          styles.compactRowWithAdornment,
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.compactMainPressable}
+          onPress={onPress}
+          activeOpacity={0.7}
+        >
+          {mainContent}
+        </TouchableOpacity>
+        {endAdornment}
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      style={[styles.container, compact && styles.containerCompact]}
+      onPress={onPress}
+    >
+      {mainContent}
     </TouchableOpacity>
   );
 };
@@ -74,23 +117,46 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+  },
+  containerCompact: {
+    paddingVertical: 6,
+    paddingHorizontal: 0,
+    marginBottom: 2,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderRadius: 0,
+  },
+  compactRowWithAdornment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  compactMainPressable: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0,
   },
   avatar: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     borderRadius: 24,
-    marginRight: 12,
+    marginRight: 14,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: 'rgba(0,0,0,0.08)',
+  },
+  avatarCompact: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 10,
   },
   userInfo: {
     flex: 1,
@@ -100,18 +166,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   fullName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     color: '#121212',
+    letterSpacing: -0.2,
+  },
+  fullNameCompact: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: -0.15,
   },
   verifiedIcon: {
     marginLeft: 4,
   },
   username: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 2,
+    color: '#6B7280',
+    marginTop: 3,
+  },
+  usernameCompact: {
+    fontSize: 12,
+    marginTop: 1,
   },
 });
 
 export default UserCard;
+

@@ -16,6 +16,18 @@ import { LogBox } from 'react-native';
 import { Logo } from './src/components/Logo';
 import { ImageService } from './src/services/ImageService';
 import GlobalAlert from './src/components/common/GlobalAlert';
+import DeepLinkingService from './src/services/DeepLinkingService';
+import AuthLinkingService from './src/services/AuthLinkingService';
+import { useRoutePublishStore } from './src/store/routePublishStore';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import 'react-native-url-polyfill/auto';
+
+// Development modda deep link test
+if (__DEV__) {
+  import('./src/utils/deepLinkTester');
+}
 
 LogBox.ignoreAllLogs(); // Disables all warnings in the app
 
@@ -46,30 +58,55 @@ const AppContent = (): React.JSX.Element => {
   const { currentAlert, hideAlert } = useAlert();
 
   useEffect(() => {
-    // Fade in animasyonu
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    const initializeApp = async () => {
+      // Fade in animasyonu
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+      ]).start();
 
-    // Initialize image cache
-    ImageService.initializeCache();
+      // Initialize image cache
+      ImageService.initializeCache();
+
+      Promise.resolve(useRoutePublishStore.getState().resumePendingDraftIfAny()).catch(() => {
+        // Resume is best-effort
+      });
+
+      // Deep linking başlat
+      try {
+        const removeDeepLinkListener = await DeepLinkingService.initialize();
+        console.log('🔗 Deep linking initialized');
+
+        return removeDeepLinkListener;
+      } catch (error) {
+        console.error('🔗 Deep linking initialization error:', error);
+      }
+    };
+
+    // Initialize
+    const cleanup = initializeApp();
 
     // Sadece app initialization - AuthContext loading'i devre dışı
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 3000); // 3 saniye app loading
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      // Deep linking cleanup
+      cleanup.then(cleanupFn => {
+        if (cleanupFn) cleanupFn();
+      });
+    };
   }, []);
 
   // Sadece app loading kontrolü
@@ -110,15 +147,24 @@ const AppContent = (): React.JSX.Element => {
 
 function App(): React.JSX.Element {
   return (
-    <AuthProvider>
-      <AlertProvider>
-        <AppContent />
-      </AlertProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={styles.rootGesture}>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <AlertProvider>
+            <BottomSheetModalProvider>
+              <AppContent />
+            </BottomSheetModalProvider>
+          </AlertProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  rootGesture: {
+    flex: 1,
+  },
   loadingContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',

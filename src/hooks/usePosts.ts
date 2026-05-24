@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import RouteModel, { RouteWithProfile, GetRoutesProps } from '../model/routes.model';
 import { showToast } from '../utils/alert';
+import { mergeRoutesPreservingUnchanged } from '../utils/listRefreshUtils';
+
+type FetchPostsOptions = {
+  reset?: boolean;
+  silent?: boolean;
+};
 
 export interface PostOptions {
   homeFeed?: {
@@ -34,6 +40,7 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
   const [hasMore, setHasMore] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
+  const isFetchingRef = useRef(false);
 
   // Options'ı ref olarak sakla
   const optionsRef = useRef<PostOptions>(options);
@@ -52,7 +59,7 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
         setCurrentPage(0);
         setPosts([]);
         setHasMore(true);
-        fetchPosts(true);
+        void fetchPosts({ reset: true });
       }
     }
   }, [currentOptionsString, isInitialized]);
@@ -67,29 +74,44 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
 
 
   // Post'ları getir
-  const fetchPosts = useCallback(async (reset: boolean = false) => {
-    if (isLoading) {return;}
+  const fetchPosts = useCallback(async (options: FetchPostsOptions = {}) => {
+    const reset = options.reset === true;
+    const silent = options.silent === true;
+
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    if (isLoading && !silent) {
+      return;
+    }
 
     // Profile feed için userId kontrolü
     const currentOptions = optionsRef.current;
     if (currentOptions.profileFeed && (!currentOptions.profileFeed.userId || currentOptions.profileFeed.userId === '')) {
-      setIsLoading(false);
       return;
     }
 
+    isFetchingRef.current = true;
+
     try {
-      setIsLoading(true);
+      if (!silent) {
+        setIsLoading(true);
+      }
+
       setError(null);
 
-      // Reset durumunda sayfa ve posts'ları sıfırla
       let pageToUse = currentPage;
+
       if (reset) {
         pageToUse = 0;
         setCurrentPage(0);
-        setPosts([]);
+
+        if (!silent) {
+          setPosts([]);
+        }
       }
 
-      // Props'ları oluştur
       const baseProps: GetRoutesProps = {
         onlyMain: true,
         limit: getLimit(),
@@ -118,12 +140,19 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
       const newPosts = await RouteModel.getRoutes(props);
 
       if (reset) {
-        setPosts(newPosts);
+        setPosts((previousPosts) => {
+          if (silent && previousPosts.length > 0) {
+            return mergeRoutesPreservingUnchanged(previousPosts, newPosts);
+          }
+
+          return newPosts;
+        });
       } else {
-        setPosts(prevPosts => {
-          const existingIds = new Set(prevPosts.map(post => post.id));
-          const uniqueNewPosts = newPosts.filter(post => !existingIds.has(post.id));
-          return [...prevPosts, ...uniqueNewPosts];
+        setPosts((previousPosts) => {
+          const existingIds = new Set(previousPosts.map((post) => post.id));
+          const uniqueNewPosts = newPosts.filter((post) => !existingIds.has(post.id));
+
+          return [...previousPosts, ...uniqueNewPosts];
         });
       }
 
@@ -132,36 +161,36 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
       setHasMore(hasMoreData);
 
       if (!reset) {
-        setCurrentPage(prev => prev + 1);
+        setCurrentPage((previousPage) => previousPage + 1);
       } else {
         setCurrentPage(1);
       }
-
-      setIsLoading(false);
     } catch (err) {
       console.error('Error fetching posts:', err);
       setError('Postlar yüklenirken bir hata oluştu');
-      setIsLoading(false);
       showToast('error', 'Postlar yüklenirken bir hata oluştu');
+    } finally {
+      isFetchingRef.current = false;
+
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   }, [isLoading, currentPage]);
 
-  // Refresh fonksiyonu
   const refresh = useCallback(async () => {
-    await fetchPosts(true);
+    await fetchPosts({ reset: true, silent: true });
   }, [fetchPosts]);
 
-  // Load more fonksiyonu
   const loadMore = useCallback(async () => {
     if (hasMore && !isLoading) {
-      await fetchPosts(false);
+      await fetchPosts({ reset: false });
     }
   }, [hasMore, isLoading, fetchPosts]);
 
-  // İlk yükleme
   useEffect(() => {
     if (!isInitialized) {
-      fetchPosts(true);
+      void fetchPosts({ reset: true });
       setIsInitialized(true);
     }
   }, [isInitialized, fetchPosts]);

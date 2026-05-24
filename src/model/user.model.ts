@@ -127,6 +127,36 @@ const UserModel = {
     return !!data;
   },
 
+  /**
+   * Görüntüleyen kullanıcının, verilen profil id'lerinden hangilerini takip ettiğini tek sorguda döner (N+1 yok).
+   */
+  async getFollowedIdsAmong(
+    viewerId: string,
+    candidateIds: string[],
+  ): Promise<Set<string>> {
+    const unique = [...new Set(candidateIds)].filter(Boolean);
+
+    if (unique.length === 0) {
+      return new Set();
+    }
+
+    const { data, error } = await supabase
+      .from('follows')
+      .select('followed_id')
+      .eq('follower_id', viewerId)
+      .eq('followed_type', 'profile')
+      .in('followed_id', unique);
+
+    if (error) {
+      console.error('Error batch-checking follows:', error);
+      throw error;
+    }
+
+    return new Set(
+      (data || []).map((row: { followed_id: string }) => row.followed_id),
+    );
+  },
+
   // Follow a user
   async followUser(followerId: string, followingId: string): Promise<FollowResponse> {
     // First check if already following
@@ -173,7 +203,8 @@ const UserModel = {
       .from('follows')
       .delete()
       .eq('follower_id', followerId)
-      .eq('followed_id', followingId);
+      .eq('followed_id', followingId)
+      .eq('followed_type', 'profile');
 
     if (error) {
       console.error('Error unfollowing user:', error);
@@ -191,22 +222,35 @@ const UserModel = {
 
   //* Check if a username is available
   async isUsernameAvailable(username: string): Promise<boolean> {
-    const { data, error } = await supabase
+    const normalizedUsername = username.trim().toLowerCase();
+
+    if (normalizedUsername.length === 0) {
+      return false;
+    }
+
+    const { count, error } = await supabase
       .from('profiles')
-      .select('username')
-      .eq('username', username)
-      .limit(1);
+      .select('id', { count: 'exact', head: true })
+      .ilike('username', normalizedUsername);
 
     if (error) {
       console.error('Error checking username:', error);
       return false;
     }
 
-    return data.length === 0; // Returns true if the username is available
+    return (count || 0) === 0;
   },
 
-  //* Update user profile
-  async updateUserImage(userId: string, profile: { image_url: string }): Promise<boolean> {
+  //* Update user profile images (avatar + header)
+  async updateUserImage(
+    userId: string,
+    profile: Partial<{
+      image_url: string;
+      image_preview_url: string;
+      header_image_url: string;
+      header_image_preview_url: string;
+    }>
+  ): Promise<boolean> {
     const { error } = await supabase
       .from('profiles')
       .update(profile)

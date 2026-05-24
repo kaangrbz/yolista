@@ -8,14 +8,14 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { ProgressIndicator } from '../../components/common/ProgressIndicator';
+import { useNavigation } from '@react-navigation/native';
 import { ImageCarousel } from '../../components/route/ImageCarousel';
 import { StopForm } from '../../components/route/StopForm';
-// import { RouteMap } from '../../components/route/RouteMap';
-import { Photo } from './PhotoSelectionScreen';
-import { showToast } from '../../utils/alert';
 import KeyboardAwareContainer from '../../components/common/KeyboardAwareContainer';
+import { appTheme } from '../../theme/appTheme';
+import { useCreateRouteFlowStore } from '../../store/createRouteFlowStore';
+import { useCreateFlowPreventRemove } from '../../hooks/useCreateFlowPreventRemove';
+import { useCreateFlowAndroidBack } from '../../hooks/useCreateFlowAndroidBack';
 
 export interface RouteStop {
   id: string;
@@ -33,40 +33,57 @@ const { height: screenHeight } = Dimensions.get('window');
 
 export const StopDetailsScreen = () => {
   const navigation = useNavigation();
-  const route = useRoute();
-  const { selectedPhotos } = route.params as { selectedPhotos: Photo[] };
+  const selectedPhotos = useCreateRouteFlowStore((state) => state.photos);
+  const routeStops = useCreateRouteFlowStore((state) => state.routeStops);
+  const setRouteStops = useCreateRouteFlowStore((state) => state.setRouteStops);
+  const setWizardStep = useCreateRouteFlowStore((state) => state.setWizardStep);
 
   const [currentStopIndex, setCurrentStopIndex] = useState(0);
-  const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
 
-  // Initialize route stops from photos
+  useCreateFlowPreventRemove('stops');
+  useCreateFlowAndroidBack('stops');
+
   useEffect(() => {
-    const initialStops: RouteStop[] = selectedPhotos.map((photo, index) => ({
-      id: `stop_${photo.id}`,
-      photoId: photo.id,
-      title: '',
-      description: '',
-    }));
-    setRouteStops(initialStops);
-  }, [selectedPhotos]);
+    if (selectedPhotos.length === 0) {
+      return;
+    }
+
+    const currentStops = useCreateRouteFlowStore.getState().routeStops;
+    const existingByPhotoId = new Map(currentStops.map((stop) => [stop.photoId, stop]));
+
+    const synced: RouteStop[] = selectedPhotos.map((photo) => {
+      const existing = existingByPhotoId.get(photo.id);
+
+      if (existing) {
+        return existing;
+      }
+
+      return {
+        id: `stop_${photo.id}`,
+        photoId: photo.id,
+        title: '',
+        description: '',
+      };
+    });
+
+    const needsSync =
+      synced.length !== currentStops.length ||
+      synced.some((stop, index) => stop.photoId !== currentStops[index]?.photoId);
+
+    if (needsSync) {
+      setRouteStops(synced);
+    }
+  }, [selectedPhotos, setRouteStops]);
 
   const currentStop = routeStops[currentStopIndex];
-  const currentPhoto = selectedPhotos.find(photo => photo.id === currentStop?.photoId);
+  const currentPhoto = selectedPhotos.find((photo) => photo.id === currentStop?.photoId);
 
-  const handleStopUpdate = (stopId: string, field: keyof RouteStop, value: any) => {
-    setRouteStops(prev =>
-      prev.map(stop =>
+  const handleStopUpdate = (stopId: string, field: keyof RouteStop, value: unknown) => {
+    setRouteStops(
+      routeStops.map((stop) =>
         stop.id === stopId ? { ...stop, [field]: value } : stop,
       ),
     );
-  };
-
-  const handleLocationSelect = (coordinate: { latitude: number; longitude: number }, address?: string) => {
-    if (currentStop) {
-      handleStopUpdate(currentStop.id, 'coordinate', coordinate);
-      handleStopUpdate(currentStop.id, 'address', address);
-      showToast('success', 'Konum seçildi');
-    }
   };
 
   const handleSwipeToStop = (index: number) => {
@@ -76,70 +93,54 @@ export const StopDetailsScreen = () => {
   };
 
   const handleContinue = () => {
-    // Validate that at least one stop has required info (photo is already guaranteed)
-    const hasValidStop = routeStops.some(stop =>
-      selectedPhotos.some(photo => photo.id === stop.photoId)
-    );
-
-    if (!hasValidStop) {
-      Alert.alert('Hata', 'En az bir durak için fotoğraf gereklidir.');
+    if (selectedPhotos.length === 0) {
+      Alert.alert('Hata', 'En az bir fotoğraf gereklidir.');
       return;
     }
 
-    // Navigate to next step
-    (navigation as any).navigate('CategorySelection', {
-      selectedPhotos,
-      routeStops: routeStops.filter(stop =>
-        selectedPhotos.some(photo => photo.id === stop.photoId)
-      ),
-    });
+    setWizardStep('category');
+
+    (navigation as { navigate: (name: string) => void }).navigate('CategorySelection');
   };
 
   const handleSkip = () => {
-    // Create minimal stops with just photos
     const minimalStops = selectedPhotos.map((photo, index) => ({
       id: `stop_${photo.id}`,
       photoId: photo.id,
-      title: `Durak ${index + 1}`,
+      title: `Nokta ${index + 1}`,
       description: '',
     }));
 
-    (navigation as any).navigate('CategorySelection', {
-      selectedPhotos,
-      routeStops: minimalStops,
-    });
+    setRouteStops(minimalStops);
+    setWizardStep('category');
+
+    (navigation as { navigate: (name: string) => void }).navigate('CategorySelection');
   };
 
-  if (!currentStop || !currentPhoto) {
+  if (!currentStop || !currentPhoto || selectedPhotos.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text>Yükleniyor...</Text>
+        <Text style={styles.loadingText}>Yükleniyor…</Text>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Progress Indicator */}
-      <ProgressIndicator currentStep={2} totalSteps={4} />
-
-      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Durak Bilgileri</Text>
+        <Text style={styles.title}>Detaylar</Text>
         <Text style={styles.subtitle}>
-          Durak {currentStopIndex + 1} / {routeStops.length}
+          Her fotoğraf için isteğe bağlı başlık ve not ekleyebilirsin.
         </Text>
       </View>
 
-      {/* KeyboardAware Main Content */}
       <KeyboardAwareContainer
         style={styles.keyboardContainer}
-        keyboardVerticalOffset={120} // Header + progress yüksekliği için
+        keyboardVerticalOffset={88}
         scrollViewProps={{
           contentContainerStyle: styles.scrollContent,
         }}
       >
-        {/* Image Carousel */}
         <View style={styles.carouselContainer}>
           <ImageCarousel
             photos={selectedPhotos}
@@ -148,7 +149,6 @@ export const StopDetailsScreen = () => {
           />
         </View>
 
-        {/* Stop Form */}
         <View style={styles.formContainer}>
           <StopForm
             stop={currentStop}
@@ -156,16 +156,6 @@ export const StopDetailsScreen = () => {
           />
         </View>
 
-        {/* Map - Collapsed when keyboard is active */}
-        <View style={styles.mapContainer}>
-          {/* <RouteMap
-            stops={routeStops}
-            currentStopIndex={currentStopIndex}
-            onLocationSelect={handleLocationSelect}
-          /> */}
-        </View>
-
-        {/* Footer - Inside KeyboardAware */}
         <View style={styles.footer}>
           <View style={styles.buttonRow}>
             <TouchableOpacity
@@ -179,8 +169,8 @@ export const StopDetailsScreen = () => {
             <TouchableOpacity
               style={[styles.button, styles.continueButton]}
               onPress={handleContinue}>
-              <Text style={styles.buttonText}>
-                Devam Et
+              <Text style={[styles.buttonText, styles.continueButtonText]}>
+                Devam
               </Text>
             </TouchableOpacity>
           </View>
@@ -193,60 +183,60 @@ export const StopDetailsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: appTheme.background,
+  },
+  loadingText: {
+    marginTop: 24,
+    textAlign: 'center',
+    color: appTheme.textSecondary,
+    fontSize: 16,
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 8,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: appTheme.border,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 4,
+    color: appTheme.textPrimary,
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 15,
+    color: appTheme.textSecondary,
+    lineHeight: 22,
   },
   keyboardContainer: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   carouselContainer: {
-    height: screenHeight * 0.35, // Biraz küçült
-    backgroundColor: '#000',
+    height: screenHeight * 0.36,
+    backgroundColor: '#000000',
     marginHorizontal: 20,
-    borderRadius: 8,
+    marginTop: 16,
+    borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   formContainer: {
-    minHeight: 200, // Fixed height yerine minimum height
+    minHeight: 200,
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    flex: 1, // Form'un genişleyebilmesini sağla
-  },
-  mapContainer: {
-    height: 120, // Küçült, keyboard açıkken gizlenebilir
-    backgroundColor: '#f8f9fa',
-    marginHorizontal: 20,
-    borderRadius: 8,
-    marginTop: 10,
-    marginBottom: 16,
+    paddingVertical: 12,
+    flex: 1,
   },
   footer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    backgroundColor: '#fff',
+    borderTopColor: appTheme.border,
+    backgroundColor: appTheme.background,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -257,26 +247,23 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   skipButton: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: appTheme.surfaceMuted,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: appTheme.borderStrong,
   },
   continueButton: {
-    backgroundColor: '#121212',
+    backgroundColor: appTheme.accent,
   },
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+  },
+  continueButtonText: {
+    color: appTheme.background,
   },
   skipButtonText: {
-    color: '#666',
+    color: appTheme.textSecondary,
   },
 });

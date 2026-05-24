@@ -1,5 +1,7 @@
-import { Share as RNShare, Alert } from 'react-native';
+import { Platform, Share as RNShare, Alert } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
+import { APP_PUBLISHED_ORIGIN } from '../constants/appLinks';
+import { encodeProfileUsername } from '../utils/profileSlug';
 
 export interface ShareOptions {
   title: string;
@@ -10,20 +12,77 @@ export interface ShareOptions {
 
 export class ShareService {
   static generatePostUrl(postId: string): string {
-    // Gerçek uygulamada bu URL dinamik olarak oluşturulacak
-    return `https://roulista.com/post/${postId}`;
+    return `${APP_PUBLISHED_ORIGIN}/post/${postId}`;
+  }
+
+  static generateProfileUrl(username: string): string {
+    return `${APP_PUBLISHED_ORIGIN}/profile/${encodeProfileUsername(username)}`;
+  }
+
+  static async shareProfile(
+    username: string,
+    displayName: string,
+    handle?: string,
+  ): Promise<boolean> {
+    const url = ShareService.generateProfileUrl(username);
+    const label = handle
+      ? `${displayName} (@${handle})`
+      : displayName;
+
+    try {
+      const result = await ShareService.shareLinkNative(url, label);
+
+      return result.action === RNShare.sharedAction;
+    } catch (error) {
+      console.error('Error sharing profile:', error);
+      Alert.alert('Hata', 'Profil paylaşılırken bir hata oluştu');
+
+      return false;
+    }
+  }
+
+  /** Paylaşım metni: özel mesaj varsa o + link; yoksa rota başlığı + link; başlık yoksa sadece link */
+  static composeShareMessage(
+    postTitle: string,
+    url: string,
+    customMessage?: string,
+  ): string {
+    const trimmedCustom = customMessage?.trim() ?? '';
+    const trimmedTitle = postTitle.trim();
+
+    if (trimmedCustom.length > 0) {
+      return `${trimmedCustom}\n\n${url}`;
+    }
+
+    if (trimmedTitle.length > 0) {
+      return `${trimmedTitle}\n\n${url}`;
+    }
+
+    return url;
+  }
+
+  private static async shareLinkNative(
+    url: string,
+    postTitle: string,
+    customMessage?: string,
+  ): Promise<{ action: string }> {
+    const message = ShareService.composeShareMessage(postTitle, url, customMessage);
+
+    return RNShare.share({
+      message,
+      url: Platform.OS === 'ios' ? url : undefined,
+      title: 'Yolista',
+    });
   }
 
   static async sharePost(options: ShareOptions): Promise<boolean> {
     try {
       const url = options.url || this.generatePostUrl(options.postId);
-      const message = options.message || `"${options.title}" gönderisini inceleyin: ${url}`;
-
-      const result = await RNShare.share({
-        message: message,
-        url: url,
-        title: options.title,
-      });
+      const result = await this.shareLinkNative(
+        url,
+        options.title,
+        options.message,
+      );
 
       return result.action === RNShare.sharedAction;
     } catch (error) {
@@ -36,12 +95,11 @@ export class ShareService {
   static async shareToWhatsApp(options: ShareOptions): Promise<boolean> {
     try {
       const url = options.url || this.generatePostUrl(options.postId);
-      const message = `${options.message || `"${options.title}" gönderisini inceleyin`} ${url}`;
-
-      const result = await RNShare.share({
-        message: message,
-        url: url,
-      });
+      const result = await this.shareLinkNative(
+        url,
+        options.title,
+        options.message,
+      );
 
       return result.action === RNShare.sharedAction;
     } catch (error) {
@@ -53,12 +111,11 @@ export class ShareService {
   static async shareToTelegram(options: ShareOptions): Promise<boolean> {
     try {
       const url = options.url || this.generatePostUrl(options.postId);
-      const message = `${options.message || `"${options.title}" gönderisini inceleyin`} ${url}`;
-
-      const result = await RNShare.share({
-        message: message,
-        url: url,
-      });
+      const result = await this.shareLinkNative(
+        url,
+        options.title,
+        options.message,
+      );
 
       return result.action === RNShare.sharedAction;
     } catch (error) {
@@ -70,12 +127,11 @@ export class ShareService {
   static async shareToTwitter(options: ShareOptions): Promise<boolean> {
     try {
       const url = options.url || this.generatePostUrl(options.postId);
-      const message = `${options.message || `"${options.title}" gönderisini inceleyin`} ${url}`;
-
-      const result = await RNShare.share({
-        message: message,
-        url: url,
-      });
+      const result = await this.shareLinkNative(
+        url,
+        options.title,
+        options.message,
+      );
 
       return result.action === RNShare.sharedAction;
     } catch (error) {
@@ -101,6 +157,11 @@ export class ShareService {
 
   static getShareableText(options: ShareOptions): string {
     const url = options.url || this.generatePostUrl(options.postId);
-    return `${options.message || `"${options.title}" gönderisini inceleyin`} ${url}`;
+
+    return ShareService.composeShareMessage(
+      options.title,
+      url,
+      options.message,
+    );
   }
 }

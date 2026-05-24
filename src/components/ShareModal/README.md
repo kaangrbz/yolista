@@ -19,8 +19,20 @@ Instagram tarzı paylaşım modal'ı. Post'ları farklı platformlarda paylaşma
 
 ### 👀 Önizleme
 - Post başlığı
-- Post URL'i
+- Paylaşılacak metin önizlemesi (başlık + link)
 - Görsel placeholder
+
+### Paylaşım metni (varsayılan)
+
+Özel mesaj yoksa:
+
+```
+{Rota başlığı}
+
+https://yolista.roulista.com/post/{postId}
+```
+
+Özel mesaj varsa: `{mesaj}\n\n{link}`. «Linki kopyala» tam bu metni kopyalar.
 
 ## Kullanım
 
@@ -31,7 +43,7 @@ Instagram tarzı paylaşım modal'ı. Post'ları farklı platformlarda paylaşma
   postId="123"
   postTitle="Güzel bir gün"
   postImage="https://example.com/image.jpg"
-  postUrl="https://yolista.app/post/123"
+  postUrl="https://yolista.roulista.com/post/123"
 />
 ```
 
@@ -44,7 +56,7 @@ Instagram tarzı paylaşım modal'ı. Post'ları farklı platformlarda paylaşma
 | `postId` | `string` | ✅ | Post ID'si |
 | `postTitle` | `string` | ✅ | Post başlığı |
 | `postImage` | `string?` | ❌ | Post görseli |
-| `postUrl` | `string?` | ❌ | Özel URL (varsayılan: https://roulista.com/post/{postId}) |
+| `postUrl` | `string?` | ❌ | Özel URL (varsayılan: https://yolista.roulista.com/post/{postId}) |
 
 ## Servis Kullanımı
 
@@ -56,7 +68,7 @@ await ShareService.sharePost({
   postId: '123',
   title: 'Güzel bir gün',
   message: 'Bu gönderiyi inceleyin!',
-  url: 'https://roulista.com/post/123'
+  url: 'https://yolista.roulista.com/post/123'
 });
 
 // WhatsApp'ta paylaş

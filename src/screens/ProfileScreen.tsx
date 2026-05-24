@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,17 +6,32 @@ import {
   ScrollView,
   SafeAreaView,
   RefreshControl,
-  ActivityIndicator,
+  Alert,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/alert';
+import { useAuth } from '../context/AuthContext';
 import { navigate, PageName } from '../types/navigation';
+import type { SocialUserListRouteParams } from '../types/socialUserList';
 import UserModel from '../model/user.model';
-import { RouteWithProfile } from '../model/routes.model';
+import RouteModel, { RouteWithProfile } from '../model/routes.model';
 import { Profile } from '../model/profile.model';
 import ProfileEditModal from '../components/profile/ProfileEditModal';
+import { deleteAccount } from '../services/AccountService';
 import ImageViewer from '../components/ImageViewer';
+import ShareModal from '../components/ShareModal';
+import { ShareService } from '../services/ShareService';
+import { decodeProfileUsername } from '../utils/profileSlug';
+import {
+  isSameProfile,
+  isInitialListLoading,
+  mergeRoutesPreservingUnchanged,
+} from '../utils/listRefreshUtils';
+import { ImageService } from '../services/ImageService';
+import { useImageDownload, useProfileImageDownload } from '../hooks/useImageDownload';
 import { useProfilePosts } from '../hooks/usePosts';
 import {
   ProfileHeader,
@@ -27,182 +42,414 @@ import {
   ProfilePostsList,
   ProfileSavedPosts,
   ProfileLikedPosts,
+  ProfileSettingsModal,
 } from '../components/profile';
 
 interface ProfileScreenProps {
   route?: {
     params?: {
-      userId?: string;
+      username?: string;
       currentUserId?: string;
     };
   };
 }
 
 type ProfileStackParamList = {
-  ProfileMain: { userId?: string; currentUserId?: string };
+  ProfileMain: { username?: string; currentUserId?: string };
   RouteDetail: { routeId: string };
   Explore: { categoryId?: number };
-  Followers: { userId: string };
-  Following: { userId: string };
+  SocialUserList: SocialUserListRouteParams;
 };
 
 type ProfileScreenNavigationProp = any;
 
+const SAVED_LIKED_PAGE_SIZE = 20;
+
+const PROFILE_SELECT_COLUMNS = [
+  'id',
+  'username',
+  'full_name',
+  'description',
+  'website',
+  'image_url',
+  'image_preview_url',
+  'header_image_url',
+  'header_image_preview_url',
+  'is_verified',
+  'created_at',
+  'updated_at',
+].join(', ');
+
+const resolveRouteUsername = (
+  routeUsername?: string,
+  authUsername?: string,
+): string | null => {
+  if (routeUsername?.trim()) {
+    return routeUsername.trim();
+  }
+
+  if (authUsername?.trim()) {
+    return authUsername.trim();
+  }
+
+  return null;
+};
+
+const mergeRoutesById = (previous: RouteWithProfile[], next: RouteWithProfile[]): RouteWithProfile[] => {
+  const seen = new Set(previous.map((route) => route.id).filter(Boolean));
+  const merged = [...previous];
+
+  for (const route of next) {
+    if (!route.id || seen.has(route.id)) {
+      continue;
+    }
+
+    seen.add(route.id);
+    merged.push(route);
+  }
+
+  return merged;
+};
+
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
-  // Route parametrelerini güvenli şekilde al
+  const { reloadAuth, user: authUser, isEmailConfirmed } = useAuth();
+
   const routeParams = route?.params || {};
-  const [isLoading, setIsLoading] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(
+    () => authUser?.id || routeParams.currentUserId || null,
+  );
   const [user, setUser] = useState<Profile | null>(null);
-  const [followers, setFollowers] = useState<any[]>([]);
-  const [followings, setFollowings] = useState<any[]>([]);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
   const [isFollowLoading, setIsFollowLoading] = useState<boolean>(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [headerImageUri, setHeaderImageUri] = useState<string | null>(null);
+  const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
+  const [isProfileShareModalVisible, setIsProfileShareModalVisible] = useState(false);
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
+  const [modalImageUri, setModalImageUri] = useState<string | null>(null);
+  const [modalHeaderImageUri, setModalHeaderImageUri] = useState<string | null>(null);
+  const [profileHighUri, setProfileHighUri] = useState<string | null>(null);
+  const [headerHighUri, setHeaderHighUri] = useState<string | null>(null);
   const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
   const [isHeaderImageViewerVisible, setIsHeaderImageViewerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
 
   const [savedPosts, setSavedPosts] = useState<RouteWithProfile[]>([]);
   const [likedPosts, setLikedPosts] = useState<RouteWithProfile[]>([]);
+  const [savedHasMore, setSavedHasMore] = useState(true);
+  const [likedHasMore, setLikedHasMore] = useState(true);
+  const [savedLoadingMore, setSavedLoadingMore] = useState(false);
+  const [likedLoadingMore, setLikedLoadingMore] = useState(false);
+  const [savedTabLoading, setSavedTabLoading] = useState(false);
+  const [likedTabLoading, setLikedTabLoading] = useState(false);
+  const savedPageRef = useRef(0);
+  const likedPageRef = useRef(0);
+  const savedTabLoadedRef = useRef(false);
+  const likedTabLoadedRef = useRef(false);
 
-  // Posts hook
-  const { posts: routes, isLoading: postsLoading, refresh: refreshPosts, loadMore, hasMore } = useProfilePosts(profileUserId || '', 20);
+  const { posts: routes, isLoading: postsLoading, refresh: refreshPosts } = useProfilePosts(profileUserId || '', 20);
 
+  const profileImageUserId = profileUserId || '';
+  const { imageUri: downloadedProfileUri } = useProfileImageDownload(
+    user?.image_url,
+    profileImageUserId,
+    user?.image_preview_url,
+  );
+  const headerStorageKey = user?.header_image_preview_url || user?.header_image_url;
+  const { imageUri: downloadedHeaderUri } = useImageDownload(
+    headerStorageKey,
+    'headers',
+    profileImageUserId,
+  );
+
+  const displayProfileUri = modalImageUri ?? downloadedProfileUri;
+  const displayHeaderUri = modalHeaderImageUri ?? downloadedHeaderUri;
 
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const isCurrentUserProfile = currentUserId && profileUserId && currentUserId === profileUserId;
+  const isInitialProfileLoading = isProfileLoading && !user;
+  const isInitialStatsLoading = (isProfileLoading || isStatsLoading) && !user;
+  const isInitialPostsLoading = isInitialListLoading(postsLoading, routes.length);
 
-  // Fetch user data
-  const fetchUser = async () => {
+  const fetchProfileStats = async (
+    targetUserId: string,
+    options?: { silent?: boolean },
+  ) => {
+    const silent = options?.silent === true;
+
+    if (!silent) {
+      setIsStatsLoading(true);
+    }
+
     try {
-      setIsLoading(true);
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        setCurrentUserId(currentUser.id);
-        const targetUserId = routeParams.userId || currentUser.id;
+      const [followersResult, followingsResult] = await Promise.all([
+        UserModel.getFollowersCount(targetUserId),
+        UserModel.getFollowingsCount(targetUserId),
+      ]);
 
-        setProfileUserId(targetUserId);
+      setFollowersCount((previous) => {
+        const next = followersResult ?? 0;
 
-        const { data: profileUser, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', targetUserId)
-          .single();
-
-        if (profileUser) {
-          setUser(profileUser);
-          // Download images in parallel
-          await Promise.all([
-            downloadImage(profileUser.image_url, 'profiles', setImageUri, targetUserId),
-            downloadImage(profileUser.header_image_url, 'headers', setHeaderImageUri, targetUserId),
-          ]);
+        if (previous === next) {
+          return previous;
         }
 
-        if (targetUserId !== currentUser.id) {
-          await checkFollowStatus(currentUser.id, targetUserId);
+        return next;
+      });
+      setFollowingCount((previous) => {
+        const next = followingsResult ?? 0;
+
+        if (previous === next) {
+          return previous;
         }
 
-        // Fetch additional data after user is loaded
-        const isOwnProfile = targetUserId === currentUser.id;
-        await Promise.all([
-          fetchFollowers(targetUserId),
-          fetchFollowings(targetUserId),
-          isOwnProfile ? fetchSavedPosts() : Promise.resolve(),
-          isOwnProfile ? fetchLikedPosts() : Promise.resolve(),
-        ]);
+        return next;
+      });
+    } catch (error) {
+      console.error('Error fetching profile stats:', error);
+    } finally {
+      if (!silent) {
+        setIsStatsLoading(false);
+      }
+    }
+  };
+
+  const fetchUser = async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+
+    try {
+      if (!silent) {
+        setIsProfileLoading(true);
+      }
+
+      let loggedInUserId = authUser?.id || currentUserId;
+
+      if (!loggedInUserId) {
+        const { data: { user: sessionUser } } = await supabase.auth.getUser();
+
+        if (!sessionUser) {
+          return;
+        }
+
+        loggedInUserId = sessionUser.id;
+        setCurrentUserId(sessionUser.id);
+      }
+
+      const routeUsername = resolveRouteUsername(
+        routeParams.username,
+        authUser?.profile?.username,
+      );
+
+      if (!routeUsername) {
+        setUser(null);
+        setProfileUserId(null);
+
+        return;
+      }
+
+      const username = decodeProfileUsername(routeUsername);
+
+      const { data: profileUser, error } = await supabase
+        .from('profiles')
+        .select(PROFILE_SELECT_COLUMNS)
+        .eq('username', username)
+        .single();
+
+      const fetchedProfile = profileUser as unknown as Profile | null;
+      const targetUserId = fetchedProfile?.id || null;
+
+      setProfileUserId(targetUserId);
+      setCurrentUserId(loggedInUserId);
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        setUser(null);
+
+        return;
+      }
+
+      if (fetchedProfile) {
+        const nextProfile = fetchedProfile;
+
+        setUser((previousUser) => {
+          if (previousUser && isSameProfile(previousUser, nextProfile)) {
+            return previousUser;
+          }
+
+          return nextProfile;
+        });
+
+        if (!silent) {
+          setProfileHighUri(null);
+          setHeaderHighUri(null);
+          setModalImageUri(null);
+          setModalHeaderImageUri(null);
+        }
+      }
+
+      if (targetUserId && targetUserId !== loggedInUserId) {
+        void checkFollowStatus(loggedInUserId, targetUserId);
+      }
+
+      if (targetUserId) {
+        void fetchProfileStats(targetUserId, { silent });
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsProfileLoading(false);
+      }
     }
   };
 
-  // Download image
-  const downloadImage = async (image_url: string | undefined, bucketName: string, setImageUri: (uri: string | null) => void, userId?: string) => {
-    if (!image_url || (!profileUserId && !userId)) {
-      setImageUri(null);
-      return;
-    }
-
-    const targetUserId = userId || profileUserId;
-    if (!targetUserId) {
-      setImageUri(null);
-      return;
-    }
+  const loadSavedInitial = async (authUserId: string, options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    savedPageRef.current = 0;
+    setSavedHasMore(true);
 
     try {
-      const { data, error } = await supabase
-        .storage
-        .from(bucketName)
-        .download(`${targetUserId}/${image_url}`);
-
-      if (error) {throw error;}
-
-      const reader = new FileReader();
-      const uri = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(data);
+      const savedResult = await RouteModel.getSavedRoutesForUser({
+        userId: authUserId,
+        loggedUserId: authUserId,
+        limit: SAVED_LIKED_PAGE_SIZE,
+        offset: 0,
       });
 
-      setImageUri(uri);
-    } catch (error) {
-      console.error('Error downloading image:', error);
-      setImageUri(null);
-    }
-  };
+      setSavedPosts((previousPosts) => {
+        if (silent && previousPosts.length > 0) {
+          return mergeRoutesPreservingUnchanged(previousPosts, savedResult.items);
+        }
 
-
-  // Kaydedilen postları getir
-  const fetchSavedPosts = async () => {
-    if (!currentUserId || !isCurrentUserProfile) {return;}
-    try {
-      // Bu fonksiyon bookmark model'den gelecek
-      // Şimdilik boş array
-      setSavedPosts([]);
+        return savedResult.items;
+      });
+      setSavedHasMore(savedResult.hasMore);
+      savedPageRef.current = savedResult.hasMore ? 1 : 0;
     } catch (error) {
       console.error('Error fetching saved posts:', error);
+
+      if (!silent) {
+        setSavedPosts([]);
+        setSavedHasMore(false);
+      }
     }
   };
 
-  // Beğenilen postları getir
-  const fetchLikedPosts = async () => {
-    if (!currentUserId || !isCurrentUserProfile) {return;}
+  const loadLikedInitial = async (authUserId: string, options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    likedPageRef.current = 0;
+    setLikedHasMore(true);
+
     try {
-      // Bu fonksiyon likes model'den gelecek
-      // Şimdilik boş array
-      setLikedPosts([]);
+      const likedResult = await RouteModel.getLikedRoutesForUser({
+        userId: authUserId,
+        loggedUserId: authUserId,
+        limit: SAVED_LIKED_PAGE_SIZE,
+        offset: 0,
+      });
+
+      setLikedPosts((previousPosts) => {
+        if (silent && previousPosts.length > 0) {
+          return mergeRoutesPreservingUnchanged(previousPosts, likedResult.items);
+        }
+
+        return likedResult.items;
+      });
+      setLikedHasMore(likedResult.hasMore);
+      likedPageRef.current = likedResult.hasMore ? 1 : 0;
     } catch (error) {
       console.error('Error fetching liked posts:', error);
+
+      if (!silent) {
+        setLikedPosts([]);
+        setLikedHasMore(false);
+      }
     }
   };
 
-  // Fetch followers and following
-  const fetchFollowers = async (userId?: string) => {
-    const targetUserId = userId || profileUserId;
-    if (!targetUserId) {return;}
-    try {
-      const followers = await UserModel.getFollowers(targetUserId);
-      setFollowers(followers || []);
-    } catch (error) {
-      console.error('Error fetching followers:', error);
+  const loadMoreSavedPosts = useCallback(async () => {
+    if (!currentUserId || !savedHasMore || savedLoadingMore) {
+      return;
     }
-  };
 
-  const fetchFollowings = async (userId?: string) => {
-    const targetUserId = userId || profileUserId;
-    if (!targetUserId) {return;}
+    setSavedLoadingMore(true);
+
     try {
-      const followings = await UserModel.getFollowings(targetUserId);
-      setFollowings(followings || []);
+      const offset = savedPageRef.current * SAVED_LIKED_PAGE_SIZE;
+      const result = await RouteModel.getSavedRoutesForUser({
+        userId: currentUserId,
+        loggedUserId: currentUserId,
+        limit: SAVED_LIKED_PAGE_SIZE,
+        offset,
+      });
+
+      setSavedPosts((prev) => mergeRoutesById(prev, result.items));
+      setSavedHasMore(result.hasMore);
+
+      if (result.hasMore) {
+        savedPageRef.current += 1;
+      }
     } catch (error) {
-      console.error('Error fetching followings:', error);
+      console.error('Error loading more saved posts:', error);
+    } finally {
+      setSavedLoadingMore(false);
+    }
+  }, [currentUserId, savedHasMore, savedLoadingMore]);
+
+  const loadMoreLikedPosts = useCallback(async () => {
+    if (!currentUserId || !likedHasMore || likedLoadingMore) {
+      return;
+    }
+
+    setLikedLoadingMore(true);
+
+    try {
+      const offset = likedPageRef.current * SAVED_LIKED_PAGE_SIZE;
+      const result = await RouteModel.getLikedRoutesForUser({
+        userId: currentUserId,
+        loggedUserId: currentUserId,
+        limit: SAVED_LIKED_PAGE_SIZE,
+        offset,
+      });
+
+      setLikedPosts((prev) => mergeRoutesById(prev, result.items));
+      setLikedHasMore(result.hasMore);
+
+      if (result.hasMore) {
+        likedPageRef.current += 1;
+      }
+    } catch (error) {
+      console.error('Error loading more liked posts:', error);
+    } finally {
+      setLikedLoadingMore(false);
+    }
+  }, [currentUserId, likedHasMore, likedLoadingMore]);
+
+  const handleProfileScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!currentUserId) {
+      return;
+    }
+
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const threshold = 280;
+    const nearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - threshold;
+
+    if (!nearBottom) {
+      return;
+    }
+
+    if (activeTab === 2) {
+      void loadMoreSavedPosts();
+      return;
+    }
+
+    if (activeTab === 3) {
+      void loadMoreLikedPosts();
     }
   };
 
@@ -226,8 +473,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
         const result = await UserModel.unfollowUser(currentUserId, profileUserId);
         if (result.success) {
           setIsFollowing(false);
+          setFollowersCount((count) => Math.max(0, count - 1));
           showToast('success', result.message);
-          fetchFollowers();
         } else {
           showToast('error', result.message);
         }
@@ -235,7 +482,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
         const result = await UserModel.followUser(currentUserId, profileUserId);
         if (result.success) {
           setIsFollowing(true);
-          fetchFollowers();
+          setFollowersCount((count) => count + 1);
         } else {
           showToast('error', result.message);
         }
@@ -259,18 +506,96 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     }
   };
 
+  const handleDeleteAccountPress = () => {
+    Alert.alert(
+      'Hesabı sil',
+      'Hesabınız kalıcı olarak silinecek; profiliniz, gönderileriniz ve kayıtlarınız geri alınamaz. Devam etmek istiyor musunuz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Hesabımı sil',
+          style: 'destructive',
+          onPress: () => {
+            void runDeleteAccount();
+          },
+        },
+      ],
+    );
+  };
+
+  const runDeleteAccount = async () => {
+    setDeleteAccountLoading(true);
+
+    try {
+      const result = await deleteAccount();
+
+      if (result.error) {
+        showToast('error', result.error);
+        return;
+      }
+
+      showToast('success', 'Hesabınız silindi');
+      reloadAuth();
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      showToast('error', 'Hesap silinirken bir hata oluştu');
+    } finally {
+      setDeleteAccountLoading(false);
+    }
+  };
+
+  const handleVerifyEmailPress = () => {
+    navigation.navigate(
+      'VerifyEmail' as never,
+      { email: authUser?.email ?? undefined } as never,
+    );
+  };
+
   // Handle profile update
   const handleProfileUpdate = (updatedProfile: Profile) => {
     setUser(updatedProfile);
   };
 
-  // Handle image update
-  const handleImageUpdate = (type: 'profile' | 'header', newImageUri: string) => {
+  // Handle image update (modal already saved paths; sync local display URIs)
+  const handleImageUpdate = (type: 'profile' | 'header', newImageUri: string, patch: Partial<Profile>) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev));
+
     if (type === 'profile') {
-      setImageUri(newImageUri);
-    } else if (type === 'header') {
-      setHeaderImageUri(newImageUri);
+      setModalImageUri(newImageUri);
+      setProfileHighUri(null);
+      return;
     }
+
+    if (type === 'header') {
+      setModalHeaderImageUri(newImageUri);
+      setHeaderHighUri(null);
+    }
+  };
+
+  const handleProfileImageOpen = async () => {
+    if (!user?.image_url || !profileUserId) {
+      return;
+    }
+
+    if (user.image_preview_url) {
+      const highUri = await ImageService.downloadImage(user.image_url, 'profiles', profileUserId);
+      setProfileHighUri(highUri);
+    }
+
+    setIsImageViewerVisible(true);
+  };
+
+  const handleHeaderImageOpen = async () => {
+    if (!user?.header_image_url || !profileUserId) {
+      return;
+    }
+
+    if (user.header_image_preview_url) {
+      const highUri = await ImageService.downloadImage(user.header_image_url, 'headers', profileUserId);
+      setHeaderHighUri(highUri);
+    }
+
+    setIsHeaderImageViewerVisible(true);
   };
 
   // Event handlers
@@ -280,14 +605,27 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
   const handleFollowersPress = () => {
     if (profileUserId) {
-      navigation.navigate('Followers', { userId: profileUserId });
+      navigation.navigate('SocialUserList', {
+        kind: 'followers',
+        userId: profileUserId,
+      });
     }
   };
 
   const handleFollowingPress = () => {
     if (profileUserId) {
-      navigation.navigate('Following', { userId: profileUserId });
+      navigation.navigate('SocialUserList', {
+        kind: 'following',
+        userId: profileUserId,
+      });
     }
+  };
+
+  const resetLazyTabCache = () => {
+    savedTabLoadedRef.current = false;
+    likedTabLoadedRef.current = false;
+    setSavedPosts([]);
+    setLikedPosts([]);
   };
 
   // Refresh function
@@ -295,14 +633,35 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     try {
       setRefreshing(true);
 
-      // Önce user bilgilerini yükle ki profileUserId güncellensin
-      await fetchUser();
+      await fetchUser({ silent: true });
 
-      // Sonra posts'ları yenile
       if (refreshPosts) {
         await refreshPosts();
       }
 
+      if (isCurrentUserProfile && currentUserId) {
+        if (activeTab === 2) {
+          savedTabLoadedRef.current = true;
+
+          if (savedPosts.length === 0) {
+            setSavedTabLoading(true);
+          }
+
+          await loadSavedInitial(currentUserId, { silent: true });
+          setSavedTabLoading(false);
+        }
+
+        if (activeTab === 3) {
+          likedTabLoadedRef.current = true;
+
+          if (likedPosts.length === 0) {
+            setLikedTabLoading(true);
+          }
+
+          await loadLikedInitial(currentUserId, { silent: true });
+          setLikedTabLoading(false);
+        }
+      }
     } catch (error) {
       console.error('Error refreshing data:', error);
       showToast('error', 'Veriler yenilenirken bir hata oluştu');
@@ -311,12 +670,37 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     }
   };
 
-  // Initial load
   useEffect(() => {
-    fetchUser();
-  }, [routeParams.userId]);
+    resetLazyTabCache();
+  }, [routeParams.username]);
 
-  if (!user && !isLoading) {
+  useEffect(() => {
+    void fetchUser();
+  }, [routeParams.username, authUser?.id, authUser?.profile?.username]);
+
+  useEffect(() => {
+    if (!isCurrentUserProfile || !currentUserId) {
+      return;
+    }
+
+    if (activeTab === 2 && !savedTabLoadedRef.current) {
+      savedTabLoadedRef.current = true;
+      setSavedTabLoading(true);
+      void loadSavedInitial(currentUserId).finally(() => {
+        setSavedTabLoading(false);
+      });
+    }
+
+    if (activeTab === 3 && !likedTabLoadedRef.current) {
+      likedTabLoadedRef.current = true;
+      setLikedTabLoading(true);
+      void loadLikedInitial(currentUserId).finally(() => {
+        setLikedTabLoading(false);
+      });
+    }
+  }, [activeTab, isCurrentUserProfile, currentUserId]);
+
+  if (!user && !isProfileLoading) {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Kullanıcı bulunamadı</Text>
@@ -328,6 +712,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     <SafeAreaView style={styles.container}>
       <ScrollView
         style={styles.scrollView}
+        onScroll={handleProfileScroll}
+        scrollEventThrottle={400}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -338,33 +724,40 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
         }
       >
         <ProfileHeader
-          headerImageUri={headerImageUri}
+          headerImageUri={displayHeaderUri}
           isCurrentUserProfile={!!isCurrentUserProfile}
-          isFollowing={isFollowing}
-          isFollowLoading={isFollowLoading}
-          onHeaderImagePress={() => setIsHeaderImageViewerVisible(true)}
-          onEditPress={() => setIsEditModalVisible(true)}
-          onLogoutPress={handleLogout}
-          onFollowToggle={handleFollowToggle}
+          onHeaderImagePress={handleHeaderImageOpen}
+          onSettingsPress={() => setIsSettingsModalVisible(true)}
+          onSharePress={
+            profileUserId
+              ? () => setIsProfileShareModalVisible(true)
+              : undefined
+          }
           userId={profileUserId || undefined}
-          loading={isLoading || !user}
+          loading={isInitialProfileLoading}
         />
 
         <ProfileInfo
           user={user || {} as any}
-          imageUri={imageUri}
-          onProfileImagePress={() => setIsImageViewerVisible(true)}
+          imageUri={displayProfileUri}
+          onProfileImagePress={handleProfileImageOpen}
           userId={profileUserId || undefined}
-          loading={isLoading || !user}
+          loading={isInitialProfileLoading}
+          isCurrentUserProfile={!!isCurrentUserProfile}
+          isFollowing={isFollowing}
+          isFollowLoading={isFollowLoading}
+          onEditPress={() => setIsEditModalVisible(true)}
+          onFollowToggle={handleFollowToggle}
+          isEmailConfirmed={isEmailConfirmed}
         />
 
         <ProfileStats
           postsCount={routes.length}
-          followersCount={followers.length}
-          followingCount={followings.length}
+          followersCount={followersCount}
+          followingCount={followingCount}
           onFollowersPress={handleFollowersPress}
           onFollowingPress={handleFollowingPress}
-          loading={isLoading || !user}
+          loading={isInitialStatsLoading}
         />
 
         <ProfileTabs
@@ -378,7 +771,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
             <ProfilePostsGrid
               routes={routes}
               onRoutePress={handleRoutePress}
-              loading={postsLoading || isLoading || !user}
+              loading={isInitialPostsLoading}
             />
           )}
           {activeTab === 1 && (
@@ -391,12 +784,16 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
             <ProfileSavedPosts
               savedPosts={savedPosts}
               currentUserId={currentUserId}
+              loadingMore={savedLoadingMore}
+              initialLoading={savedTabLoading}
             />
           )}
           {isCurrentUserProfile && activeTab === 3 && (
             <ProfileLikedPosts
               likedPosts={likedPosts}
               currentUserId={currentUserId}
+              loadingMore={likedLoadingMore}
+              initialLoading={likedTabLoading}
             />
           )}
         </View>
@@ -409,23 +806,57 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           visible={isEditModalVisible}
           onClose={() => setIsEditModalVisible(false)}
           profile={user}
-          imageUri={imageUri}
-          headerImageUri={headerImageUri}
+          imageUri={displayProfileUri}
+          headerImageUri={displayHeaderUri}
           onUpdate={handleProfileUpdate}
           onImageUpdate={handleImageUpdate}
+          authEmail={authUser?.email}
+          isEmailConfirmed={isEmailConfirmed}
+          onVerifyEmailPress={() => {
+            setIsEditModalVisible(false);
+            handleVerifyEmailPress();
+          }}
+        />
+      )}
+
+      {isCurrentUserProfile && (
+        <ProfileSettingsModal
+          visible={isSettingsModalVisible}
+          onClose={() => setIsSettingsModalVisible(false)}
+          onEditProfile={() => setIsEditModalVisible(true)}
+          onLogout={handleLogout}
+          onDeleteAccount={handleDeleteAccountPress}
+          deleteLoading={deleteAccountLoading}
         />
       )}
 
       <ImageViewer
-        images={imageUri ? [{ uri: imageUri }] : []}
+        images={(profileHighUri || displayProfileUri) ? [{ uri: profileHighUri || displayProfileUri! }] : []}
         visible={isImageViewerVisible}
-        onRequestClose={() => setIsImageViewerVisible(false)}
+        onRequestClose={() => {
+          setIsImageViewerVisible(false);
+          setProfileHighUri(null);
+        }}
       />
       <ImageViewer
-        images={headerImageUri ? [{ uri: headerImageUri }] : []}
+        images={(headerHighUri || displayHeaderUri) ? [{ uri: headerHighUri || displayHeaderUri! }] : []}
         visible={isHeaderImageViewerVisible}
-        onRequestClose={() => setIsHeaderImageViewerVisible(false)}
+        onRequestClose={() => {
+          setIsHeaderImageViewerVisible(false);
+          setHeaderHighUri(null);
+        }}
       />
+
+      {profileUserId && user?.username ? (
+        <ShareModal
+          visible={isProfileShareModalVisible}
+          onClose={() => setIsProfileShareModalVisible(false)}
+          postId={profileUserId}
+          postTitle={`${user.full_name || 'Profil'} (@${user.username})`}
+          postImage={displayProfileUri || undefined}
+          postUrl={ShareService.generateProfileUrl(user.username)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -451,7 +882,7 @@ const styles = StyleSheet.create({
   tabContent: {
     flex: 1,
     minHeight: 500, // Increased minimum height
-    paddingTop: 10,
+    // paddingTop: 10,
   },
 });
 

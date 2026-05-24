@@ -2,6 +2,8 @@ import ImageResizer from 'react-native-image-resizer';
 import { supabase } from '../lib/supabase'; // Update with the correct import path for your Supabase client
 import { Platform } from 'react-native';
 import { showToast } from './alert';
+import type { RouteImageAlignment } from '../model/routes.model';
+import { getExploreTileHeight } from './exploreLayoutUtils';
 
 export interface ResizedImage {
   uri: string;
@@ -17,6 +19,101 @@ interface FileToUpload {
 interface UploadMultipleFilesResponse {
   success: boolean;
   results: Array<{ path: string; success: boolean; error?: string }>;
+}
+
+/**
+ * Galeri/kamera URI'lerini (Android content://, iOS file:// vb.) okur.
+ * RNFS.readFile çoğu cihazda content:// ile güvenilir çalışmaz; yükleme için fetch kullanın.
+ */
+export async function readLocalImageUriAsArrayBuffer(uri: string): Promise<ArrayBuffer> {
+  const response = await fetch(uri);
+
+  if (!response.ok) {
+    throw new Error(`readLocalImageUriAsArrayBuffer: status ${response.status}`);
+  }
+
+  return response.arrayBuffer();
+}
+
+export function normalizeImageDimension(value: number | undefined | null): number | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (!Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+
+  return Math.round(value);
+}
+
+export interface PostCarouselHeightOptions {
+  minHeight?: number;
+  maxHeight?: number;
+  defaultHeight?: number;
+}
+
+/**
+ * Feed gönderi carousel yüksekliği: DB piksel boyutu veya image_alignment yedek.
+ */
+export function getPostCarouselDisplayHeight(
+  screenWidth: number,
+  imageWidth: number | null | undefined,
+  imageHeight: number | null | undefined,
+  imageAlignment: RouteImageAlignment | null | undefined,
+  options: PostCarouselHeightOptions = {},
+): number {
+  const minHeight = options.minHeight ?? 250;
+  const maxHeight = options.maxHeight ?? 1080;
+  const defaultHeight = options.defaultHeight ?? 400;
+
+  const width = normalizeImageDimension(imageWidth);
+  const height = normalizeImageDimension(imageHeight);
+
+  if (width !== null && height !== null) {
+    const aspectRatio = height / width;
+    const adjustedHeight = screenWidth * aspectRatio;
+
+    return Math.max(minHeight, Math.min(maxHeight, adjustedHeight));
+  }
+
+  if (imageAlignment) {
+    const fromAlignment = getExploreTileHeight(imageAlignment, screenWidth);
+
+    return Math.max(minHeight, Math.min(maxHeight, fromAlignment));
+  }
+
+  return defaultHeight;
+}
+
+/**
+ * Piksel çözünürlüğünden değil, genişlik/yükseklik oranından sınıf üretir.
+ * Kareye yakın oranlar için küçük bir tolerans kullanılır.
+ */
+export function classifyImageAlignment(
+  width: number | undefined,
+  height: number | undefined
+): RouteImageAlignment {
+  if (width === undefined || height === undefined) {
+    return 'unknown';
+  }
+
+  if (width <= 0 || height <= 0 || !Number.isFinite(width) || !Number.isFinite(height)) {
+    return 'unknown';
+  }
+
+  const ratio = width / height;
+  const squareTolerance = 0.06;
+
+  if (Math.abs(ratio - 1) <= squareTolerance) {
+    return 'square';
+  }
+
+  if (ratio < 1) {
+    return 'portrait';
+  }
+
+  return 'landscape';
 }
 
 export async function resizeImage(

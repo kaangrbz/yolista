@@ -51,7 +51,7 @@ export class PostService {
   }): Promise<Post[]> {
     try {
       const routes = await RouteModel.getRoutes(options);
-      return routes || [];
+      return (routes || []) as unknown as Post[];
     } catch (error) {
       console.error('Error getting posts:', error);
       return [];

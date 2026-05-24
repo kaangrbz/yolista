@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Image, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { View, Image, StyleSheet, TouchableOpacity, Text, Pressable } from 'react-native';
 import { ImageService } from '../../services/ImageService';
 import SimpleSkeletonLoader from './SimpleSkeletonLoader';
 
@@ -9,6 +9,8 @@ interface CachedImageProps {
   resizeMode?: 'cover' | 'contain' | 'stretch' | 'repeat' | 'center';
   onPress?: () => void;
   showRetryButton?: boolean;
+  /** true: hata durumunda metin gösterme, sadece boş placeholder */
+  suppressErrorText?: boolean;
   bucketName?: string;
   userId?: string;
   fallbackSource?: { uri: string } | number;
@@ -20,6 +22,7 @@ const CachedImage: React.FC<CachedImageProps> = ({
   resizeMode = 'cover',
   onPress,
   showRetryButton = true,
+  suppressErrorText = false,
   bucketName,
   userId,
   fallbackSource,
@@ -94,17 +97,6 @@ const CachedImage: React.FC<CachedImageProps> = ({
       return <SimpleSkeletonLoader style={style} />;
     }
 
-    if (error && showRetryButton) {
-      return (
-        <View style={[style, styles.errorContainer]}>
-          <Text style={styles.errorText}>Resim yüklenemedi</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
-            <Text style={styles.retryText}>Tekrar Dene</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
     if (error && fallbackSource) {
       return (
         <Image
@@ -112,6 +104,51 @@ const CachedImage: React.FC<CachedImageProps> = ({
           style={style}
           resizeMode={resizeMode}
         />
+      );
+    }
+
+    if (error && suppressErrorText) {
+      if (showRetryButton) {
+        return (
+          <Pressable
+            style={({ pressed }) => [
+              style,
+              styles.errorPlaceholder,
+              pressed && styles.errorPressed,
+            ]}
+            onPress={handleRetry}
+            accessibilityRole="button"
+            accessibilityLabel="Tekrar dene"
+          />
+        );
+      }
+
+      return <View style={[style, styles.errorPlaceholder]} />;
+    }
+
+    if (error && showRetryButton) {
+      return (
+        <Pressable
+          style={({ pressed }) => [
+            style,
+            styles.errorContainer,
+            pressed && styles.errorPressed,
+          ]}
+          onPress={handleRetry}
+          accessibilityRole="button"
+          accessibilityLabel="Tekrar dene"
+        >
+          <Text style={styles.errorText}>Resim yüklenemedi</Text>
+          <Text style={styles.errorText}>Tekrar dene</Text>
+        </Pressable>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={[style, styles.errorContainer]}>
+          <Text style={styles.errorText}>Resim yüklenemedi</Text>
+        </View>
       );
     }
 
@@ -142,28 +179,21 @@ const CachedImage: React.FC<CachedImageProps> = ({
 
 const styles = StyleSheet.create({
   errorContainer: {
-    backgroundColor: '#f5f5f5',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderStyle: 'dashed',
+    padding: 0,
+    borderRadius: 8,
+  },
+  errorPlaceholder: {
+    backgroundColor: '#e8e8e8',
   },
   errorText: {
     fontSize: 12,
     color: '#666',
-    marginBottom: 8,
+    textAlign: 'center',
   },
-  retryButton: {
-    backgroundColor: '#1DA1F2',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 4,
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
+  errorPressed: {
+    opacity: 0.88,
   },
 });
 

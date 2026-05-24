@@ -1,11 +1,6 @@
-import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-interface CachedImage {
-  uri: string;
-  timestamp: number;
-  expiresAt: number;
-}
+import { supabase } from '../lib/supabase';
+import { CacheManager } from './CacheManager';
 
 interface ImageLoadState {
   loading: boolean;
@@ -14,59 +9,189 @@ interface ImageLoadState {
 }
 
 export class ImageService {
-  private static cache = new Map<string, CachedImage>();
-  private static readonly CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
   private static readonly MAX_RETRIES = 3;
-  private static readonly RETRY_DELAY = 1000; // 1 second
+  private static readonly RETRY_DELAY = 1000;
+  private static readonly SUPABASE_OBJECT_PATH = '/storage/v1/object/';
+  private static readonly LEGACY_ASYNC_STORAGE_KEY = 'image_cache';
 
-  // Cache management
+  private static toLoggableError(error: unknown): Record<string, unknown> {
+    if (error instanceof Error) {
+      return {
+        name: error.name,
+        message: error.message,
+      };
+    }
+
+    if (typeof error === 'object' && error !== null) {
+      try {
+        return JSON.parse(JSON.stringify(error));
+      } catch (serializationError) {
+        return {
+          message: 'Unserializable error object',
+          serializationError: String(serializationError),
+        };
+      }
+    }
+
+    return {
+      message: String(error),
+    };
+  }
+
+  private static extractPathFromSupabaseUrl(imageUrl: string, bucketName: string): string | null {
+    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+      return null;
+    }
+
+    const marker = `${this.SUPABASE_OBJECT_PATH}${bucketName}/`;
+    const markerIndex = imageUrl.indexOf(marker);
+
+    if (markerIndex === -1) {
+      return null;
+    }
+
+    const rawPath = imageUrl.slice(markerIndex + marker.length);
+    const queryIndex = rawPath.indexOf('?');
+    const pathWithoutQuery = queryIndex === -1 ? rawPath : rawPath.slice(0, queryIndex);
+
+    if (!pathWithoutQuery) {
+      return null;
+    }
+
+    return decodeURIComponent(pathWithoutQuery);
+  }
+
+  /**
+   * Depolama nesnesi yolu + bucket ile benzersiz anahtar; önizleme ve tam resim farklı path’lerde olduğu için ayrı önbelleklenir.
+   */
+  private static buildDiskCacheKey(bucketName: string, imageUrl: string, userId: string): string {
+    const pathFromUrl = this.extractPathFromSupabaseUrl(imageUrl, bucketName);
+
+    if (pathFromUrl) {
+      return `${bucketName}:${pathFromUrl}`;
+    }
+
+    const normalizedImageUrl = imageUrl.trim();
+
+    if (!normalizedImageUrl) {
+      return `${bucketName}:${userId}:empty`;
+    }
+
+    if (normalizedImageUrl.startsWith(`${userId}/`)) {
+      return `${bucketName}:${normalizedImageUrl}`;
+    }
+
+    if (
+      normalizedImageUrl.includes('/')
+      && !normalizedImageUrl.startsWith('http://')
+      && !normalizedImageUrl.startsWith('https://')
+    ) {
+      return `${bucketName}:${normalizedImageUrl}`;
+    }
+
+    return `${bucketName}:${userId}:${normalizedImageUrl}`;
+  }
+
+  private static inferExtensionFromUrl(url: string): string {
+    const lower = url.toLowerCase();
+    const match = lower.match(/\.(jpg|jpeg|png|webp|gif)(\?|#|$)/i);
+
+    if (match) {
+      return match[1].toLowerCase() === 'jpeg' ? 'jpg' : match[1].toLowerCase();
+    }
+
+    return 'jpg';
+  }
+
+  private static getCandidatePaths(imageUrl: string, userId: string, bucketName: string): string[] {
+    const normalizedImageUrl = imageUrl.trim();
+
+    if (!normalizedImageUrl) {
+      return [];
+    }
+
+    const candidatePaths = new Set<string>();
+    const pathFromUrl = this.extractPathFromSupabaseUrl(normalizedImageUrl, bucketName);
+
+    if (pathFromUrl) {
+      candidatePaths.add(pathFromUrl);
+    }
+
+    if (normalizedImageUrl.startsWith(`${userId}/`)) {
+      candidatePaths.add(normalizedImageUrl);
+    }
+
+    if (
+      normalizedImageUrl.includes('/')
+      && !normalizedImageUrl.startsWith('http://')
+      && !normalizedImageUrl.startsWith('https://')
+    ) {
+      candidatePaths.add(normalizedImageUrl);
+    }
+
+    candidatePaths.add(`${userId}/${normalizedImageUrl}`);
+
+    return Array.from(candidatePaths);
+  }
+
+  private static async downloadFromCandidatePaths(
+    bucketName: string,
+    candidatePaths: string[]
+  ): Promise<Blob> {
+    let lastError: unknown = null;
+
+    for (const candidatePath of candidatePaths) {
+      const { data, error } = await supabase
+        .storage
+        .from(bucketName)
+        .download(candidatePath);
+
+      if (!error) {
+        return data;
+      }
+
+      lastError = error;
+    }
+
+    throw lastError ?? new Error('No valid storage path found for image');
+  }
+
+  private static async downloadBlobToDiskCache(
+    imageUrl: string,
+    bucketName: string,
+    userId: string,
+    cacheKey: string
+  ): Promise<string | null> {
+    const candidatePaths = this.getCandidatePaths(imageUrl, userId, bucketName);
+    const data = await this.downloadFromCandidatePaths(bucketName, candidatePaths);
+    const ext = this.inferExtensionFromUrl(imageUrl);
+
+    return CacheManager.putBlob(cacheKey, data, ext);
+  }
+
   static async initializeCache(): Promise<void> {
     try {
-      const cachedData = await AsyncStorage.getItem('image_cache');
-      if (cachedData) {
-        const parsed = JSON.parse(cachedData);
-        this.cache = new Map(Object.entries(parsed));
-        this.cleanExpiredCache();
-      }
+      await AsyncStorage.removeItem(this.LEGACY_ASYNC_STORAGE_KEY);
+      await CacheManager.init();
     } catch (error) {
       console.error('Error initializing image cache:', error);
     }
   }
 
-  static async saveCache(): Promise<void> {
-    try {
-      const cacheObject = Object.fromEntries(this.cache);
-      await AsyncStorage.setItem('image_cache', JSON.stringify(cacheObject));
-    } catch (error) {
-      console.error('Error saving image cache:', error);
-    }
-  }
-
-  static cleanExpiredCache(): void {
-    const now = Date.now();
-    for (const [key, value] of this.cache.entries()) {
-      if (now > value.expiresAt) {
-        this.cache.delete(key);
-      }
-    }
-  }
-
-  // Enhanced image loading with caching and retry
   static async loadImageWithCache(
     imageUrl: string,
     bucketName: string,
     userId: string,
     onStateChange?: (state: ImageLoadState) => void
   ): Promise<string | null> {
-    const cacheKey = `${bucketName}/${userId}/${imageUrl}`;
+    const cacheKey = this.buildDiskCacheKey(bucketName, imageUrl, userId);
 
-    // Check cache first
-    const cached = this.cache.get(cacheKey);
-    if (cached && Date.now() < cached.expiresAt) {
-      return cached.uri;
+    const cachedUri = await CacheManager.getFileUriIfCached(cacheKey);
+
+    if (cachedUri) {
+      return cachedUri;
     }
 
-    // Load with retry mechanism
     return this.loadImageWithRetry(imageUrl, bucketName, userId, cacheKey, onStateChange);
   }
 
@@ -81,34 +206,12 @@ export class ImageService {
     try {
       onStateChange?.({ loading: true, error: null, retryCount });
 
-      const { data, error } = await supabase
-        .storage
-        .from(bucketName)
-        .download(`${userId}/${imageUrl}`);
+      const fileUri = await this.downloadBlobToDiskCache(imageUrl, bucketName, userId, cacheKey);
 
-      if (error) {throw error;}
-
-      const reader = new FileReader();
-      const uri = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(data);
-      });
-
-      // Cache the result
-      this.cache.set(cacheKey, {
-        uri,
-        timestamp: Date.now(),
-        expiresAt: Date.now() + this.CACHE_DURATION,
-      });
-
-      await this.saveCache();
       onStateChange?.({ loading: false, error: null, retryCount });
 
-      return uri;
+      return fileUri;
     } catch (error) {
-      console.error(`Error loading image (attempt ${retryCount + 1}):`, error);
-
       if (retryCount < this.MAX_RETRIES) {
         onStateChange?.({
           loading: false,
@@ -116,28 +219,27 @@ export class ImageService {
           retryCount: retryCount + 1,
         });
 
-        // Wait before retry
         await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY * (retryCount + 1)));
 
         return this.loadImageWithRetry(imageUrl, bucketName, userId, cacheKey, onStateChange, retryCount + 1);
-      } else {
-        onStateChange?.({
-          loading: false,
-          error: 'Failed to load image after multiple attempts',
-          retryCount,
-        });
-        return null;
       }
+
+      console.error('Image load failed after retries:', this.toLoggableError(error));
+
+      onStateChange?.({
+        loading: false,
+        error: 'Failed to load image after multiple attempts',
+        retryCount,
+      });
+
+      return null;
     }
   }
 
-  // Get multiple post images for a route (deprecated - use useImages hook instead)
-  static async getPostImages(postId: string, userId: string): Promise<string[]> {
-    console.warn('getPostImages is deprecated. Use useImages hook instead.');
+  static async getPostImages(_postId: string, _userId: string): Promise<string[]> {
     return [];
   }
 
-  // Generic download image helper - best practice implementation
   static async downloadImage(
     imageUrl: string | undefined,
     bucketName: string,
@@ -149,57 +251,35 @@ export class ImageService {
       return null;
     }
 
-    const cacheKey = `${bucketName}/${userId}/${imageUrl}`;
+    const cacheKey = this.buildDiskCacheKey(bucketName, imageUrl, userId);
 
     try {
-      // Check cache first
-      const cached = this.cache.get(cacheKey);
-      if (cached && Date.now() < cached.expiresAt) {
-        onStateChange?.({ loading: false, error: null, retryCount: 0, imageUri: cached.uri });
-        return cached.uri;
+      const cachedUri = await CacheManager.getFileUriIfCached(cacheKey);
+
+      if (cachedUri) {
+        onStateChange?.({ loading: false, error: null, retryCount: 0, imageUri: cachedUri });
+        return cachedUri;
       }
 
       onStateChange?.({ loading: true, error: null, retryCount: 0, imageUri: null });
 
-      const { data, error } = await supabase
-        .storage
-        .from(bucketName)
-        .download(`${userId}/${imageUrl}`);
+      const fileUri = await this.downloadBlobToDiskCache(imageUrl, bucketName, userId, cacheKey);
 
-      if (error) {throw error;}
+      onStateChange?.({ loading: false, error: null, retryCount: 0, imageUri: fileUri });
 
-      // Convert Blob to Base64
-      const reader = new FileReader();
-      const uri = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(data);
-      });
-
-      // Cache the result
-      this.cache.set(cacheKey, {
-        uri,
-        timestamp: Date.now(),
-        expiresAt: Date.now() + this.CACHE_DURATION,
-      });
-
-      await this.saveCache();
-      onStateChange?.({ loading: false, error: null, retryCount: 0, imageUri: uri });
-
-      return uri;
-    } catch (error) {
-      console.error('Error downloading image:', error);
+      return fileUri;
+    } catch {
       onStateChange?.({
         loading: false,
         error: 'Resim yüklenirken bir hata oluştu',
         retryCount: 0,
         imageUri: null,
       });
+
       return null;
     }
   }
 
-  // Post image download helper
   static async downloadPostImage(
     imageUrl: string | undefined,
     userId: string,
@@ -208,7 +288,6 @@ export class ImageService {
     return this.downloadImage(imageUrl, 'routes', userId, onStateChange);
   }
 
-  // Profile image download helper
   static async downloadProfileImage(
     imageUrl: string | undefined,
     userId: string,
@@ -217,7 +296,6 @@ export class ImageService {
     return this.downloadImage(imageUrl, 'profiles', userId, onStateChange);
   }
 
-  // Profile background image download helper
   static async downloadProfileBackground(
     imageUrl: string | undefined,
     userId: string,
@@ -226,10 +304,8 @@ export class ImageService {
     return this.downloadImage(imageUrl, 'profiles', userId, onStateChange);
   }
 
-  static async uploadImage(imageUri: string, userId: string, postId: string): Promise<string | null> {
+  static async uploadImage(_imageUri: string, _userId: string, _postId: string): Promise<string | null> {
     try {
-      // Image upload logic will be implemented here
-      console.log('Uploading image:', { imageUri, userId, postId });
       return null;
     } catch (error) {
       console.error('Error uploading image:', error);
@@ -237,10 +313,8 @@ export class ImageService {
     }
   }
 
-  static async deleteImage(imageUrl: string): Promise<boolean> {
+  static async deleteImage(_imageUrl: string): Promise<boolean> {
     try {
-      // Image deletion logic will be implemented here
-      console.log('Deleting image:', imageUrl);
       return true;
     } catch (error) {
       console.error('Error deleting image:', error);
@@ -248,14 +322,12 @@ export class ImageService {
     }
   }
 
-  // Clear cache
   static async clearCache(): Promise<void> {
-    this.cache.clear();
-    await AsyncStorage.removeItem('image_cache');
+    await CacheManager.clearAll();
   }
 
-  // Get cache size
+  /** Disk önbelleğindeki tahmini toplam bayt. */
   static getCacheSize(): number {
-    return this.cache.size;
+    return CacheManager.getTotalBytes();
   }
 }

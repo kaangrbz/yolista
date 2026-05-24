@@ -1,13 +1,9 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createStackNavigator } from '@react-navigation/stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PlatformPressable } from '@react-navigation/elements';
-import { BackHandler } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { TabBarIcon } from '../components/icons/tab/TabBarIcons';
 
-// Import your screens
 import { HomeScreen } from '../screens/HomeScreen';
 import { CreateRouteStack } from './CreateRouteStack';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -15,89 +11,71 @@ import { RouteDetailScreen } from '../screens/RouteDetailScreen';
 import { AddCategoryScreen } from '../screens/AddCategoryScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ExploreScreen from '../screens/ExploreScreen';
+import ExploreMapScreen from '../screens/Explore/ExploreMapScreen';
 import { useAuth } from '../context/AuthContext';
-import { FollowingScreen } from '../screens/FollowingScreen';
-import { FollowersScreen } from '../screens/FollowersScreen';
-import { CommentSection } from '../components/CommentSection';
-import Creators from '../screens/Creators';
+import { SocialUserListRouteScreen } from '../screens/SocialUserListRouteScreen';
+import type { SocialUserListRouteParams } from '../types/socialUserList';
+import { VerifyEmailScreen } from '../screens/VerifyEmailScreen';
+import { appTheme } from '../theme/appTheme';
+import { AppTabBar } from './AppTabBar';
 
-// Define the parameter lists for each stack
 type ProfileStackParamList = {
-  ProfileMain: { userId?: string; currentUserId?: string };
+  ProfileMain: { username?: string; currentUserId?: string };
   RouteDetail: { routeId: string };
   Explore: { categoryId?: number };
-  Followers: { userId: string };
-  Following: { userId: string };
-  CommentSection: { routeId: string };
+  SocialUserList: SocialUserListRouteParams;
+  VerifyEmail: { email?: string; verifiedFromLink?: boolean };
+  Notifications: undefined;
 };
 
 type HomeStackParamList = {
-  HomeMain: undefined;
+  HomeMain: {
+    scrollToTop?: boolean;
+    showSuccessMessage?: boolean;
+    successMessage?: string;
+  } | undefined;
   RouteDetail: { routeId: string };
   AddCategory: undefined;
   Explore: { categoryId?: number };
-  ProfileMain: { userId: string; currentUserId: string };
-  Followers: { userId: string };
-  Following: { userId: string };
-  CommentSection: { routeId: string };
+  ProfileMain: { username: string; currentUserId?: string };
+  SocialUserList: SocialUserListRouteParams;
+  Notifications: undefined;
 };
 
 type ExploreStackParamList = {
   ExploreMain: { categoryId?: number };
+  ExploreMap: undefined;
   RouteDetail: { routeId: string };
-  ProfileMain: { userId: string; currentUserId: string };
-  Followers: { userId: string };
-  Following: { userId: string };
-  CommentSection: { routeId: string };
-};
-
-type NotificationStackParamList = {
-  NotificationMain: undefined,
-  RouteDetail: { routeId: string },
-  ProfileMain: { userId: string; currentUserId: string },
-  Followers: { userId: string },
-  Following: { userId: string },
-  CommentSection: { routeId: string };
+  ProfileMain: { username: string; currentUserId?: string };
+  SocialUserList: SocialUserListRouteParams;
+  Notifications: undefined;
 };
 
 const Tab = createBottomTabNavigator();
-const ProfileStack = createStackNavigator<ProfileStackParamList>();
-const HomeStack = createStackNavigator<HomeStackParamList>();
-const ExploreStack = createStackNavigator<ExploreStackParamList>();
-const NotificationStack = createStackNavigator<NotificationStackParamList>();
+const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
+const HomeStack = createNativeStackNavigator<HomeStackParamList>();
+const ExploreStack = createNativeStackNavigator<ExploreStackParamList>();
 
-// Create a stack navigator for the Profile tab to handle its own navigation
+const TAB_ICON_SIZE = 26;
+const CREATE_TAB_ICON_SIZE = 30;
+
+const tabStackScreenOptions = {
+  headerShown: false,
+  animation: 'slide_from_right' as const,
+};
+
 const ProfileStackScreen = () => {
-  // You would typically get the current user ID from your auth context
-  const currentUserId = useAuth().user?.id || '';
-  const navigation = useNavigation();
-
-  // Android geri tuşu yönetimi
-  useFocusEffect(
-    React.useCallback(() => {
-      const onBackPress = () => {
-        if (navigation.canGoBack()) {
-          navigation.goBack();
-          return true; // Geri tuşu işlendi
-        } else {
-          // Ana ekrandaysa uygulamadan çık
-          return false; // Varsayılan davranış
-        }
-      };
-
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-      return () => subscription.remove();
-    }, [navigation])
-  );
+  const { user } = useAuth();
+  const currentUserId = user?.id || '';
+  const currentUsername = user?.profile?.username || '';
 
   return (
-    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+    <ProfileStack.Navigator screenOptions={tabStackScreenOptions}>
       <ProfileStack.Screen
         name="ProfileMain"
         component={ProfileScreen}
         initialParams={{
-          userId: currentUserId,
+          username: currentUsername,
           currentUserId: currentUserId,
         }}
       />
@@ -110,49 +88,24 @@ const ProfileStackScreen = () => {
         component={ExploreScreen}
       />
       <ProfileStack.Screen
-        name="Followers"
-        component={FollowersScreen}
+        name="SocialUserList"
+        component={SocialUserListRouteScreen}
       />
       <ProfileStack.Screen
-        name="Following"
-        component={FollowingScreen}
+        name="VerifyEmail"
+        component={VerifyEmailScreen}
       />
       <ProfileStack.Screen
-        name="CommentSection"
-        options={{
-          presentation: 'modal',
-        }}
-        component={CommentSection as any}
+        name="Notifications"
+        component={NotificationsScreen}
       />
     </ProfileStack.Navigator>
   );
 };
 
-// Create a stack navigator for the Home tab
 const HomeStackScreen = () => {
-  const navigation = useNavigation();
-
-  // Android geri tuşu yönetimi
-  useFocusEffect(
-    React.useCallback(() => {
-      const onBackPress = () => {
-        if (navigation.canGoBack()) {
-          navigation.goBack();
-          return true; // Geri tuşu işlendi
-        } else {
-          // Ana ekrandaysa uygulamadan çık
-          return false; // Varsayılan davranış
-        }
-      };
-
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-      return () => subscription.remove();
-    }, [navigation])
-  );
-
   return (
-    <HomeStack.Navigator screenOptions={{ headerShown: false }}>
+    <HomeStack.Navigator screenOptions={tabStackScreenOptions}>
       <HomeStack.Screen
         name="HomeMain"
         component={HomeScreen}
@@ -174,54 +127,29 @@ const HomeStackScreen = () => {
         component={ProfileScreen}
       />
       <HomeStack.Screen
-        name="Followers"
-        component={FollowersScreen}
+        name="SocialUserList"
+        component={SocialUserListRouteScreen}
       />
       <HomeStack.Screen
-        name="Following"
-        component={FollowingScreen}
-      />
-      <HomeStack.Screen
-        name="CommentSection"
-        options={{
-          presentation: 'modal',
-        }}
-        component={CommentSection as any}
+        name="Notifications"
+        component={NotificationsScreen}
       />
     </HomeStack.Navigator>
   );
 };
 
-// Create a stack navigator for the Explore tab
 const ExploreStackScreen = () => {
-  const navigation = useNavigation();
-
-  // Android geri tuşu yönetimi
-  useFocusEffect(
-    React.useCallback(() => {
-      const onBackPress = () => {
-        if (navigation.canGoBack()) {
-          navigation.goBack();
-          return true; // Geri tuşu işlendi
-        } else {
-          // Ana ekrandaysa uygulamadan çık
-          return false; // Varsayılan davranış
-        }
-      };
-
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-      return () => subscription.remove();
-    }, [navigation])
-  );
-
   return (
-    <ExploreStack.Navigator screenOptions={{ headerShown: false }}>
+    <ExploreStack.Navigator screenOptions={tabStackScreenOptions}>
       <ExploreStack.Screen
         name="ExploreMain"
         component={ExploreScreen}
       />
       <ExploreStack.Screen
+        name="ExploreMap"
+        component={ExploreMapScreen}
+      />
+      <ExploreStack.Screen
         name="RouteDetail"
         component={RouteDetailScreen}
       />
@@ -230,113 +158,43 @@ const ExploreStackScreen = () => {
         component={ProfileScreen}
       />
       <ExploreStack.Screen
-        name="Followers"
-        component={FollowersScreen}
+        name="SocialUserList"
+        component={SocialUserListRouteScreen}
       />
       <ExploreStack.Screen
-        name="Following"
-        component={FollowingScreen}
-      />
-      <ExploreStack.Screen
-        name="CommentSection"
-        options={{
-          presentation: 'modal',
-        }}
-        component={CommentSection as any}
+        name="Notifications"
+        component={NotificationsScreen}
       />
     </ExploreStack.Navigator>
   );
 };
 
-// Create a stack navigator for the Notification tab
-const NotificationStackScreen = () => {
-  const navigation = useNavigation();
-
-  // Android geri tuşu yönetimi
-  useFocusEffect(
-    React.useCallback(() => {
-      const onBackPress = () => {
-        if (navigation.canGoBack()) {
-          navigation.goBack();
-          return true; // Geri tuşu işlendi
-        } else {
-          // Ana ekrandaysa uygulamadan çık
-          return false; // Varsayılan davranış
-        }
-      };
-
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-      return () => subscription.remove();
-    }, [navigation])
-  );
-
-  return (
-    <NotificationStack.Navigator screenOptions={{ headerShown: false }}>
-      <NotificationStack.Screen
-        name="NotificationMain"
-        component={NotificationsScreen}
-      />
-      <NotificationStack.Screen
-        name="RouteDetail"
-        component={RouteDetailScreen}
-      />
-      <NotificationStack.Screen
-        name="ProfileMain"
-        component={ProfileScreen}
-      />
-      <NotificationStack.Screen
-        name="Followers"
-        component={FollowersScreen}
-      />
-      <NotificationStack.Screen
-        name="Following"
-        component={FollowingScreen}
-      />
-      <NotificationStack.Screen
-        name="CommentSection"
-        options={{
-          presentation: 'modal',
-        }}
-        component={CommentSection as any}
-      />
-    </NotificationStack.Navigator>
-  );
-};
-
 const MainTabNavigator = () => {
-  const {unreadNotificationCount} = useAuth();
-  console.log('🚀 ~ MainTabNavigator ~ unreadNotificationCount:', unreadNotificationCount);
-
   return (
     <Tab.Navigator
-      screenOptions={(props) => ({
-        tabBarActiveTintColor: '#121212',
-        tabBarInactiveTintColor: 'gray',
+      tabBar={(props) => <AppTabBar {...props} />}
+      screenOptions={{
+        tabBarActiveTintColor: appTheme.textPrimary,
+        tabBarInactiveTintColor: appTheme.textMuted,
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarStyle: {
-          paddingBottom: 5,
-          // height: 50,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          marginBottom: 5,
+          backgroundColor: appTheme.background,
         },
         tabBarButton: (props) => (
           <PlatformPressable
             {...props}
-            android_ripple={{ color: 'transparent' }}  // Disables the ripple effect for Android
+            android_ripple={{ color: 'transparent' }}
           />
         ),
-      })}
+      }}
     >
       <Tab.Screen
         name="HomeStack"
         component={HomeStackScreen}
         options={{
-          tabBarShowLabel: false,
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="home" color={color} size={size} />
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="home" color={color} focused={focused} size={TAB_ICON_SIZE} />
           ),
         }}
       />
@@ -344,9 +202,8 @@ const MainTabNavigator = () => {
         name="ExploreStack"
         component={ExploreStackScreen}
         options={{
-          tabBarShowLabel: false,
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcon name="search" color={color} size={size} />
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="explore" color={color} focused={focused} size={TAB_ICON_SIZE} />
           ),
         }}
       />
@@ -354,43 +211,25 @@ const MainTabNavigator = () => {
         name="CreateRoute"
         component={CreateRouteStack}
         options={{
-          tabBarShowLabel: false,
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="leaf-circle-outline" color={color} size={size * 1.25} />
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon
+              name="create"
+              color={color}
+              focused={focused}
+              size={CREATE_TAB_ICON_SIZE}
+            />
           ),
-        }}
-      />
-      <Tab.Screen
-        name="NotificationScreen"
-        component={NotificationStackScreen}
-        options={{
-          tabBarShowLabel: false,
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="bell" color={color} size={size} />
-          ),
-          tabBarBadge: unreadNotificationCount ? unreadNotificationCount : undefined,
         }}
       />
       <Tab.Screen
         name="ProfileStack"
         component={ProfileStackScreen}
         options={{
-          tabBarShowLabel: false,
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="account" color={color} size={size} />
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="profile" color={color} focused={focused} size={TAB_ICON_SIZE} />
           ),
         }}
       />
-      {/* <Tab.Screen
-        name="CreatorsScreen"
-        component={Creators}
-        options={{
-          tabBarShowLabel: false,
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="card-account-details" color={color} size={size} />
-          ),
-        }}
-      /> */}
     </Tab.Navigator>
   );
 };

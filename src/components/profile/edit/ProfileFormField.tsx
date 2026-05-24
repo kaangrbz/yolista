@@ -24,6 +24,7 @@ const ProfileFormField: React.FC<ProfileFormFieldProps> = ({
   multiline = false,
   rows = 1,
   style,
+  editable = true,
   ...textInputProps
 }) => {
   // Note: This component should be used within KeyboardAwareContainer in parent modal/screen
@@ -40,12 +41,14 @@ const ProfileFormField: React.FC<ProfileFormFieldProps> = ({
           multiline && styles.multilineInput,
           error && styles.inputError,
           success && styles.inputSuccess,
+          editable === false && styles.inputDisabled,
           style,
         ]}
         multiline={multiline}
         numberOfLines={multiline ? rows : 1}
         textAlignVertical={multiline ? 'top' : 'center'}
         placeholderTextColor="#999"
+        editable={editable}
         {...textInputProps}
       />
 
@@ -84,6 +87,10 @@ const styles = StyleSheet.create({
     color: '#333',
     backgroundColor: '#fff',
     minHeight: 48,
+  },
+  inputDisabled: {
+    backgroundColor: '#F8FAFC',
+    color: '#64748B',
   },
   multilineInput: {
     minHeight: 100,

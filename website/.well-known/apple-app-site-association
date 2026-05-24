@@ -1,0 +1,38 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "YOUR_TEAM_ID.com.yolista.app"
+        ],
+        "components": [
+          {
+            "/": "/route/*",
+            "comment": "Route detail pages"
+          },
+          {
+            "/": "/profile/*",
+            "comment": "User profile pages"
+          },
+          {
+            "/": "/category/*",
+            "comment": "Category pages"
+          },
+          {
+            "/": "/explore*",
+            "comment": "Explore pages"
+          },
+          {
+            "/": "/*",
+            "comment": "All other pages"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "YOUR_TEAM_ID.com.yolista.app"
+    ]
+  }
+}

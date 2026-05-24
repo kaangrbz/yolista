@@ -98,10 +98,11 @@ export const usePostImageDownload = (
   return state;
 };
 
-// Profile image download hook
+// Profile image download hook (prefers preview path when provided)
 export const useProfileImageDownload = (
   imageUrl: string | undefined,
-  userId: string
+  userId: string,
+  imagePreviewUrl?: string | undefined
 ) => {
   const [state, setState] = useState<ImageDownloadState>({
     imageUri: null,
@@ -111,7 +112,9 @@ export const useProfileImageDownload = (
   });
 
   useEffect(() => {
-    if (!imageUrl || !userId) {
+    const storageKey = imagePreviewUrl || imageUrl;
+
+    if (!storageKey || !userId) {
       setState({
         imageUri: null,
         loading: false,
@@ -122,8 +125,8 @@ export const useProfileImageDownload = (
     }
 
     const downloadImage = async () => {
-      const result = await ImageService.downloadProfileImage(
-        imageUrl,
+      await ImageService.downloadProfileImage(
+        storageKey,
         userId,
         (downloadState) => {
           setState({
@@ -137,15 +140,16 @@ export const useProfileImageDownload = (
     };
 
     downloadImage();
-  }, [imageUrl, userId]);
+  }, [imageUrl, imagePreviewUrl, userId]);
 
   return state;
 };
 
-// Profile background image download hook
+// Profile background image download hook (prefers preview path when provided)
 export const useProfileBackgroundDownload = (
   imageUrl: string | undefined,
-  userId: string
+  userId: string,
+  imagePreviewUrl?: string | undefined
 ) => {
   const [state, setState] = useState<ImageDownloadState>({
     imageUri: null,
@@ -155,7 +159,9 @@ export const useProfileBackgroundDownload = (
   });
 
   useEffect(() => {
-    if (!imageUrl || !userId) {
+    const storageKey = imagePreviewUrl || imageUrl;
+
+    if (!storageKey || !userId) {
       setState({
         imageUri: null,
         loading: false,
@@ -166,8 +172,8 @@ export const useProfileBackgroundDownload = (
     }
 
     const downloadImage = async () => {
-      const result = await ImageService.downloadProfileBackground(
-        imageUrl,
+      await ImageService.downloadProfileBackground(
+        storageKey,
         userId,
         (downloadState) => {
           setState({
@@ -181,7 +187,7 @@ export const useProfileBackgroundDownload = (
     };
 
     downloadImage();
-  }, [imageUrl, userId]);
+  }, [imageUrl, imagePreviewUrl, userId]);
 
   return state;
 };

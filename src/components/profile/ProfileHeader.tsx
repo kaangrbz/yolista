@@ -1,18 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import React from 'react';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CachedImage from '../common/CachedImage';
 import ProfileHeaderSkeleton from './ProfileHeaderSkeleton';
 
+const DEFAULT_HEADER_BACKGROUND = '#667eea';
+
 interface ProfileHeaderProps {
   headerImageUri: string | null;
   isCurrentUserProfile: boolean;
-  isFollowing: boolean;
-  isFollowLoading: boolean;
   onHeaderImagePress: () => void;
-  onEditPress: () => void;
-  onLogoutPress: () => void;
-  onFollowToggle: () => void;
+  onSettingsPress: () => void;
+  onSharePress?: () => void;
   userId?: string;
   loading?: boolean;
 }
@@ -20,12 +19,9 @@ interface ProfileHeaderProps {
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   headerImageUri,
   isCurrentUserProfile,
-  isFollowing,
-  isFollowLoading,
   onHeaderImagePress,
-  onEditPress,
-  onLogoutPress,
-  onFollowToggle,
+  onSettingsPress,
+  onSharePress,
   userId,
   loading = false,
 }) => {
@@ -38,51 +34,41 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
       <TouchableOpacity
         onPress={onHeaderImagePress}
         disabled={!headerImageUri}
+        style={styles.headerTouchable}
       >
-        <CachedImage
-          source={headerImageUri ? { uri: headerImageUri } : { uri: 'https://via.placeholder.com/400x200/667eea/ffffff?text=Header+Image' }}
-          style={styles.headerImage}
-          resizeMode="cover"
-          bucketName="headers"
-          userId={userId}
-          fallbackSource={{ uri: 'https://via.placeholder.com/400x200/667eea/ffffff?text=Header+Image' }}
-        />
+        {headerImageUri ? (
+          <CachedImage
+            source={{ uri: headerImageUri }}
+            style={styles.headerImage}
+            resizeMode="cover"
+            bucketName="headers"
+            userId={userId}
+            showRetryButton={false}
+          />
+        ) : (
+          <View style={styles.headerPlaceholder} />
+        )}
       </TouchableOpacity>
 
-      {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        {isCurrentUserProfile ? (
-          <>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={onEditPress}
-            >
-              <Icon name="pencil" size={20} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={onLogoutPress}
-            >
-              <Icon name="logout" size={20} color="#fff" />
-            </TouchableOpacity>
-          </>
-        ) : (
+        {onSharePress ? (
           <TouchableOpacity
-            style={[styles.followButton, isFollowing && styles.unfollowButton]}
-            onPress={onFollowToggle}
-            disabled={isFollowLoading}
+            style={styles.actionButton}
+            onPress={onSharePress}
+            accessibilityLabel="Profili paylaş"
           >
-            {isFollowLoading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Icon
-                name={isFollowing ? 'account-minus' : 'account-plus'}
-                size={16}
-                color="#fff"
-              />
-            )}
+            <Icon name="share-variant" size={22} color="#fff" />
           </TouchableOpacity>
-        )}
+        ) : null}
+        {isCurrentUserProfile ? (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={onSettingsPress}
+            accessibilityLabel="Ayarlar"
+          >
+            <Icon name="cog-outline" size={22} color="#fff" />
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   );
@@ -93,9 +79,18 @@ const styles = StyleSheet.create({
     position: 'relative',
     height: 200,
   },
+  headerTouchable: {
+    width: '100%',
+    height: '100%',
+  },
   headerImage: {
     width: '100%',
     height: '100%',
+  },
+  headerPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: DEFAULT_HEADER_BACKGROUND,
   },
   actionButtons: {
     position: 'absolute',
@@ -108,18 +103,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
     padding: 8,
     borderRadius: 20,
-  },
-  followButton: {
-    backgroundColor: '#1DA1F2',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  unfollowButton: {
-    backgroundColor: '#E0245E',
   },
 });
 

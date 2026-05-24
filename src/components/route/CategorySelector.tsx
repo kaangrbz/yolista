@@ -10,6 +10,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Category } from '../../screens/CreateRoute/CategorySelectionScreen';
 import CategoryModel from '../../model/category.model';
+import { appTheme } from '../../theme/appTheme';
 
 interface CategorySelectorProps {
   selectedCategory: Category | null;
@@ -33,7 +34,6 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
       const fetchedCategories = await CategoryModel.getCategories();
 
       if (fetchedCategories) {
-        // Filter out disabled categories
         const activeCategories = fetchedCategories.filter(cat => !cat.is_disabled);
         setCategories(activeCategories);
       }
@@ -46,18 +46,18 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
 
   const handleCategoryPress = (category: Category) => {
     if (selectedCategory?.id === category.id) {
-      // Deselect if already selected
       onCategorySelect(null);
-    } else {
-      onCategorySelect(category);
+      return;
     }
+
+    onCategorySelect(category);
   };
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="small" color="#666" />
-        <Text style={styles.loadingText}>Kategoriler yükleniyor...</Text>
+        <ActivityIndicator size="small" color={appTheme.textSecondary} />
+        <Text style={styles.loadingText}>Kategoriler yükleniyor…</Text>
       </View>
     );
   }
@@ -65,7 +65,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   if (categories.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Icon name="tag-off" size={32} color="#ccc" />
+        <Icon name="tag-off" size={28} color={appTheme.borderStrong} />
         <Text style={styles.emptyText}>Kategori bulunamadı</Text>
       </View>
     );
@@ -73,62 +73,49 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Clear Selection Button */}
-      {selectedCategory && (
+      {selectedCategory ? (
         <TouchableOpacity
-          style={styles.clearButton}
-          onPress={() => onCategorySelect(null)}>
-          <Icon name="close" size={16} color="#666" />
-          <Text style={styles.clearButtonText}>Seçimi Temizle</Text>
+          style={styles.clearRow}
+          onPress={() => onCategorySelect(null)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Icon name="close-circle-outline" size={18} color={appTheme.textSecondary} />
+          <Text style={styles.clearRowText}>Seçimi kaldır</Text>
         </TouchableOpacity>
-      )}
+      ) : null}
 
-      {/* Categories Grid */}
       <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipsRow}
         nestedScrollEnabled>
-        <View style={styles.grid}>
-          {categories.map((category) => {
-            const isSelected = selectedCategory?.id === category.id;
+        {categories.map((category) => {
+          const isSelected = selectedCategory?.id === category.id;
 
-            return (
-              <TouchableOpacity
-                key={category.id}
+          return (
+            <TouchableOpacity
+              key={category.id}
+              style={[
+                styles.chip,
+                isSelected && styles.chipSelected,
+              ]}
+              onPress={() => handleCategoryPress(category)}
+              activeOpacity={0.7}>
+              <Icon
+                name={category.icon_name}
+                size={18}
+                color={isSelected ? appTheme.background : appTheme.textSecondary}
+              />
+              <Text
                 style={[
-                  styles.categoryItem,
-                  isSelected && styles.categoryItemSelected,
+                  styles.chipLabel,
+                  isSelected && styles.chipLabelSelected,
                 ]}
-                onPress={() => handleCategoryPress(category)}
-                activeOpacity={0.7}>
-
-                <View style={[
-                  styles.iconContainer,
-                  isSelected && styles.iconContainerSelected,
-                ]}>
-                  <Icon
-                    name={category.icon_name}
-                    size={24}
-                    color={isSelected ? '#fff' : '#666'}
-                  />
-                </View>
-
-                <Text style={[
-                  styles.categoryText,
-                  isSelected && styles.categoryTextSelected,
-                ]}>
-                  {category.name}
-                </Text>
-
-                {isSelected && (
-                  <View style={styles.checkmark}>
-                    <Icon name="check" size={16} color="#4CAF50" />
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                numberOfLines={1}>
+                {category.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -136,112 +123,73 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    maxHeight: 300,
+    marginBottom: 4,
   },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 24,
   },
   loadingText: {
     fontSize: 14,
-    color: '#666',
+    color: appTheme.textSecondary,
     marginLeft: 8,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 28,
   },
   emptyText: {
     fontSize: 14,
-    color: '#999',
+    color: appTheme.textMuted,
     marginTop: 8,
   },
-  clearButton: {
+  clearRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-end',
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+    gap: 6,
+  },
+  clearRowText: {
+    fontSize: 13,
+    color: appTheme.textSecondary,
+    fontWeight: '500',
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 2,
+    paddingRight: 4,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#f0f0f0',
-    marginBottom: 12,
+    borderRadius: 20,
+    backgroundColor: appTheme.surfaceMuted,
+    borderWidth: 1,
+    borderColor: appTheme.border,
+    maxWidth: 200,
   },
-  clearButtonText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 4,
+  chipSelected: {
+    backgroundColor: appTheme.accent,
+    borderColor: appTheme.accent,
   },
-  scrollView: {
-    maxHeight: 250,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  categoryItem: {
-    width: '48%',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  categoryItemSelected: {
-    backgroundColor: '#fff',
-    borderColor: '#4CAF50',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#e9ecef',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  iconContainerSelected: {
-    backgroundColor: '#4CAF50',
-  },
-  categoryText: {
+  chipLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
-    textAlign: 'center',
-    lineHeight: 18,
+    color: appTheme.textPrimary,
+    flexShrink: 1,
   },
-  categoryTextSelected: {
-    color: '#4CAF50',
+  chipLabelSelected: {
+    color: appTheme.background,
     fontWeight: '600',
-  },
-  checkmark: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
 });

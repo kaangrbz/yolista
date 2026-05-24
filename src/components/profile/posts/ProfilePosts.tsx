@@ -13,6 +13,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import UniversalPost from '../../UniversalPost';
 import { RouteWithProfile } from '../../../model/routes.model';
+import { useListPostImagesBatch } from '../../../hooks/useListPostImagesBatch';
 
 const { width } = Dimensions.get('window');
 
@@ -41,6 +42,14 @@ const ProfilePosts: React.FC<ProfilePostsProps> = ({
   fadeAnim,
   scaleAnim,
 }) => {
+  const { rowsByPostId } = useListPostImagesBatch(routes);
+
+  const getPrefetchedRows = (route: RouteWithProfile) => {
+    const postId = route.id || '';
+
+    return rowsByPostId[postId];
+  };
+
   const renderGridView = () => (
     <View style={styles.gridContainer}>
       {routes.map((route, index) => (
@@ -48,6 +57,9 @@ const ProfilePosts: React.FC<ProfilePostsProps> = ({
           <UniversalPost
             postId={route.id || ''}
             userId={currentUserId}
+            initialRoute={route}
+            batchImages={true}
+            prefetchedImageRows={getPrefetchedRows(route)}
             showFullScreen={false}
           />
         </View>
@@ -62,6 +74,9 @@ const ProfilePosts: React.FC<ProfilePostsProps> = ({
           <UniversalPost
             postId={route.id || ''}
             userId={currentUserId}
+            initialRoute={route}
+            batchImages={true}
+            prefetchedImageRows={getPrefetchedRows(route)}
             showFullScreen={false}
           />
         </View>
@@ -86,6 +101,9 @@ const ProfilePosts: React.FC<ProfilePostsProps> = ({
           <UniversalPost
             postId={route.id || ''}
             userId={currentUserId}
+            initialRoute={route}
+            batchImages={true}
+            prefetchedImageRows={getPrefetchedRows(route)}
             showFullScreen={false}
           />
         </View>

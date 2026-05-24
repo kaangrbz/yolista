@@ -1,25 +1,33 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  Image,
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { RefreshControl } from 'react-native'; // Add this line
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { NotificationsHeader } from '../components/header/Header';
 import { useIsFocused } from '@react-navigation/native';
-import NotificationModel, { NotificationType, NotificationEntityType } from '../model/notifications.model';
+import NotificationModel, {
+  NotificationType,
+  NotificationEntityType,
+} from '../model/notifications.model';
 import { useAuth } from '../context/AuthContext';
+import { buildProfileNavigationParams } from '../utils/profileSlug';
 import { useNavigation } from '@react-navigation/native';
 import { getTimeAgo } from '../utils/timeAgo';
-import { useProfileImageDownload } from '../hooks/useImageDownload';
+import CachedProfileAvatar from '../components/common/CachedProfileAvatar';
+import { profileAvatarCache } from '../services/ProfileAvatarCache';
+import {
+  getCachedNotifications,
+  setCachedNotifications,
+} from '../services/NotificationsListCache';
+import { mergeNotificationsPreservingUnchanged } from '../utils/listRefreshUtils';
 
-// Helper functions for notification rendering
 const renderNotificationIcon = (type: NotificationEntityType) => {
   switch (type) {
     case 'like':
@@ -50,17 +58,42 @@ const getNotificationColor = (type: NotificationEntityType) => {
   }
 };
 
-// NotificationItem component with profile image download
-const NotificationItem = ({ item, action, label, navigation }: {
+const isSenderProfileMissing = (item: NotificationType): boolean => {
+  if (!item.profiles) {
+    profileAvatarCache.markProfileDeleted(item.sender_id);
+    return true;
+  }
+
+  if (item.profiles.is_deleted) {
+    profileAvatarCache.markProfileDeleted(item.sender_id);
+    return true;
+  }
+
+  return false;
+};
+
+const getSenderUsername = (item: NotificationType): string => {
+  if (item.profiles?.username) {
+    return item.profiles.username;
+  }
+
+  return 'silinmiş hesap';
+};
+
+interface NotificationItemProps {
   item: NotificationType;
   action: () => void;
   label: string;
   navigation: any;
+}
+
+const NotificationItem: React.FC<NotificationItemProps> = ({
+  item,
+  action,
+  label,
+  navigation,
 }) => {
-  const { imageUri, loading, error } = useProfileImageDownload(
-    item.profiles.image_url,
-    item.sender_id
-  );
+  const profileMissing = isSenderProfileMissing(item);
 
   return (
     <TouchableOpacity
@@ -72,15 +105,40 @@ const NotificationItem = ({ item, action, label, navigation }: {
       onPress={action}
     >
       <View style={styles.notificationLeft}>
-        <View style={[styles.iconContainer, { backgroundColor: getNotificationColor(item.entity_type) + '20' }]}>
+        <View
+          style={[
+            styles.iconContainer,
+            { backgroundColor: `${getNotificationColor(item.entity_type)}20` },
+          ]}
+        >
           {renderNotificationIcon(item.entity_type)}
         </View>
         <View style={styles.notificationContent}>
           <View style={styles.notificationText}>
-            <TouchableOpacity style={styles.username} onPress={() => {
-              navigation.navigate('ProfileMain', { userId: item.sender_id });
-            }}>
-              <Text style={styles.username}>{item.profiles.username}</Text>
+            <TouchableOpacity
+              style={styles.usernameTouchable}
+              disabled={profileMissing || !item.profiles?.username}
+              onPress={() => {
+                if (!item.profiles?.username) {
+                  return;
+                }
+
+                navigation.navigate(
+                  'ProfileMain' as never,
+                  buildProfileNavigationParams({
+                    username: item.profiles.username,
+                  }) as never,
+                );
+              }}
+            >
+              <Text
+                style={[
+                  styles.username,
+                  profileMissing && styles.usernameMuted,
+                ]}
+              >
+                {getSenderUsername(item)}
+              </Text>
             </TouchableOpacity>
             <Text style={styles.message}>{label}</Text>
           </View>
@@ -88,22 +146,14 @@ const NotificationItem = ({ item, action, label, navigation }: {
           <Text style={styles.timeText}>{getTimeAgo(item.created_at)}</Text>
         </View>
       </View>
-      <View style={styles.userImageContainer}>
-        {loading ? (
-          <View style={styles.defaultAvatar}>
-            <ActivityIndicator size="small" color="#8E8E93" />
-          </View>
-        ) : imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            style={styles.userImage}
-          />
-        ) : (
-          <View style={styles.defaultAvatar}>
-            <Icon name="account" size={24} color="#8E8E93" />
-          </View>
-        )}
-      </View>
+
+      <CachedProfileAvatar
+        userId={item.sender_id}
+        imageUrl={item.profiles?.image_url}
+        imagePreviewUrl={item.profiles?.image_preview_url}
+        profileDeleted={profileMissing}
+        size={44}
+      />
     </TouchableOpacity>
   );
 };
@@ -112,52 +162,97 @@ const NotificationsScreen = () => {
   const { user, setUnreadNotificationCount } = useAuth();
   const isFocused = useIsFocused();
   const navigation = useNavigation();
-  const [notifications, setNotifications] = React.useState<NotificationType[]>([]);
-  const [isLoadingNotifications, setIsLoadingNotifications] = React.useState(true);
-  const [refreshing, setRefreshing] = React.useState(false);
+  const [notifications, setNotifications] = useState<NotificationType[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
+
+  const fetchNotifications = useCallback(
+    async (options: { showFullLoader?: boolean; silent?: boolean } = {}) => {
+      const showFullLoader = options.showFullLoader === true;
+      const silent = options.silent === true;
+
+      if (!user?.id) {
+        return;
+      }
+
+      try {
+        if (showFullLoader) {
+          setIsInitialLoading(true);
+        }
+
+        const fetchedNotifications = await NotificationModel.getNotifications({
+          userId: user.id,
+        });
+
+        setCachedNotifications(user.id, fetchedNotifications);
+        setNotifications((previousNotifications) => {
+          if (silent && previousNotifications.length > 0) {
+            return mergeNotificationsPreservingUnchanged(
+              previousNotifications,
+              fetchedNotifications,
+            );
+          }
+
+          return fetchedNotifications;
+        });
+        hasLoadedOnceRef.current = true;
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+      } finally {
+        if (showFullLoader) {
+          setIsInitialLoading(false);
+        }
+
+        setRefreshing(false);
+      }
+    },
+    [user?.id],
+  );
+
+  const markNotificationsRead = useCallback(async () => {
+    if (!user?.id) {
+      return;
+    }
+
+    try {
+      await NotificationModel.markAsRead({ userId: user.id });
+      setUnreadNotificationCount(0);
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+    }
+  }, [setUnreadNotificationCount, user?.id]);
 
   useEffect(() => {
-    setIsLoadingNotifications(true);
-    if (isFocused && user?.id) {
-      NotificationModel.markAsRead({ userId: user.id });
+    if (!isFocused || !user?.id) {
+      return;
     }
 
-    if (isFocused && user?.id) {
-      fetchNotifications();
+    const cached = getCachedNotifications(user.id);
+
+    if (cached && cached.length > 0) {
+      setNotifications(cached);
+      setIsInitialLoading(false);
+      hasLoadedOnceRef.current = true;
+      void fetchNotifications({ silent: true });
+    } else if (!hasLoadedOnceRef.current) {
+      void fetchNotifications({ showFullLoader: true });
+    } else {
+      void fetchNotifications({ silent: true });
     }
 
-    return () => {
-    };
-  }, [isFocused, user?.id]);
+    void markNotificationsRead();
+  }, [
+    isFocused,
+    user?.id,
+    fetchNotifications,
+    markNotificationsRead,
+  ]);
 
-
-  const fetchNotifications = async (type: 'initial' | 'loadMore' = 'initial') => {
-    try {
-      if (!user?.id) {return;}
-
-      const fetchedNotifications = await NotificationModel.getNotifications({ userId: user.id });
-      // setLastCreatedAt(fetchedNotifications[fetchedNotifications.length - 1].created_at);
-
-      if (type === 'loadMore') {
-        setNotifications(fetchedNotifications);
-      } else {
-        setNotifications(fetchedNotifications);
-      }
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    } finally {
-      setTimeout(() => {
-        setIsLoadingNotifications(false);
-      }, 200);
-      setRefreshing(false);
-    }
-  };
-
-  const onRefresh = React.useCallback(() => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchNotifications();
-  }, [user?.id]);
-
+    void fetchNotifications({ silent: true });
+  }, [fetchNotifications]);
 
   type NotificationAction = {
     action: () => void;
@@ -165,38 +260,47 @@ const NotificationsScreen = () => {
   };
 
   const notificationHandlers = {
-    follow: (item: NotificationType, navigation: any) => ({
+    follow: (item: NotificationType) => ({
       action: () => {
-        navigation.navigate('ProfileMain', { userId: item.sender_id });
+        if (!item.profiles?.username) {
+          return;
+        }
+
+        navigation.navigate(
+          'ProfileMain' as never,
+          buildProfileNavigationParams({
+            username: item.profiles.username,
+          }) as never,
+        );
       },
       label: 'seni takip etti',
     }),
-    like: (item: NotificationType, navigation: any) => ({
+    like: (item: NotificationType) => ({
       action: () => {
-        navigation.navigate('RouteDetail', { routeId: item.entity_id });
+        navigation.navigate('RouteDetail' as never, { routeId: item.entity_id } as never);
       },
       label: 'rotanı beğendi',
     }),
-    comment: (item: NotificationType, navigation: any) => ({
+    comment: (item: NotificationType) => ({
       action: () => {
-        navigation.navigate('RouteDetail', { routeId: item.entity_id });
+        navigation.navigate('RouteDetail' as never, { routeId: item.entity_id } as never);
       },
       label: 'yorum yaptı',
     }),
-    mention: (item: NotificationType, navigation: any) => ({
+    mention: (item: NotificationType) => ({
       action: () => {
-        navigation.navigate('RouteDetail', { routeId: item.entity_id });
+        navigation.navigate('RouteDetail' as never, { routeId: item.entity_id } as never);
       },
       label: 'etiketledi',
     }),
   };
 
-  const getNotificationHandler = (item: NotificationType, navigation: any): NotificationAction => {
-    return notificationHandlers[item.entity_type](item, navigation);
+  const getNotificationHandler = (item: NotificationType): NotificationAction => {
+    return notificationHandlers[item.entity_type](item);
   };
 
   const renderItem = ({ item }: { item: NotificationType }) => {
-    const { action, label } = getNotificationHandler(item, navigation);
+    const { action, label } = getNotificationHandler(item);
 
     return (
       <NotificationItem
@@ -208,56 +312,41 @@ const NotificationsScreen = () => {
     );
   };
 
-  if (isLoadingNotifications) {
+  if (isInitialLoading && notifications.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
-        <NotificationsHeader />
-        <View style={{ paddingTop: 20 }}>
+        <NotificationsHeader navigation={navigation} />
+        <View style={styles.loaderWrap}>
           <ActivityIndicator size="small" color="#333" />
         </View>
       </SafeAreaView>
     );
   }
 
-  // const handleLoadMore = async () => {
-  //   console.log('handleLoadMore');
-  //   setIsLoadingMore(true);
-
-  //   await fetchNotifications('loadMore');
-  //   setTimeout(() => {
-  //     setIsLoadingMore(false);
-  //   }, 1000);
-
-  // };
-
   return (
     <SafeAreaView style={styles.container}>
-      <NotificationsHeader />
-      <View style={styles.container}>
-        <FlatList
-          data={notifications}
-          contentContainerStyle={styles.listContent}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id.toString()}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#333', '#121212']}
-              tintColor="#000000"
-              titleColor="#000000"
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Bildirim bulunamadı</Text>
-            </View>
-          }
-        // onEndReached={handleLoadMore}
-        // onEndReachedThreshold={0.5}
-        />
-      </View>
+      <NotificationsHeader navigation={navigation} />
+      <FlatList
+        data={notifications}
+        contentContainerStyle={styles.listContent}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id.toString()}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#333', '#121212']}
+            tintColor="#000000"
+            titleColor="#000000"
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Bildirim bulunamadı</Text>
+          </View>
+        }
+      />
     </SafeAreaView>
   );
 };
@@ -267,26 +356,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  notificationCount: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  loaderWrap: {
+    paddingTop: 20,
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#000',
   },
   listContent: {
+    flexGrow: 1,
   },
   notificationItem: {
     flexDirection: 'row',
@@ -323,13 +398,20 @@ const styles = StyleSheet.create({
   notificationText: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    flexWrap: 'wrap',
+  },
+  usernameTouchable: {
+    marginRight: 4,
   },
   username: {
     fontWeight: '600',
     color: '#000',
-    marginRight: 4,
     lineHeight: 20,
     fontSize: 15,
+  },
+  usernameMuted: {
+    color: '#8E8E93',
   },
   message: {
     color: '#8E8E93',
@@ -340,32 +422,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#8E8E93',
     marginTop: 4,
-  },
-  userImageContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    overflow: 'hidden',
-  },
-  userImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F0F0F0',
-  },
-  defaultAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F0F0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginLeft: 8,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    minHeight: 200,
   },
   emptyText: {
     fontSize: 16,

@@ -7,21 +7,22 @@ export enum PageName {
   CreateRoute = 'CreateRoute',
   Login = 'Login',
   Register = 'Register',
-  Followers = 'Followers',
-  Following = 'Following',
+  SocialUserList = 'SocialUserList',
   CommentSection = 'CommentSection',
 }
 
 export type NavigationParams = {
   [PageName.RouteDetail]: { routeId: string };
   [PageName.Explore]: { categoryId?: number };
-  [PageName.Profile]: { userId: string };
+  [PageName.Profile]: { username: string };
   [PageName.AddCategory]: undefined;
   [PageName.CreateRoute]: undefined;
   [PageName.Login]: undefined;
   [PageName.Register]: undefined;
-  [PageName.Followers]: { userId: string };
-  [PageName.Following]: { userId: string };
+  [PageName.SocialUserList]:
+    | { kind: 'followers'; userId: string }
+    | { kind: 'following'; userId: string }
+    | { kind: 'route_likers'; routeId: string; likeCount?: number };
   [PageName.CommentSection]: { routeId: string; parentType: 'routeDetail' | 'bookmarkDetail' | 'homePage' };
 };
 

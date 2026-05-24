@@ -1,36 +1,30 @@
 import React, { useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Platform,
-  Animated,
-} from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+  AuthAnimatedSection,
+  AuthErrorBanner,
+  AuthPrimaryButton,
+  AuthTextInput,
+} from '../shared';
+import { authTheme } from '../../../theme/authTheme';
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => Promise<void>;
   onNavigateToRegister: () => void;
-  fadeAnim: Animated.Value;
-  scaleAnim: Animated.Value;
+  onNavigateToForgotPassword: () => void;
+  onNavigateToVerifyEmail: (email: string) => void;
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({
   onLogin,
   onNavigateToRegister,
-  fadeAnim,
-  scaleAnim,
+  onNavigateToForgotPassword,
+  onNavigateToVerifyEmail,
 }) => {
-  // Note: Parent LoginScreen already uses KeyboardAvoidingView
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [error, setError] = useState('');
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -39,9 +33,19 @@ const LoginForm: React.FC<LoginFormProps> = ({
 
     try {
       setIsLoading(true);
+      setError('');
       await onLogin(email, password);
-    } catch (error) {
-      // Error handling is done in parent component
+    } catch (loginError: unknown) {
+      const message =
+        loginError instanceof Error
+          ? loginError.message
+          : 'Giriş yaparken bir hata oluştu';
+
+      setError(message);
+
+      if (message.toLowerCase().includes('doğrulamanız gerekiyor')) {
+        onNavigateToVerifyEmail(email.trim());
+      }
     } finally {
       setIsLoading(false);
     }
@@ -50,195 +54,98 @@ const LoginForm: React.FC<LoginFormProps> = ({
   const isFormValid = email.length > 0 && password.length > 0;
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }],
-        },
-      ]}
-    >
-      <View style={styles.formContainer}>
-        {/* Email Input */}
-        <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
-            <Icon
-              name="email-outline"
-              size={20}
-              color={emailFocused ? '#1DA1F2' : '#666'}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={[
-                styles.input,
-                emailFocused && styles.inputFocused,
-              ]}
-              placeholder="E-posta adresiniz"
-              value={email}
-              onChangeText={setEmail}
-              onFocus={() => setEmailFocused(true)}
-              onBlur={() => setEmailFocused(false)}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoCorrect={false}
-              autoComplete="email"
-              textContentType="emailAddress"
-              returnKeyType="next"
-              blurOnSubmit={false}
-              placeholderTextColor="#999"
-              enablesReturnKeyAutomatically
-            />
-          </View>
-        </View>
+    <View style={styles.container}>
+      <AuthErrorBanner message={error} />
 
-        {/* Password Input */}
-        <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
-            <Icon
-              name="lock-outline"
-              size={20}
-              color={passwordFocused ? '#1DA1F2' : '#666'}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={[
-                styles.input,
-                passwordFocused && styles.inputFocused,
-              ]}
-              placeholder="Şifreniz"
-              value={password}
-              onChangeText={setPassword}
-              onFocus={() => setPasswordFocused(true)}
-              onBlur={() => setPasswordFocused(false)}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="password"
-              textContentType="password"
-              returnKeyType="done"
-              blurOnSubmit={true}
-              placeholderTextColor="#999"
-              enablesReturnKeyAutomatically
-            />
-            <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeIcon}
-            >
-              <Icon
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={20}
-                color="#666"
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
+      <AuthAnimatedSection delay={80}>
+        <AuthTextInput
+          icon="email-outline"
+          label="E-posta"
+          placeholder="ornek@email.com"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          autoCorrect={false}
+          autoComplete="email"
+          textContentType="emailAddress"
+          returnKeyType="next"
+        />
+      </AuthAnimatedSection>
 
-        {/* Login Button */}
+      <AuthAnimatedSection delay={140}>
+        <AuthTextInput
+          icon="lock-outline"
+          label="Şifre"
+          placeholder="••••••••"
+          value={password}
+          onChangeText={setPassword}
+          showToggle
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="password"
+          textContentType="password"
+          returnKeyType="done"
+        />
+      </AuthAnimatedSection>
+
+      <AuthAnimatedSection delay={180}>
         <TouchableOpacity
-          style={[
-            styles.loginButton,
-            !isFormValid && styles.loginButtonDisabled,
-          ]}
-          onPress={handleLogin}
-          disabled={isLoading || !isFormValid}
-          activeOpacity={0.8}
+          onPress={onNavigateToForgotPassword}
+          style={styles.forgotLink}
+          activeOpacity={0.7}
         >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <>
-              <Text style={styles.loginButtonText}>Giriş Yap</Text>
-              <Icon name="arrow-right" size={20} color="#fff" />
-            </>
-          )}
+          <Text style={styles.forgotText}>Şifremi unuttum</Text>
         </TouchableOpacity>
+      </AuthAnimatedSection>
 
-        {/* Divider */}
+      <AuthAnimatedSection delay={220}>
+        <AuthPrimaryButton
+          label="Giriş Yap"
+          onPress={handleLogin}
+          loading={isLoading}
+          disabled={!isFormValid}
+          icon="login"
+        />
+      </AuthAnimatedSection>
+
+      <AuthAnimatedSection delay={280}>
         <View style={styles.dividerContainer}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>veya</Text>
           <View style={styles.dividerLine} />
         </View>
+      </AuthAnimatedSection>
 
-        {/* Register Link */}
+      <AuthAnimatedSection delay={320}>
         <TouchableOpacity
           onPress={onNavigateToRegister}
-          style={styles.registerContainer}
+          style={styles.linkContainer}
           activeOpacity={0.7}
         >
-          <Text style={styles.registerText}>
-            Hesabınız yok mu? <Text style={styles.registerLink}>Kayıt olun</Text>
+          <Text style={styles.linkText}>
+            Hesabın yok mu?{' '}
+            <Text style={styles.linkHighlight}>Kayıt ol</Text>
           </Text>
         </TouchableOpacity>
-      </View>
-    </Animated.View>
+      </AuthAnimatedSection>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    paddingHorizontal: 20,
+    width: '100%',
   },
-  formContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 20,
+  forgotLink: {
+    alignSelf: 'flex-end',
+    marginBottom: 4,
+    marginTop: -4,
   },
-  inputContainer: {
-    marginBottom: 8,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 16 : 12,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-    padding: 0,
-  },
-  inputFocused: {
-    // Focused state handled by wrapper
-  },
-  eyeIcon: {
-    padding: 4,
-  },
-  loginButton: {
-    backgroundColor: '#1DA1F2',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 8,
-    shadowColor: '#1DA1F2',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  loginButtonDisabled: {
-    backgroundColor: '#ccc',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 16,
+  forgotText: {
+    fontSize: 14,
     fontWeight: '600',
+    color: authTheme.primary,
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -248,24 +155,25 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e9ecef',
+    backgroundColor: authTheme.inputBorder,
   },
   dividerText: {
-    color: '#666',
-    fontSize: 14,
-    marginHorizontal: 16,
+    color: authTheme.textMuted,
+    fontSize: 13,
+    marginHorizontal: 14,
+    fontWeight: '500',
   },
-  registerContainer: {
+  linkContainer: {
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 4,
   },
-  registerText: {
-    fontSize: 16,
-    color: '#666',
+  linkText: {
+    fontSize: 15,
+    color: authTheme.textSecondary,
   },
-  registerLink: {
-    color: '#1DA1F2',
-    fontWeight: '600',
+  linkHighlight: {
+    color: authTheme.primary,
+    fontWeight: '700',
   },
 });
 

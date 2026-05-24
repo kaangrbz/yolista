@@ -1,85 +1,163 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { usePost } from '../hooks/usePost';
 import { usePostActions } from '../hooks/usePostActions';
+import { usePostImageLayout } from '../hooks/usePostImageLayout';
+import { buildProfileNavigationParams } from '../utils/profileSlug';
 import { useImages } from '../hooks/useImages';
+import { postFromRouteWithProfile, leadSlideFromRoute } from '../utils/postFromRoute';
 import PostHeader from './post/PostHeader';
+import PostImageSkeleton from './post/PostImageSkeleton';
 import ImageCarousel from './post/ImageCarousel';
 import PostActions from './post/PostActions';
 import PostCaption from './post/PostCaption';
 import ShareModal from './ShareModal';
+import { ShareService } from '../services/ShareService';
 import { PostProps } from '../types/post.types';
 import RouteModel from '../model/routes.model';
 import { useGlobalAlert } from '../hooks/useGlobalAlert';
+import SavedCollectionsSheet from './common/SavedCollectionsSheet';
+import { useCommentsSheet } from '../context/CommentsSheetContext';
 
 const UniversalPost: React.FC<PostProps> = ({
   postId,
   userId,
+  initialRoute,
+  batchImages = false,
+  prefetchedImageRows,
   showFullScreen = false,
   actions,
 }) => {
   const navigation = useNavigation();
-  const { post, loading, error } = usePost(postId, userId);
+  const { openComments, subscribeCommentCount } = useCommentsSheet();
+  const initialPost = useMemo(
+    () => (initialRoute ? postFromRouteWithProfile(initialRoute) : null),
+    [initialRoute],
+  );
+  const leadSlide = useMemo(
+    () => (initialRoute ? leadSlideFromRoute(initialRoute) : null),
+    [initialRoute],
+  );
+
+  const { post, loading, error } = usePost(postId, userId, { initialPost });
+  const postOwnerId = post?.user_id ?? initialPost?.user_id ?? '';
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
   const {
     isLiked,
+    isSaved,
+    isSaveSheetVisible,
+    isCollectionsLoading,
+    collections,
+    selectedCollectionIds,
+    rowLoadingMap,
     likeCount,
     commentCount,
     handleLike,
+    handleDoubleTapLike,
     handleComment,
     handleShare,
     handleSave,
+    closeSaveSheet,
+    toggleCollectionForPost,
+    createCollectionForPost,
+    syncSaveCollections,
     updatePostData,
-  } = usePostActions(postId, userId, post?.user_id || '');
+    syncCommentCount,
+  } = usePostActions(postId, userId, postOwnerId);
 
-  const { images, loading: imagesLoading, error: imagesError, currentIndex, handleImageScroll, refreshImages } = useImages(postId, post?.user_id);
-  const { showAlert } = useGlobalAlert();
+  const {
+    slides: imageSlides,
+    loading: imagesLoading,
+    error: imagesError,
+    currentIndex,
+    handleImageScroll,
+    refreshImages,
+  } = useImages(postId, postOwnerId, {
+    leadSlide,
+    batchMode: batchImages,
+    prefetchedRows: prefetchedImageRows,
+  });
 
-  // Update post actions when post data changes
+  const {
+    carouselHeightOptions,
+    screenWidth,
+    imagePlaceholderHeight,
+    carouselImages,
+    displayHeights,
+  } = usePostImageLayout(imageSlides, leadSlide);
+
+  const { showAlert, copyToClipboard } = useGlobalAlert();
+
   useEffect(() => {
-    if (post) {
-      updatePostData(post);
-      // Reset expansion state when post changes
-      setIsExpanded(false);
+    const source = post ?? initialPost;
+
+    if (source) {
+      updatePostData(source);
     }
-  }, [post?.id, updatePostData]); // Only depend on post.id, not the entire post object
+  }, [post, initialPost, updatePostData]);
 
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  useEffect(() => {
+    if (!postId) {
+      return;
+    }
 
-    if (diffInSeconds < 60) {return 'şimdi';}
-    if (diffInSeconds < 3600) {return `${Math.floor(diffInSeconds / 60)}d`;}
-    if (diffInSeconds < 86400) {return `${Math.floor(diffInSeconds / 3600)}s`;}
-    return `${Math.floor(diffInSeconds / 86400)}g`;
-  };
+    return subscribeCommentCount(postId, syncCommentCount);
+  }, [postId, subscribeCommentCount, syncCommentCount]);
+
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [post?.id]);
+
+  useEffect(() => {
+    syncSaveCollections();
+  }, [syncSaveCollections]);
 
   const handleProfilePress = () => {
-    if (!post?.user_id) {return;}
+    if (!post?.user_id) {
+      return;
+    }
 
     if (actions?.onProfilePress) {
-      actions.onProfilePress(post.user_id);
+      if (post.profiles?.username) {
+        actions.onProfilePress(post.profiles.username);
+      }
     } else {
-      (navigation as any).navigate('ProfileMain', {
-        userId: post.user_id,
-        currentUserId: userId || '',
-      });
+      if (!post.profiles?.username) {
+        return;
+      }
+
+      (navigation as any).navigate(
+        'ProfileMain',
+        buildProfileNavigationParams({
+          username: post.profiles.username,
+          currentUserId: userId || '',
+        }),
+      );
     }
   };
 
   const handleCommentPress = () => {
     if (actions?.onComment) {
       actions.onComment(postId);
-    } else {
-      (navigation as any).navigate('CommentSection', {
-        routeId: postId,
-        parentType: 'routeDetail',
-        routeOwnerId: post?.user_id || '',
-      });
+
+      return;
     }
+
+    openComments({
+      routeId: postId,
+      routeOwnerId: post?.user_id || postOwnerId,
+      parentType: 'homePage',
+    });
   };
 
   const handleLikePress = () => {
@@ -88,6 +166,18 @@ const UniversalPost: React.FC<PostProps> = ({
     } else {
       handleLike();
     }
+  };
+
+  const handleLikesCaptionPress = () => {
+    if (likeCount <= 0) {
+      return;
+    }
+
+    (navigation as any).navigate('SocialUserList', {
+      kind: 'route_likers',
+      routeId: postId,
+      likeCount,
+    });
   };
 
   const handleSharePress = () => {
@@ -110,17 +200,18 @@ const UniversalPost: React.FC<PostProps> = ({
     setIsExpanded(!isExpanded);
   };
 
-  // Dropdown menu actions
   const handleEditPost = () => {
     Alert.alert(
       'Düzenle',
       'Bu özellik yakında eklenecek',
-      [{ text: 'Tamam' }]
+      [{ text: 'Tamam' }],
     );
   };
 
   const handleDeletePost = async () => {
-    if (!post) {return;}
+    if (!post) {
+      return;
+    }
 
     Alert.alert(
       'Gönderiyi Sil',
@@ -132,30 +223,28 @@ const UniversalPost: React.FC<PostProps> = ({
           style: 'destructive',
           onPress: async () => {
             try {
-              const { data, error } = await RouteModel.deleteRoute(postId);
+              const { error: deleteError } = await RouteModel.deleteRoute(postId);
 
-              if (error) {
-                console.error('Error deleting post:', error);
+              if (deleteError) {
+                console.error('Error deleting post:', deleteError);
                 showAlert('Gönderi silinirken bir hata oluştu');
                 return;
               }
 
               showAlert('Gönderi başarıyla silindi');
 
-              // Navigate back or refresh the feed
               if (navigation.canGoBack()) {
                 navigation.goBack();
               } else {
-                // Refresh the current screen or navigate to home
                 navigation.navigate('HomeStack' as never);
               }
-            } catch (error) {
-              console.error('Error deleting post:', error);
+            } catch (deleteErr) {
+              console.error('Error deleting post:', deleteErr);
               showAlert('Gönderi silinirken bir hata oluştu');
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -170,15 +259,17 @@ const UniversalPost: React.FC<PostProps> = ({
           style: 'destructive',
           onPress: () => {
             console.log('Post reported:', postId);
-            // TODO: Implement report functionality
           },
         },
-      ]
+      ],
     );
   };
 
   const handleBlockUser = () => {
-    if (!post) {return;}
+    if (!post) {
+      return;
+    }
+
     Alert.alert(
       'Engelle',
       `${post.profiles?.username || 'Bu kullanıcıyı'} engellemek istediğinizden emin misiniz?`,
@@ -189,22 +280,25 @@ const UniversalPost: React.FC<PostProps> = ({
           style: 'destructive',
           onPress: () => {
             console.log('User blocked:', post.user_id);
-            // TODO: Implement block functionality
           },
         },
-      ]
+      ],
     );
   };
 
   const handleFollowUser = () => {
-    if (!post) {return;}
-    console.log('Following user:', post.user_id);
-    // TODO: Implement follow functionality
+    if (!post) {
+      return;
+    }
+
     Alert.alert('Takip Edildi', `${post.profiles?.username || 'Kullanıcı'} takip edildi`);
   };
 
   const handleUnfollowUser = () => {
-    if (!post) {return;}
+    if (!post) {
+      return;
+    }
+
     Alert.alert(
       'Takibi Bırak',
       `${post.profiles?.username || 'Bu kullanıcının'} takibini bırakmak istediğinizden emin misiniz?`,
@@ -215,18 +309,18 @@ const UniversalPost: React.FC<PostProps> = ({
           style: 'destructive',
           onPress: () => {
             console.log('Unfollowed user:', post.user_id);
-            // TODO: Implement unfollow functionality
           },
         },
-      ]
+      ],
     );
   };
 
-  const handleCopyLink = () => {
-    const link = `https://roulista.com/post/${postId}`;
-    // TODO: Implement clipboard functionality
-    console.log('Link copied:', link);
-    Alert.alert('Link Kopyalandı', 'Gönderi linki panoya kopyalandı');
+  const handleCopyLink = async () => {
+    const url = ShareService.generatePostUrl(postId);
+    const title = post?.title?.trim() ?? '';
+    const text = ShareService.composeShareMessage(title, url);
+
+    await copyToClipboard(text, 'Paylaşım metni panoya kopyalandı!');
   };
 
   if (loading) {
@@ -234,7 +328,6 @@ const UniversalPost: React.FC<PostProps> = ({
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0095f6" />
-          <Text style={styles.loadingText}>Yükleniyor...</Text>
         </View>
       </View>
     );
@@ -255,11 +348,12 @@ const UniversalPost: React.FC<PostProps> = ({
       <PostHeader
         username={post.profiles?.username || 'unknown'}
         userImage={post.profiles?.image_url}
+        userImagePreview={post.profiles?.image_preview_url}
         userId={post.user_id}
         location={post.cities?.name}
         onProfilePress={handleProfilePress}
         isOwnPost={post.user_id === userId}
-        isFollowing={false} // TODO: Implement following status
+        isFollowing={false}
         onMorePress={handleEditPost}
         onReportPress={handleReportPost}
         onBlockPress={handleBlockUser}
@@ -271,47 +365,70 @@ const UniversalPost: React.FC<PostProps> = ({
         onCopyLinkPress={handleCopyLink}
       />
 
-      {/* Image Loading State */}
       {imagesLoading && (
-        <View style={styles.imageLoadingContainer}>
-          <ActivityIndicator size="large" color="#666" />
-          {/* <Text style={styles.imageLoadingText}>Resimler yükleniyor...</Text> */}
-        </View>
-      )}
-
-      {/* Image Error State */}
-      {imagesError && !imagesLoading && (
-        <View style={styles.imageErrorContainer}>
-          <Text style={styles.imageErrorText}>{imagesError}</Text>
-          <Text style={styles.imageRetryText} onPress={refreshImages}>
-            Tekrar Dene
-          </Text>
-        </View>
-      )}
-
-      {/* Image Carousel */}
-      {!imagesLoading && !imagesError && images.length > 0 && (
-        <ImageCarousel
-          images={images}
-          currentIndex={currentIndex}
-          onIndexChange={(index) => handleImageScroll({ nativeEvent: { contentOffset: { x: index * 400 } } }, 400)}
-          height={400}
-          dynamicHeight={true}
-          maxHeight={1080}
-          minHeight={250}
-          onDoubleTap={handleLikePress}
+        <PostImageSkeleton
+          width={screenWidth}
+          height={imagePlaceholderHeight}
         />
       )}
 
-      {/* No Images State */}
-      {!imagesLoading && !imagesError && images.length === 0 && (
-        <View style={styles.noImagesContainer}>
-          <Text style={styles.noImagesText}>Bu gönderi için resim bulunamadı</Text>
-        </View>
+      {imagesError && !imagesLoading && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.imagePlaceholder,
+            { height: imagePlaceholderHeight, width: screenWidth },
+            pressed && styles.imagePlaceholderPressed,
+          ]}
+          onPress={refreshImages}
+          accessibilityRole="button"
+          accessibilityLabel="Tekrar dene"
+        >
+          <Text style={styles.imageMessageText}>{imagesError}</Text>
+          <Text style={styles.imageMessageText}>Tekrar dene</Text>
+        </Pressable>
+      )}
+
+      {!imagesLoading && !imagesError && carouselImages.length > 0 && (
+        <ImageCarousel
+          images={carouselImages}
+          currentIndex={currentIndex}
+          onIndexChange={(index) =>
+            handleImageScroll(
+              { nativeEvent: { contentOffset: { x: index * screenWidth } } },
+              screenWidth,
+            )
+          }
+          height={carouselHeightOptions.defaultHeight}
+          dynamicHeight={true}
+          displayHeights={displayHeights}
+          maxHeight={carouselHeightOptions.maxHeight}
+          minHeight={carouselHeightOptions.minHeight}
+          isLiked={isLiked}
+          onDoubleTap={handleDoubleTapLike}
+        />
+      )}
+
+      {!imagesLoading && !imagesError && carouselImages.length === 0 && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.imagePlaceholder,
+            { height: imagePlaceholderHeight, width: screenWidth },
+            pressed && styles.imagePlaceholderPressed,
+          ]}
+          onPress={refreshImages}
+          accessibilityRole="button"
+          accessibilityLabel="Tekrar dene"
+        >
+          <Text style={styles.imageMessageText}>
+            {`Bu gönderi için resim bulunamadı\n\nTekrar dene`}
+          </Text>
+        </Pressable>
       )}
 
       <PostActions
         isLiked={isLiked}
+        isSaved={isSaved}
+        isSaveLoading={isCollectionsLoading}
         likeCount={likeCount}
         commentCount={commentCount}
         onLike={handleLikePress}
@@ -326,20 +443,31 @@ const UniversalPost: React.FC<PostProps> = ({
         description={post.description}
         likeCount={likeCount}
         commentCount={commentCount}
-        timeAgo={formatTimeAgo(post.created_at)}
+        createdAt={post.created_at}
         onComment={handleCommentPress}
+        onLikesPress={handleLikesCaptionPress}
         isExpanded={isExpanded}
         onToggleExpanded={handleToggleExpanded}
       />
 
-      {/* Share Modal */}
       <ShareModal
         visible={isShareModalVisible}
         onClose={() => setIsShareModalVisible(false)}
         postId={postId}
         postTitle={post.title}
-        postImage={images[0]}
-        postUrl={`https://roulista.com/post/${postId}`}
+        postImage={carouselImages[0]}
+        postUrl={ShareService.generatePostUrl(postId)}
+      />
+
+      <SavedCollectionsSheet
+        visible={isSaveSheetVisible}
+        loading={isCollectionsLoading}
+        collections={collections}
+        selectedCollectionIds={selectedCollectionIds}
+        rowLoadingMap={rowLoadingMap}
+        onClose={closeSaveSheet}
+        onToggleCollection={toggleCollectionForPost}
+        onCreateCollection={createCollectionForPost}
       />
     </View>
   );
@@ -351,17 +479,12 @@ const styles = StyleSheet.create({
     marginBottom: 1,
   },
   loadingContainer: {
-    height: 400,
+    minHeight: 400,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
   errorContainer: {
-    height: 400,
+    minHeight: 400,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -369,43 +492,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  imageLoadingContainer: {
-    height: 400,
+  imagePlaceholder: {
+    alignSelf: 'center',
+    gap: 8,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f8f9fa',
   },
-  imageLoadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666',
+  imagePlaceholderPressed: {
+    opacity: 0.88,
   },
-  imageErrorContainer: {
-    height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 20,
-  },
-  imageErrorText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  imageRetryText: {
-    fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  noImagesContainer: {
-    height: 300,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 20,
-  },
-  noImagesText: {
+  imageMessageText: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',

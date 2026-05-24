@@ -8,7 +8,6 @@ import { LoadingFloatingAction } from './FloatingActionButton';
 import { Logo as AppLogo } from './Logo';
 import ReactionSection from './ReactionSection';
 import SeperatorLine from './SeperatorLine';
-import StoriesBar from './StoriesBar';
 import UniversalPost from './UniversalPost';
 import PostHeader from './post/PostHeader';
 import ImageCarousel from './post/ImageCarousel';
@@ -26,7 +25,6 @@ export { Seperator,
     CommentSection,
     SeperatorLine,
     LoadingFloatingAction,
-    StoriesBar,
     UniversalPost,
     PostHeader,
     ImageCarousel,

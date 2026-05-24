@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { PostCaptionProps } from '../../types/post.types';
+import { getTimeAgo } from '../../utils/timeAgo';
 
 const PostCaption: React.FC<PostCaptionProps> = ({
   username,
@@ -8,18 +9,32 @@ const PostCaption: React.FC<PostCaptionProps> = ({
   description,
   likeCount,
   commentCount,
-  timeAgo,
+  createdAt,
   onComment,
+  onLikesPress,
   isExpanded,
   onToggleExpanded,
 }) => {
+
   return (
     <View style={styles.container}>
-      {/* Likes Count */}
       {likeCount > 0 && (
-        <Text style={styles.likesText}>
-          {likeCount} beğeni
-        </Text>
+        onLikesPress ? (
+          <TouchableOpacity
+            onPress={onLikesPress}
+            activeOpacity={0.65}
+            accessibilityRole="button"
+            accessibilityLabel={`${likeCount} beğeni, listeyi aç`}
+          >
+            <Text style={styles.likesText}>
+              {likeCount} beğeni
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.likesText}>
+            {likeCount} beğeni
+          </Text>
+        )
       )}
 
       {/* Caption */}
@@ -51,17 +66,26 @@ const PostCaption: React.FC<PostCaptionProps> = ({
         )}
       </View>
 
-      {/* Comments Preview */}
-      {commentCount > 0 && (
-        <TouchableOpacity style={styles.commentsPreview} onPress={onComment}>
-          <Text style={styles.commentsText}>
-            {commentCount} yorumun tümünü gör
-          </Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={styles.commentsPreview}
+        onPress={onComment}
+        activeOpacity={0.65}
+        accessibilityRole="button"
+        accessibilityLabel={
+          commentCount > 0
+            ? `${commentCount} yorum, tümünü gör`
+            : 'İlk yorumu sen yap'
+        }
+      >
+        <Text style={styles.commentsText}>
+          {commentCount > 0
+            ? `${commentCount} yorumun tümünü gör`
+            : 'İlk yorumu sen ol'}
+        </Text>
+      </TouchableOpacity>
 
       {/* Time */}
-      <Text style={styles.timeText}>{timeAgo}</Text>
+      <Text style={styles.timeText}>{getTimeAgo(createdAt)}</Text>
     </View>
   );
 };
@@ -105,7 +129,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8e8e8e',
     paddingBottom: 8,
-    textTransform: 'uppercase',
   },
   seeMoreButton: {
     marginTop: 4,

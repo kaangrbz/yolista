@@ -1261,6 +1261,51 @@ PODS:
     - Yoga
   - react-native-image-resizer (1.4.5):
     - React-Core
+  - react-native-maps (1.27.2):
+    - react-native-maps/Maps (= 1.27.2)
+  - react-native-maps/Generated (1.27.2):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
+  - react-native-maps/Maps (1.27.2):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - react-native-maps/Generated
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - react-native-pager-view (6.9.1):
     - DoubleConversion
     - glog
@@ -2017,6 +2062,7 @@ DEPENDENCIES:
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - react-native-image-picker (from `../node_modules/react-native-image-picker`)
   - react-native-image-resizer (from `../node_modules/react-native-image-resizer`)
+  - react-native-maps (from `../node_modules/react-native-maps`)
   - react-native-pager-view (from `../node_modules/react-native-pager-view`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
@@ -2144,6 +2190,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-image-picker"
   react-native-image-resizer:
     :path: "../node_modules/react-native-image-resizer"
+  react-native-maps:
+    :path: "../node_modules/react-native-maps"
   react-native-pager-view:
     :path: "../node_modules/react-native-pager-view"
   react-native-safe-area-context:
@@ -2269,6 +2317,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: e99c1d7791f5e8d5be370b78e02433e64d2391d8
   react-native-image-picker: fb2d12cb86e0b3e58caee9aa660ddbd5742c841c
   react-native-image-resizer: d9fb629a867335bdc13230ac2a58702bb8c8828f
+  react-native-maps: 63097d539e1bd2979d508e0340064c058b746a96
   react-native-pager-view: 5bab97f356bdaba4ed3b08cf3fa6e927c0746b2b
   react-native-safe-area-context: ad7b31de8373577e003e700340b746fd5645b12c
   React-NativeModulesApple: fb48894de492e6f9a73e53d8f92a6a792e40666c
@@ -2305,7 +2354,7 @@ SPEC CHECKSUMS:
   RNDeviceInfo: feea80a690d2bde1fe51461cf548039258bd03f2
   RNFS: 4ac0f0ea233904cb798630b3c077808c06931688
   RNGestureHandler: ab7287c9593b75911be221b6c97d7ae6e02652e6
-  RNPermissions: 20eaa4d5832ccc1dc9caef1ae54c886c225f8a9e
+  RNPermissions: 45159fda4e905dcc8f93e3a8a739124a4b2fca7b
   RNReanimated: 72d715c899d2809c1416cdaabc3681bd6476af19
   RNScreens: 0163118f19d0be59f16e049b6efe4c3b225e5684
   RNSVG: 082ae2874b288a96c95326c4f6029793f7009d4b
@@ -2313,6 +2362,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: b94ff2d7559cb66837c97a3f394ddb817faad4d6
 
-PODFILE CHECKSUM: c12925be388e1a14a7f976d7c1656197f93b5877
+PODFILE CHECKSUM: 1fe61bbd22a503dda6833293f73102f46673a07b
 
 COCOAPODS: 1.16.2

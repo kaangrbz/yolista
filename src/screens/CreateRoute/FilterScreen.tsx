@@ -6,23 +6,15 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Image,
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { ProgressIndicator } from '../../components/common/ProgressIndicator';
 import { FilterPreview } from '../../components/route/FilterPreview';
 import { Photo } from './PhotoSelectionScreen';
 import { RouteStop } from './StopDetailsScreen';
 import { Category, City } from './CategorySelectionScreen';
-import { supabase } from '../../lib/supabase';
-import { showToast } from '../../utils/alert';
-import { uploadImage } from '../../utils/imageUtils';
-import RouteModel, { RoutePoint } from '../../model/routes.model';
-import { randomString } from '../../utils/randomString';
-import RNFS from 'react-native-fs';
-import { decode } from 'base64-arraybuffer';
+import { publishRouteFromCreateFlow } from '../../utils/createFlowPublish';
 
 const DEMO_FILTERS = [
   { id: 'none', name: 'Orijinal', icon: 'image' },
@@ -49,112 +41,24 @@ export const FilterScreen = () => {
   };
 
   const [selectedFilter, setSelectedFilter] = useState('none');
-  const [isPublishing, setIsPublishing] = useState(false);
+  const [isEnqueueing, setIsEnqueueing] = useState(false);
 
   const handleFilterSelect = (filterId: string) => {
     setSelectedFilter(filterId);
   };
 
   const handlePublish = async () => {
-    console.log('🎯 [FilterScreen] Route oluşturma başlatıldı');
-    setIsPublishing(true);
+    setIsEnqueueing(true);
 
     try {
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        showToast('error', 'Lütfen tekrar giriş yapınız', 'Hata');
-        return;
-      }
-
-      // Convert routeStops to RoutePoint format
-      const routePoints: RoutePoint[] = routeStops.map((stop, index) => ({
-        client_id: randomString(16),
-        title: stop.title,
-        description: stop.description || '',
-        image_url: selectedPhotos[index]?.uri || '',
-        order_index: index,
-        is_deleted: false,
-        city_id: selectedCity?.id || null,
-        user_id: user.id,
-      }));
-
-      // Upload images in parallel
-      console.log('📤 [FilterScreen] Yüklenecek resimler:', selectedPhotos.map(p => ({ uri: p.uri, hasUri: !!p.uri })));
-
-      const uploadPromises = selectedPhotos
-        .filter(photo => photo.uri)
-        .map(async (photo, index) => {
-          console.log(`📤 [FilterScreen] Resim ${index} yükleniyor:`, photo.uri);
-          const fileName = `${randomString(16)}.jpg`;
-          const filePath = `${user.id}/${fileName}`;
-
-          try {
-            // Read the image file as a binary array
-            const image_base64 = await RNFS.readFile(photo.uri, 'base64');
-            console.log(`📤 [FilterScreen] Resim ${index} base64 okundu, boyut:`, image_base64.length);
-
-            const { data, error } = await supabase.storage
-              .from('routes')
-              .upload(filePath, decode(image_base64), {
-                cacheControl: '3600',
-                upsert: false,
-                contentType: 'image/jpeg',
-              });
-
-            if (error) {
-              console.error(`❌ [FilterScreen] Resim ${index} upload hatası:`, error);
-              throw error;
-            }
-
-            console.log(`✅ [FilterScreen] Resim ${index} başarıyla yüklendi:`, data);
-            return { data, client_id: routePoints[index].client_id, fileName };
-          } catch (error) {
-            console.error(`❌ [FilterScreen] Resim ${index} yükleme hatası:`, error);
-            return null;
-          }
-        });
-
-      const uploadResults = await Promise.all(uploadPromises);
-      const validUploadResults = uploadResults.filter(result => result !== null);
-      console.log('📤 [FilterScreen] Resimler yüklendi:', validUploadResults.length);
-
-      // Update routePoints with uploaded image URLs
-      const finalRoutePoints = routePoints.map(point => {
-        const uploadResult = validUploadResults.find(result =>
-          result && result.client_id === point.client_id
-        );
-        return uploadResult
-          ? { ...point, image_url: uploadResult.fileName }
-          : point;
+      await publishRouteFromCreateFlow(navigation as { navigate: (n: string, p?: object) => void }, {
+        selectedPhotos,
+        routeStops,
+        selectedCategory,
+        selectedCity,
       });
-
-      // Create route
-      const { data, error } = await RouteModel.createRoute(
-        finalRoutePoints,
-        selectedCity?.id || 0,
-        selectedCategory?.id || null,
-      );
-
-      if (error) {
-        console.error('Route oluşturma hatası:', error);
-        showToast('error', 'Rota eklenirken bir hata oluştu', 'Hata');
-        return;
-      }
-
-      console.log('✅ [FilterScreen] Route başarıyla oluşturuldu');
-      showToast('success', 'Rota başarıyla eklendi', 'Başarılı');
-
-      // Navigate to HomeStack with success message
-      (navigation as any).navigate('HomeStack', {
-        showSuccessMessage: true,
-        successMessage: 'Rota başarıyla paylaşıldı! 🎉',
-      });
-    } catch (error) {
-      console.error('Route oluşturma hatası:', error);
-      showToast('error', 'Rota oluşturulurken bir hata oluştu');
     } finally {
-      setIsPublishing(false);
+      setIsEnqueueing(false);
     }
   };
 
@@ -164,9 +68,6 @@ export const FilterScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Progress Indicator */}
-      <ProgressIndicator currentStep={4} totalSteps={4} />
-
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Filtreler</Text>
@@ -281,7 +182,7 @@ export const FilterScreen = () => {
           <TouchableOpacity
             style={[styles.button, styles.skipButton]}
             onPress={handleSkip}
-            disabled={isPublishing}>
+            disabled={isEnqueueing}>
             <Text style={[styles.buttonText, styles.skipButtonText]}>
               Atla
             </Text>
@@ -290,8 +191,8 @@ export const FilterScreen = () => {
           <TouchableOpacity
             style={[styles.button, styles.publishButton]}
             onPress={handlePublish}
-            disabled={isPublishing}>
-            {isPublishing ? (
+            disabled={isEnqueueing}>
+            {isEnqueueing ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>

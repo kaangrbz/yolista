@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { appTheme } from '../../theme/appTheme';
 
 interface ProgressIndicatorProps {
   currentStep: number;
@@ -70,20 +71,20 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#fff',
+    backgroundColor: appTheme.background,
   },
   progressBarContainer: {
     marginBottom: 16,
   },
   progressBarBackground: {
     height: 4,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: appTheme.border,
     borderRadius: 2,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#121212',
+    backgroundColor: appTheme.accent,
     borderRadius: 2,
   },
   stepLabelsContainer: {
@@ -99,36 +100,36 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: appTheme.border,
     borderWidth: 2,
-    borderColor: '#e0e0e0',
+    borderColor: appTheme.borderStrong,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
   },
   stepCircleActive: {
-    backgroundColor: '#121212',
-    borderColor: '#121212',
+    backgroundColor: appTheme.accent,
+    borderColor: appTheme.accent,
   },
   stepCircleCompleted: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
+    backgroundColor: appTheme.accentPositive,
+    borderColor: appTheme.accentPositive,
   },
   stepNumber: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#999',
+    color: appTheme.textMuted,
   },
   stepNumberActive: {
     color: '#fff',
   },
   stepText: {
     fontSize: 12,
-    color: '#666',
+    color: appTheme.textSecondary,
     textAlign: 'center',
   },
   stepTextActive: {
-    color: '#121212',
+    color: appTheme.accent,
     fontWeight: '600',
   },
 });

@@ -263,6 +263,7 @@
 				DEVELOPMENT_TEAM = 5C7UDXS479;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = yolista/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Yolista - Rota oluştur, Gez, Paylaş!";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -291,6 +292,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5C7UDXS479;
 				INFOPLIST_FILE = yolista/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Yolista - Rota oluştur, Gez, Paylaş!";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

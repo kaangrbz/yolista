@@ -27,7 +27,6 @@ const ProfilePostsGridSkeleton: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 10,
   },
   grid: {
     flexDirection: 'row',

@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
-    paddingTop: 12,
+    // paddingTop: 12, // wont enable this
   },
   tab: {
     flex: 1,

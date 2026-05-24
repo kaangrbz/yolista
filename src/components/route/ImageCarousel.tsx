@@ -69,11 +69,10 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
           <View key={photo.id} style={styles.imageContainer}>
             <Image source={{ uri: photo.uri }} style={styles.image} />
 
-            {/* Image overlay with stop number */}
             <View style={styles.overlay}>
-              <View style={styles.stopBadge}>
-                <Text style={styles.stopBadgeText}>
-                  Durak {index + 1}
+              <View style={styles.pageChip}>
+                <Text style={styles.pageChipText}>
+                  {index + 1} / {photos.length}
                 </Text>
               </View>
             </View>
@@ -159,23 +158,22 @@ const styles = StyleSheet.create({
   },
   overlay: {
     position: 'absolute',
-    top: 20,
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    top: 14,
+    left: 0,
+    right: 0,
     alignItems: 'center',
   },
-  stopBadge: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  pageChip: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 5,
+    borderRadius: 20,
   },
-  stopBadgeText: {
-    color: '#fff',
-    fontSize: 14,
+  pageChipText: {
+    color: '#ffffff',
+    fontSize: 13,
     fontWeight: '600',
+    letterSpacing: 0.5,
   },
   navButton: {
     position: 'absolute',

@@ -1,99 +1,137 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { useState, useEffect, useCallback } from 'react';
 import { ImageService } from '../services/ImageService';
+import {
+  downloadSlidesProgressive,
+  fetchRouteImageRowsForPost,
+  metaSlidesFromRows,
+  type RouteImageRow,
+} from '../services/PostImageSlidesService';
+import type { PostImageSlide, PostImageSlideMeta } from '../types/postImage.types';
 
-export const useImages = (postId: string, userId?: string) => {
-  const [images, setImages] = useState<string[]>([]);
+export type { PostImageSlide, PostImageSlideMeta } from '../types/postImage.types';
+
+interface UseImagesOptions {
+  leadSlide?: PostImageSlideMeta | null;
+  /** Batch modunda: undefined = meta henüz gelmedi, dizi = indirmeye hazır. */
+  prefetchedRows?: RouteImageRow[];
+  /** true ise tek post SELECT yok; prefetchedRows gelene kadar beklenir. */
+  batchMode?: boolean;
+}
+
+function slidesFromLeadMeta(leadSlide: PostImageSlideMeta | null | undefined): PostImageSlide[] {
+  if (!leadSlide) {
+    return [];
+  }
+
+  return [
+    {
+      uri: null,
+      ...leadSlide,
+    },
+  ];
+}
+
+function countSlidesWithUri(slides: PostImageSlide[]): number {
+  return slides.filter((slide) => slide.uri !== null).length;
+}
+
+export const useImages = (
+  postId: string,
+  ownerUserId?: string,
+  options?: UseImagesOptions,
+) => {
+  const leadSlide = options?.leadSlide ?? null;
+  const batchMode = options?.batchMode === true;
+  const prefetchedRows = options?.prefetchedRows;
+  const hasPrefetchedRows = Boolean(prefetchedRows && prefetchedRows.length > 0);
+
+  const [slides, setSlides] = useState<PostImageSlide[]>(() => {
+    if (hasPrefetchedRows && prefetchedRows) {
+      return metaSlidesFromRows(prefetchedRows);
+    }
+
+    return slidesFromLeadMeta(leadSlide);
+  });
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadRouteImages = async () => {
-      if (!postId) {
-        setImages([]);
+  const loadRouteImages = useCallback(async () => {
+    if (!postId) {
+      setSlides([]);
+      setLoading(false);
+      return;
+    }
+
+    if (batchMode && prefetchedRows === undefined) {
+      setSlides(slidesFromLeadMeta(leadSlide));
+      setLoading(true);
+      setError(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      let routes: RouteImageRow[] = [];
+
+      if (batchMode && prefetchedRows) {
+        routes = prefetchedRows;
+      } else if (hasPrefetchedRows && prefetchedRows) {
+        routes = prefetchedRows;
+      } else {
+        const { data, error: routesError } = await fetchRouteImageRowsForPost(postId);
+
+        if (routesError) {
+          setError('Resimler yüklenirken hata oluştu');
+          setSlides(slidesFromLeadMeta(leadSlide));
+          return;
+        }
+
+        routes = data ?? [];
+      }
+
+      if (routes.length === 0) {
+        setSlides(slidesFromLeadMeta(leadSlide));
         setLoading(false);
         return;
       }
 
-      setLoading(true);
-      setError(null);
+      const downloadedSlides = await downloadSlidesProgressive(routes, (nextSlides) => {
+        setSlides(nextSlides);
 
-      try {
-        // Get all route points for this post (including stops)
-        const { data: routes, error: routesError } = await supabase
-          .from('routes')
-          .select('id, image_url, order_index, user_id')
-          .or(`id.eq.${postId},parent_id.eq.${postId}`)
-          .eq('is_deleted', false)
-          .eq('is_hidden', false)
-          .not('image_url', 'is', null) // Only get routes with images
-          .order('order_index', { ascending: true });
-
-        if (routesError) {
-          console.error('Error fetching route images:', routesError);
-          setError('Resimler yüklenirken hata oluştu');
-          setImages([]);
-          return;
-        }
-
-        console.log(`🔍 useImages: Found ${routes?.length || 0} routes for postId: ${postId}`, routes);
-
-        if (!routes || routes.length === 0) {
-          console.log('No images found for post:', postId);
-          setImages([]);
+        if (countSlidesWithUri(nextSlides) > 0) {
           setLoading(false);
-          return;
         }
+      });
 
-        // Download images using ImageService
-        const downloadedImages: string[] = [];
+      setSlides(downloadedSlides);
 
-        for (const route of routes) {
-          if (route.image_url && route.user_id) {
-            try {
-              console.log(`📥 Downloading image: ${route.image_url} for user: ${route.user_id}`);
-              const imageUri = await ImageService.downloadPostImage(
-                route.image_url,
-                route.user_id
-              );
-
-              if (imageUri) {
-                console.log(`✅ Successfully downloaded image for route ${route.id}`);
-                downloadedImages.push(imageUri);
-              } else {
-                console.warn(`❌ Failed to download image for route ${route.id} - no URI returned`);
-              }
-            } catch (downloadError) {
-              console.warn(`❌ Failed to download image for route ${route.id}:`, downloadError);
-              // Continue with other images even if one fails
-            }
-          } else {
-            console.warn(`⚠️ Route ${route.id} missing image_url or user_id:`, {
-              image_url: route.image_url,
-              user_id: route.user_id,
-            });
-          }
-        }
-
-        console.log(`🎯 useImages: Downloaded ${downloadedImages.length} images for postId: ${postId}`);
-        setImages(downloadedImages);
-
-        if (downloadedImages.length === 0) {
-          setError('Bu gönderi için resim bulunamadı');
-        }
-
-      } catch (error) {
-        console.error('Error in loadRouteImages:', error);
-        setError('Resimler yüklenirken beklenmeyen bir hata oluştu');
-        setImages([]);
-      } finally {
-        setLoading(false);
+      if (countSlidesWithUri(downloadedSlides) === 0) {
+        setError('Bu gönderi için resim bulunamadı');
       }
-    };
+    } catch {
+      setError('Resimler yüklenirken beklenmeyen bir hata oluştu');
+      setSlides(slidesFromLeadMeta(leadSlide));
+    } finally {
+      setLoading(false);
+    }
+  }, [postId, leadSlide, batchMode, hasPrefetchedRows, prefetchedRows]);
 
+  useEffect(() => {
+    if (hasPrefetchedRows && prefetchedRows) {
+      setSlides(metaSlidesFromRows(prefetchedRows));
+    } else {
+      setSlides(slidesFromLeadMeta(leadSlide));
+    }
+
+    setCurrentIndex(0);
+  }, [postId, leadSlide?.width, leadSlide?.height, leadSlide?.imageAlignment, hasPrefetchedRows, prefetchedRows, batchMode]);
+
+  useEffect(() => {
     loadRouteImages();
-  }, [postId, userId]);
+  }, [loadRouteImages, ownerUserId]);
 
   const handleImageScroll = (event: any, screenWidth: number) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -102,65 +140,25 @@ export const useImages = (postId: string, userId?: string) => {
   };
 
   const goToImage = (index: number) => {
-    if (index >= 0 && index < images.length) {
+    if (index >= 0 && index < slides.length) {
       setCurrentIndex(index);
     }
   };
 
   const refreshImages = async () => {
-    // Clear cache for this post and reload
     if (postId) {
-      const cacheKey = `post_images_${postId}`;
-      ImageService.clearCache(); // Clear all cache for now, can be optimized later
+      ImageService.clearCache();
     }
 
-    // Reload images
-    const loadRouteImages = async () => {
-      if (!postId) {return;}
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const { data: routes, error: routesError } = await supabase
-          .from('routes')
-          .select('id, image_url, order_index, user_id')
-          .or(`id.eq.${postId},parent_id.eq.${postId}`)
-          .eq('is_deleted', false)
-          .eq('is_hidden', false)
-          .not('image_url', 'is', null)
-          .order('order_index', { ascending: true });
-
-        if (routesError) {throw routesError;}
-
-        const downloadedImages: string[] = [];
-
-        for (const route of routes || []) {
-          if (route.image_url && route.user_id) {
-            const imageUri = await ImageService.downloadPostImage(
-              route.image_url,
-              route.user_id
-            );
-
-            if (imageUri) {
-              downloadedImages.push(imageUri);
-            }
-          }
-        }
-
-        setImages(downloadedImages);
-      } catch (error) {
-        console.error('Error refreshing images:', error);
-        setError('Resimler yenilenirken hata oluştu');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadRouteImages();
+    await loadRouteImages();
   };
 
+  const images = slides
+    .map((slide) => slide.uri)
+    .filter((uri): uri is string => uri !== null);
+
   return {
+    slides,
     images,
     loading,
     error,

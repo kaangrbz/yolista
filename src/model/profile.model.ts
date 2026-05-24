@@ -3,7 +3,9 @@ export interface Profile {
   username: string;
   full_name: string;
   image_url?: string;
+  image_preview_url?: string;
   header_image_url?: string;
+  header_image_preview_url?: string;
   description?: string;
   website?: string;
   is_verified: boolean;

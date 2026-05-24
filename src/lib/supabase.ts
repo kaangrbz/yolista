@@ -1,11 +1,68 @@
 import 'react-native-url-polyfill/auto';
-import {createClient} from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // TODO: Move these to .env file
-const supabaseUrl = 'https://koimmduhmsjnerkqksmu.supabase.co';
-const supabaseAnonKey =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvaW1tZHVobXNqbmVya3Frc211Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyODI5OTMsImV4cCI6MjA1ODg1ODk5M30.N90ttUoEYmPDks7027rFwR0FaiEdE1kLB1lAiY7oDuk';
+const supabaseUrl = 'https://ashxjwzktnixuhvnqnie.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzaHhqd3prdG5peHVodm5xbmllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NDExNDgsImV4cCI6MjA4OTUxNzE0OH0.UZdaEdpi5jhvWBEP5fAz_1n8de1t435tlR4h6YSLaDA';
+
+type JwtPayload = {
+  role?: string;
+  ref?: string;
+};
+
+const parseJwtPayload = (token: string): JwtPayload | null => {
+  const tokenParts = token.split('.');
+
+  if (tokenParts.length !== 3) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(atob(tokenParts[1])) as JwtPayload;
+    return payload;
+  } catch (error) {
+    return null;
+  }
+};
+
+const keyPayload = parseJwtPayload(supabaseAnonKey);
+const keyRole = keyPayload?.role || null;
+if (keyRole === 'service_role') {
+  throw new Error(
+    'Invalid Supabase client key: service_role key cannot be used in mobile app. Use Project Settings > API > anon public key.',
+  );
+}
+
+const extractProjectRefFromUrl = (url: string): string | null => {
+  try {
+    const parsedUrl = new URL(url);
+    const hostParts = parsedUrl.hostname.split('.');
+
+    if (hostParts.length === 0) {
+      return null;
+    }
+
+    const projectRef = hostParts[0];
+
+    if (!projectRef) {
+      return null;
+    }
+
+    return projectRef;
+  } catch (error) {
+    return null;
+  }
+};
+
+const projectRefFromUrl = extractProjectRefFromUrl(supabaseUrl);
+const projectRefFromKey = keyPayload?.ref || null;
+
+if (projectRefFromUrl && projectRefFromKey && projectRefFromUrl !== projectRefFromKey) {
+  throw new Error(
+    `Invalid Supabase configuration: URL project ref (${projectRefFromUrl}) and anon key ref (${projectRefFromKey}) do not match.`,
+  );
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -235,15 +292,15 @@ create policy "Comments are viewable by everyone"
 
 create policy "Users can insert their own comments"
   on comments for insert
-  with check ( auth.uid() = author_id );
+  with check ( auth.uid() = user_id );
 
 create policy "Users can update own comments"
   on comments for update
-  using ( auth.uid() = id );
+  using ( auth.uid() = user_id );
 
 create policy "Users can delete own comments"
   on comments for delete
-  using ( auth.uid() = id );
+  using ( auth.uid() = user_id );
 
 create policy "Likes are viewable by everyone"
   on likes for select
@@ -268,4 +325,28 @@ create policy "Users can insert their own saved routes"
 create policy "Users can delete own saved routes"
   on saved_routes for delete
   using ( auth.uid() = user_id );
+
+-- 1) Function: create profile row if missing
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, created_at, updated_at)
+  values (new.id, new.email, now(), now())
+  on conflict (id) do nothing;
+
+  return new;
+end;
+$$;
+
+-- 2) Trigger: run after a new auth.users row is inserted
+drop trigger if exists on_auth_user_created on auth.users;
+
+create trigger on_auth_user_created
+after insert on auth.users
+for each row
+execute function public.handle_new_user();
 */

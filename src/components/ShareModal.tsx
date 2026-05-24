@@ -8,13 +8,16 @@ import {
   TextInput,
   Alert,
   Dimensions,
+  Platform,
   Share as RNShare,
   Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useGlobalAlert } from '../hooks/useGlobalAlert';
-import KeyboardAwareContainer from './common/KeyboardAwareContainer';
+import ModalSheetSafeArea from './common/ModalSheetSafeArea';
+import { KeyboardAwareContainer } from './common';
+import { ShareService } from '../services/ShareService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -39,23 +42,31 @@ const ShareModal: React.FC<ShareModalProps> = ({
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const { copyToClipboard, showAlert } = useGlobalAlert();
 
-  const generatePostUrl = () => {
-    // Gerçek uygulamada bu URL dinamik olarak oluşturulacak
-    return `https://roulista.com/post/${postId}`;
+  const resolvePostUrl = () => {
+    return postUrl || ShareService.generatePostUrl(postId);
+  };
+
+  const shareNativeLink = async (url: string, optionalMessage: string) => {
+    const message = ShareService.composeShareMessage(
+      postTitle,
+      url,
+      optionalMessage,
+    );
+
+    return RNShare.share({
+      message,
+      url: Platform.OS === 'ios' ? url : undefined,
+      title: 'Yolista',
+    });
   };
 
   const handleShareLink = async () => {
     try {
       setIsGeneratingLink(true);
 
-      const url = postUrl || generatePostUrl();
-      const message = customMessage || `"${postTitle}" gönderisini inceleyin: ${url}`;
+      const url = resolvePostUrl();
 
-      await RNShare.share({
-        message: message,
-        url: url,
-        title: postTitle,
-      });
+      await shareNativeLink(url, customMessage);
 
       onClose();
     } catch (error) {
@@ -68,8 +79,9 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
   const handleCopyLink = async () => {
     try {
-      const url = postUrl || generatePostUrl();
-      await copyToClipboard(url, 'Link panoya kopyalandı!');
+      const url = resolvePostUrl();
+      const text = ShareService.composeShareMessage(postTitle, url, customMessage);
+      await copyToClipboard(text, 'Paylaşım metni panoya kopyalandı!');
       onClose();
     } catch (error) {
       console.error('Error copying link:', error);
@@ -77,36 +89,14 @@ const ShareModal: React.FC<ShareModalProps> = ({
     }
   };
 
-  const handleSocialShare = (platform: string) => {
-    const url = postUrl || generatePostUrl();
-    const message = customMessage || `"${postTitle}" gönderisini inceleyin: ${url}`;
+  const handleSocialShare = async () => {
+    const url = resolvePostUrl();
 
-    // Platform-specific sharing logic
-    switch (platform) {
-      case 'whatsapp':
-        RNShare.share({
-          message: `${message} ${url}`,
-          url: url,
-        });
-        break;
-      case 'telegram':
-        RNShare.share({
-          message: `${message} ${url}`,
-          url: url,
-        });
-        break;
-      case 'twitter':
-        RNShare.share({
-          message: `${message} ${url}`,
-          url: url,
-        });
-        break;
-      default:
-        RNShare.share({
-          message: message,
-          url: url,
-          title: postTitle,
-        });
+    try {
+      await shareNativeLink(url, customMessage);
+    } catch (error) {
+      console.error('Error sharing:', error);
+      Alert.alert('Hata', 'Paylaşım sırasında bir hata oluştu');
     }
 
     onClose();
@@ -132,32 +122,39 @@ const ShareModal: React.FC<ShareModalProps> = ({
       title: 'WhatsApp',
       icon: 'whatsapp',
       color: '#25D366',
-      onPress: () => handleSocialShare('whatsapp'),
+      onPress: handleSocialShare,
     },
     {
       id: 'telegram',
       title: 'Telegram',
       icon: 'telegram',
       color: '#0088CC',
-      onPress: () => handleSocialShare('telegram'),
+      onPress: handleSocialShare,
     },
     {
       id: 'twitter',
       title: 'Twitter',
       icon: 'twitter',
       color: '#1DA1F2',
-      onPress: () => handleSocialShare('twitter'),
+      onPress: handleSocialShare,
     },
     {
       id: 'more',
       title: 'Daha Fazla',
       icon: 'dots-horizontal',
       color: '#8E8E93',
-      onPress: () => RNShare.share({
-        message: customMessage || `"${postTitle}" gönderisini inceleyin`,
-        url: postUrl || generatePostUrl(),
-        title: postTitle,
-      }),
+      onPress: async () => {
+        const url = resolvePostUrl();
+
+        try {
+          await shareNativeLink(url, customMessage);
+        } catch (error) {
+          console.error('Error sharing:', error);
+          Alert.alert('Hata', 'Paylaşım sırasında bir hata oluştu');
+        }
+
+        onClose();
+      },
     },
   ];
 
@@ -169,8 +166,9 @@ const ShareModal: React.FC<ShareModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
+        <ModalSheetSafeArea style={styles.modalContainer}>
         <KeyboardAwareContainer
-          style={styles.modalContainer}
+          style={styles.modalInner}
           enableScrollView={false}
           keyboardVerticalOffset={50}
         >
@@ -240,13 +238,18 @@ const ShareModal: React.FC<ShareModalProps> = ({
                 <Text style={styles.previewPostTitle} numberOfLines={3}>
                   {postTitle}
                 </Text>
-                <Text style={styles.previewUrl} numberOfLines={1}>
-                  {postUrl || generatePostUrl()}
+                <Text style={styles.previewUrl} numberOfLines={2}>
+                  {ShareService.composeShareMessage(
+                    postTitle,
+                    resolvePostUrl(),
+                    customMessage,
+                  )}
                 </Text>
               </View>
             </View>
           </View>
         </KeyboardAwareContainer>
+        </ModalSheetSafeArea>
       </View>
     </Modal>
   );
@@ -263,8 +266,11 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: screenHeight * 0.85,
-    minHeight: screenHeight * 0.4,
-    paddingBottom: 34, // iPhone home indicator space
+    alignSelf: 'stretch',
+  },
+  modalInner: {
+    flexGrow: 0,
+    flexShrink: 1,
   },
   header: {
     flexDirection: 'row',

@@ -1,15 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import React, { useEffect, useState, useRef } from 'react';
+import { DefaultTheme, NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
-import { StyleSheet, Text, View, ActivityIndicator, Button, Linking, TouchableOpacity, Alert, BackHandler } from 'react-native';
+import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
+import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
+import { VerifyEmailScreen } from '../screens/VerifyEmailScreen';
+import { StyleSheet, Text, View, ActivityIndicator, Button, Linking, TouchableOpacity, Alert, BackHandler, Platform } from 'react-native';
 import { Logo } from '../components/Logo';
 import MainTabNavigator from './MainTabNavigator';
 import { supabase } from '../lib/supabase';
 import DeviceInfo from 'react-native-device-info';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DeepLinkingService from '../services/DeepLinkingService';
+import AuthLinkingService from '../services/AuthLinkingService';
+import { CommentsSheetProvider } from '../context/CommentsSheetContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +30,7 @@ const LightTheme = {
 
 export const AppNavigator = () => {
   const { isAuthenticated, isLoading, user, reloadAuth } = useAuth();
+  const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
   const [versionStatus, setVersionStatus] = useState<'loading' | 'valid' | 'optional_update' | 'forced_update'>('loading');
   const [showTimeoutAlert, setShowTimeoutAlert] = useState(false);
@@ -85,18 +92,31 @@ export const AppNavigator = () => {
     checkAppVersion();
   }, []);
 
-  // Android geri tuşu yönetimi - sadece giriş yapmamış kullanıcılar için
+  // Android geri: nested stack'lerde önceki ekrana dön (React Navigation önerisi)
   useEffect(() => {
-    if (!isAuthenticated || !user) {
-      const backAction = () => {
-        // Giriş yapmamış kullanıcılar için uygulamadan çık
-        return false; // Varsayılan davranış (uygulamadan çık)
-      };
-
-      const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-      return () => backHandler.remove();
+    if (Platform.OS !== 'android') {
+      return;
     }
-  }, [isAuthenticated, user]);
+
+    const onHardwareBackPress = () => {
+      const navigation = navigationRef.current;
+
+      if (!navigation?.isReady()) {
+        return false;
+      }
+
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        return true;
+      }
+
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onHardwareBackPress);
+
+    return () => subscription.remove();
+  }, []);
 
    // Handle loading timeout - sadece version kontrolü için
   useEffect(() => {
@@ -201,37 +221,50 @@ export const AppNavigator = () => {
   // }
 
 
+  // Navigation ref'i DeepLinkingService'e register et
+  useEffect(() => {
+    if (navigationRef.current) {
+      DeepLinkingService.setNavigationRef(navigationRef.current);
+      AuthLinkingService.setNavigationRef(navigationRef.current);
+      console.log('🔗 Navigation ref registered to DeepLinkingService');
+    }
+  }, [isLoading, isAuthenticated]);
+
   return (
-    <NavigationContainer theme={LightTheme}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!isAuthenticated || !user ? (
-          <>
-            <Stack.Screen
-              name="Login"
-              component={LoginScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Register"
-              component={RegisterScreen}
-              options={{
-                title: 'Kayıt Ol',
-                headerBackTitle: 'Geri',
-              }}
-            />
-          </>
+    <NavigationContainer 
+      ref={navigationRef}
+      theme={LightTheme}
+      onReady={() => {
+        console.log('🔗 Navigation container ready');
+        if (navigationRef.current) {
+          DeepLinkingService.setNavigationRef(navigationRef.current);
+          AuthLinkingService.setNavigationRef(navigationRef.current);
+        }
+      }}
+    >
+      <CommentsSheetProvider>
+        <Stack.Navigator
+        initialRouteName={isAuthenticated && user ? 'MainTabs' : 'Login'}
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: '#FFFFFF' },
+        }}
+      >
+        {isAuthenticated && user ? (
+          <Stack.Screen
+            name="MainTabs"
+            component={MainTabNavigator}
+          />
         ) : (
-          <>
-            <Stack.Screen
-              name="MainTabs"
-              component={MainTabNavigator}
-              options={{
-                headerShown: false,
-              }}
-            />
-          </>
+          <Stack.Screen name="Login" component={LoginScreen} />
         )}
+        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+        <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
       </Stack.Navigator>
+      </CommentsSheetProvider>
     </NavigationContainer>
   );
 };

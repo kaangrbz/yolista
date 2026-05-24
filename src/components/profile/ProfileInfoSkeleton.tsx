@@ -5,75 +5,85 @@ import SimpleSkeletonLoader from '../common/SimpleSkeletonLoader';
 const ProfileInfoSkeleton: React.FC = () => {
   return (
     <View style={styles.container}>
-      {/* Profile Photo */}
-      <View style={styles.profilePhotoContainer}>
+      <View style={styles.rowOne}>
         <SimpleSkeletonLoader
-          width={100}
-          height={100}
-          borderRadius={50}
-          style={styles.profilePhoto}
+          width={72}
+          height={72}
+          borderRadius={36}
+          style={styles.avatar}
+        />
+        <View style={styles.identityBlock}>
+          <SimpleSkeletonLoader
+            width={140}
+            height={18}
+            borderRadius={4}
+            style={styles.line}
+          />
+          <SimpleSkeletonLoader
+            width={96}
+            height={14}
+            borderRadius={4}
+            style={styles.line}
+          />
+        </View>
+        <SimpleSkeletonLoader
+          width={88}
+          height={36}
+          borderRadius={20}
+          style={styles.cta}
         />
       </View>
-
-      {/* User Details */}
-      <View style={styles.userDetails}>
-        <SimpleSkeletonLoader
-          width={150}
-          height={24}
-          borderRadius={4}
-          style={styles.fullName}
-        />
-        <SimpleSkeletonLoader
-          width={100}
-          height={16}
-          borderRadius={4}
-          style={styles.username}
-        />
-        <SimpleSkeletonLoader
-          width={200}
-          height={16}
-          borderRadius={4}
-          style={styles.description}
-        />
-        <SimpleSkeletonLoader
-          width={120}
-          height={16}
-          borderRadius={4}
-          style={styles.website}
-        />
-      </View>
+      <SimpleSkeletonLoader
+        width="100%"
+        height={14}
+        borderRadius={4}
+        style={styles.descLine}
+      />
+      <SimpleSkeletonLoader
+        width="75%"
+        height={14}
+        borderRadius={4}
+        style={styles.descLine}
+      />
+      <SimpleSkeletonLoader
+        width={120}
+        height={14}
+        borderRadius={4}
+        style={styles.linkLine}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  rowOne: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  profilePhotoContainer: {
-    marginTop: -50,
-    marginBottom: 16,
-  },
-  profilePhoto: {
-    borderWidth: 4,
-    borderColor: '#fff',
-  },
-  userDetails: {
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 8,
-  },
-  fullName: {
-    marginBottom: 4,
-  },
-  username: {
-    marginBottom: 8,
-  },
-  description: {
     marginBottom: 12,
   },
-  website: {
+  avatar: {
+    marginRight: 12,
+  },
+  identityBlock: {
+    flex: 1,
+    gap: 8,
+    minWidth: 0,
+  },
+  line: {
+    marginBottom: 0,
+  },
+  cta: {
+    marginLeft: 8,
+  },
+  descLine: {
+    marginBottom: 8,
+  },
+  linkLine: {
     marginTop: 4,
   },
 });

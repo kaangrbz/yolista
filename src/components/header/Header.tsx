@@ -8,7 +8,10 @@ import {
   ViewStyle,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {PageName} from '../../types/navigation';
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
+import { appTheme } from '../../theme/appTheme';
+import { NotificationBellButton } from './NotificationBellButton';
 
 // components/headers/BaseHeader.tsx
 type HeaderProps = {
@@ -27,26 +30,58 @@ export const BaseHeader = ({
   style = {},
 }: HeaderProps) => (
   <View style={[styles.header, style]}>
-    {leftComponent && <View style={styles.leftSection}>{leftComponent}</View>}
+    <View style={styles.sideSlot}>
+      {leftComponent ?? <View style={styles.headerSideSpacer} />}
+    </View>
 
-    {title && (
+    {title ? (
       <Text
-        style={[styles.title, centerTitle && styles.centered]}
-        numberOfLines={1}>
+        style={[
+          styles.title,
+          centerTitle ? styles.titleCentered : styles.titleStart,
+        ]}
+        numberOfLines={1}
+      >
         {title}
       </Text>
+    ) : (
+      <View style={styles.titleFlex} />
     )}
 
-    {rightComponent ? (
-      <View style={styles.rightSection}>{rightComponent}</View>
-    ) : (
-      <Text style={styles.rightPlaceholder}>&nbsp;</Text>
-    )}
+    <View style={styles.sideSlot}>
+      {rightComponent ?? <View style={styles.headerSideSpacer} />}
+    </View>
   </View>
 );
 
+const useNotificationsNavigation = () => {
+  const navigation = useNavigation<any>();
+  const { unreadNotificationCount } = useAuth();
+
+  const openNotifications = () => {
+    navigation.navigate('Notifications');
+  };
+
+  return { unreadNotificationCount, openNotifications };
+};
+
 // components/headers/HomeHeader.tsx
-export const HomeHeader = () => <BaseHeader title="Yolista" centerTitle />;
+export const HomeHeader = () => {
+  const { unreadNotificationCount, openNotifications } = useNotificationsNavigation();
+
+  return (
+    <BaseHeader
+      title="Yolista"
+      centerTitle
+      rightComponent={
+        <NotificationBellButton
+          count={unreadNotificationCount}
+          onPress={openNotifications}
+        />
+      }
+    />
+  );
+};
 
 // components/headers/RouteDetailHeader.tsx
 export const RouteDetailHeader = ({navigation}: {navigation?: any}) => (
@@ -62,55 +97,75 @@ export const RouteDetailHeader = ({navigation}: {navigation?: any}) => (
 );
 
 // components/headers/ExploreHeader.tsx
-export const ExploreHeader = ({onSearch}) => <BaseHeader title="Keşfet" />;
+export const ExploreHeader = () => {
+  const { unreadNotificationCount, openNotifications } = useNotificationsNavigation();
+
+  return (
+    <BaseHeader
+      title="Keşfet"
+      rightComponent={
+        <NotificationBellButton
+          count={unreadNotificationCount}
+          onPress={openNotifications}
+        />
+      }
+    />
+  );
+};
 
 export const CreateRouteHeader = () => {
   return <BaseHeader title="Yeni Rota Oluştur" />;
 };
 
-export const NotificationsHeader = () => {
+export const NotificationsHeader = ({ navigation }: { navigation?: { goBack: () => void } }) => {
+  const fallbackNavigation = useNavigation<any>();
+  const nav = navigation ?? fallbackNavigation;
+
   return (
     <BaseHeader
       title="Bildirimler"
-      rightComponent={
-        <TouchableOpacity>
-          <Icon name="dots-horizontal" size={24} color="#000" />
+      leftComponent={
+        <TouchableOpacity
+          onPress={() => nav.goBack()}
+          style={styles.backHit}
+          accessibilityRole="button"
+          accessibilityLabel="Geri"
+        >
+          <Icon name="arrow-left" size={22} color={appTheme.textPrimary} />
         </TouchableOpacity>
       }
     />
   );
 };
 
-export const FollowersHeader = ({navigation}: {navigation: any}) => {
+export const SocialListHeader = ({
+  navigation,
+  title,
+}: {
+  navigation: any;
+  title: string;
+}) => {
   return (
-    <BaseHeader
-      title="Takipçiler"
-      style={{justifyContent: 'flex-start', gap: 16}}
-      leftComponent={
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}>
-          <Icon name="arrow-left" size={24} color="#121212" />
-        </TouchableOpacity>
-      }
-    />
+    <View style={socialListHeaderStyles.wrap}>
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={socialListHeaderStyles.backHit}
+        accessibilityRole="button"
+        accessibilityLabel="Geri"
+      >
+        <Icon name="arrow-left" size={22} color="#121212" />
+      </TouchableOpacity>
+      <Text style={socialListHeaderStyles.screenTitle}>{title}</Text>
+    </View>
   );
 };
 
-export const FollowingHeader = ({navigation}: {navigation: any}) => {
-  return (
-    <BaseHeader
-      title="Takip Edilenler"
-      style={{justifyContent: 'flex-start', gap: 16}}
-      leftComponent={
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}>
-          <Icon name="arrow-left" size={24} color="#121212" />
-        </TouchableOpacity>
-      }
-    />
-  );
+export const FollowersHeader = ({ navigation }: { navigation: any }) => {
+  return <SocialListHeader navigation={navigation} title="Takipçiler" />;
+};
+
+export const FollowingHeader = ({ navigation }: { navigation: any }) => {
+  return <SocialListHeader navigation={navigation} title="Takip Edilenler" />;
 };
 
 const styles = StyleSheet.create({
@@ -118,9 +173,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    backgroundColor: appTheme.background,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+  },
+  backHit: {
+    padding: 8,
   },
   searchButton: {
     padding: 8,
@@ -130,34 +190,53 @@ const styles = StyleSheet.create({
     width: '100%',
     fontSize: 18,
   },
-  leftSection: {
+  sideSlot: {
+    width: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    width: '10%',
   },
-  rightSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '10%',
-  },
-  centered: {
-    textAlign: 'center',
-    width: '100%',
-  },
-  placeholder: {
-    width: 24,
-    height: 24,
+  titleFlex: {
+    flex: 1,
   },
   title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: appTheme.textPrimary,
+    letterSpacing: -0.35,
   },
-  backButton: {
+  titleCentered: {
+    textAlign: 'center',
+  },
+  titleStart: {
+    textAlign: 'left',
+  },
+  headerSideSpacer: {
+    width: 40,
+    height: 40,
+  },
+});
+
+const socialListHeaderStyles = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+    gap: 4,
+  },
+  backHit: {
     padding: 8,
+    marginRight: 4,
   },
-  rightPlaceholder: {
-    width: 24,
-    height: 24,
+  screenTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#121212',
+    letterSpacing: -0.35,
+    flex: 1,
   },
 });

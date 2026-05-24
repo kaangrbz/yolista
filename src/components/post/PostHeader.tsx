@@ -8,6 +8,7 @@ import PostDropdownMenu from '../PostDropdownMenu';
 const PostHeader: React.FC<PostHeaderProps> = ({
   username,
   userImage,
+  userImagePreview,
   userId,
   location,
   onProfilePress,
@@ -26,7 +27,8 @@ const PostHeader: React.FC<PostHeaderProps> = ({
   // Use the profile image download hook if userId is provided
   const { imageUri: downloadedImageUri, loading: imageLoading } = useProfileImageDownload(
     userId ? userImage : undefined,
-    userId || ''
+    userId || '',
+    userImagePreview
   );
 
   // Use downloaded image if available, otherwise fallback to userImage or DefaultAvatar

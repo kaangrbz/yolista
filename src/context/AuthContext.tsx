@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
-import { DefaultAvatar } from '../assets';
+import { getAuthMobileCallbackUrl } from '../constants/appLinks';
+import { translateSupabaseError } from '../utils/supabaseErrorMessages';
 
 interface Profile {
   id: string;
@@ -18,6 +19,10 @@ interface UserWithProfile extends User {
   profile?: Profile;
 }
 
+interface SignUpResult {
+  needsEmailVerification: boolean;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -28,7 +33,14 @@ interface AuthContextType {
     password: string,
     full_name: string,
     username: string,
-  ) => Promise<void>;
+  ) => Promise<SignUpResult>;
+  resetPasswordForEmail: (email: string) => Promise<void>;
+  verifyEmailOtp: (email: string, token: string) => Promise<void>;
+  verifyRecoveryOtp: (email: string, token: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
+  resendSignupConfirmation: (email: string) => Promise<void>;
+  isEmailConfirmed: boolean;
+  refreshAuthSession: () => Promise<void>;
   logout: () => Promise<void>;
   reloadAuth: () => void;
   unreadNotificationCount: number | undefined;
@@ -55,89 +67,190 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<UserWithProfile | null>(null);
   const [unreadNotificationCount, setUnreadNotificationCountState] = useState<UnreadNotificationCountType>(undefined);
 
+  const userIdRef = useRef<string | undefined>(undefined);
+
   const setUnreadNotificationCount = (count: number) => {
     setUnreadNotificationCountState(count);
   };
 
+  const ensureProfile = async (authUser: User): Promise<Profile | null> => {
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, image_url, is_verified')
+      .eq('id', authUser.id)
+      .single();
+
+    if (profileData) {
+      return profileData as Profile;
+    }
+
+    if (!profileError) {
+      return null;
+    }
+
+    if (profileError.code !== 'PGRST116') {
+      console.error('Profile fetch error:', profileError);
+      return null;
+    }
+
+    const userMetadata = authUser.user_metadata || {};
+
+    let username = '';
+    const rawUsername = userMetadata.username;
+    if (typeof rawUsername === 'string' && rawUsername.trim().length > 0) {
+      username = rawUsername.trim();
+    }
+
+    if (!username) {
+      username = `user_${authUser.id.slice(0, 8)}`;
+    }
+
+    let fullName = '';
+    const rawFullName = userMetadata.full_name;
+    if (typeof rawFullName === 'string' && rawFullName.trim().length > 0) {
+      fullName = rawFullName.trim();
+    }
+
+    if (!fullName) {
+      const email = authUser.email || '';
+      const emailPrefix = email.split('@')[0] || '';
+      const normalized = emailPrefix.replace(/[._-]+/g, ' ').trim();
+      fullName = normalized.length > 0 ? normalized : 'Kullanıcı';
+    }
+
+    const { data: upsertedProfile, error: upsertError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: authUser.id,
+        username,
+        full_name: fullName,
+        image_url: '',
+        is_verified: false,
+      })
+      .select('id, username, full_name, image_url, is_verified')
+      .single();
+
+    if (upsertError) {
+      console.error('Profile creation/upsert error:', upsertError);
+      return null;
+    }
+
+    if (!upsertedProfile) {
+      return null;
+    }
+
+    return upsertedProfile as Profile;
+  };
+
+  const applySession = async (session: Session | null) => {
+    if (!session?.user) {
+      setIsAuthenticated(false);
+      setUser(null);
+      userIdRef.current = undefined;
+
+      return;
+    }
+
+    setIsAuthenticated(true);
+    userIdRef.current = session.user.id;
+
+    const profileData = await ensureProfile(session.user);
+
+    setUser({
+      ...session.user,
+      profile: profileData || undefined,
+    });
+  };
+
   useEffect(() => {
-    const fetchUnreadNotificationCount = async () => {
-      console.log('🚀 ~ fetchUnreadNotificationCount ~ user?.id:', user?.id);
-      if (!user?.id) {return;}
+    const fetchUnreadNotificationCount = async (recipientId: string | undefined) => {
+      if (!recipientId) {
+        return;
+      }
+
       try {
         const { data, error: countError } = await supabase
           .from('notifications')
           .select('*', { count: 'exact' })
           .eq('is_read', false)
-          .eq('recipient_id', user.id);
+          .eq('recipient_id', recipientId);
 
-        console.log('🚀 ~ fetchUnreadNotificationCount ~ data:', data);
-        if (countError) {throw countError;}
+        if (countError) {
+          throw countError;
+        }
+
         setUnreadNotificationCountState(data?.length || 0);
       } catch (error) {
         console.error('Error fetching unread notification count:', error);
       }
     };
 
+    const interval = setInterval(() => {
+      const recipientId = userIdRef.current;
+
+      if (!recipientId) {
+        return;
+      }
+
+      fetchUnreadNotificationCount(recipientId);
+    }, 5000);
+
     const fetchSessionAndProfile = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {throw sessionError;}
 
-        setIsAuthenticated(!!session);
-        setUser(session?.user ?? null);
+        if (sessionError) {
+          throw sessionError;
+        }
+
+        if (!session?.user) {
+          setIsAuthenticated(false);
+          setUser(null);
+          userIdRef.current = undefined;
+
+          setIsLoading(false);
+
+          return;
+        }
+
+        await applySession(session);
+
         setIsLoading(false);
 
-        if (session?.user) {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('id, username, full_name, image_url')
-            .eq('id', session.user.id)
-            .single();
-
-          if (profileError) {
-            console.error('Profile fetch error:', profileError);
-          } else if (profileData) {
-            console.log('Profile data:', profileData);
-            setUser((prevUser: UserWithProfile | null) => ({
-              ...prevUser!,
-              profile: profileData as Profile,
-            }));
-          }
-        }
+        await fetchUnreadNotificationCount(session.user.id);
       } catch (error) {
         console.error('Error fetching session or profile:', error);
+        setIsLoading(false);
       }
     };
 
-    fetchUnreadNotificationCount();
     fetchSessionAndProfile();
 
-    const interval = setInterval(() => {
-      if (user?.id) {
-        fetchUnreadNotificationCount();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        setIsAuthenticated(false);
+        setUser(null);
+        userIdRef.current = undefined;
+
+        return;
       }
-    }, 5000);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setIsAuthenticated(!!session);
-      setUser(session?.user ?? null);
+      setIsAuthenticated(true);
+      userIdRef.current = session.user.id;
 
-      if (session?.user) {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, image_url, is_verified')
-          .eq('id', session.user.id)
-          .single();
+      // Supabase: auth listener içinde await ile başka auth/DB çağrısı deadlock üretebilir.
+      setTimeout(() => {
+        void (async () => {
+          const profileData = await ensureProfile(session.user);
 
-        if (profileError) {
-          console.error('Profile fetch error on state change:', profileError);
-        } else if (profileData) {
-          setUser((prevUser: UserWithProfile | null) => ({
-            ...prevUser!,
-            profile: profileData as Profile,
-          }));
-        }
-      }
+          setUser({
+            ...session.user,
+            profile: profileData || undefined,
+          });
+
+          await fetchUnreadNotificationCount(session.user.id);
+        })();
+      }, 0);
     });
 
     return () => {
@@ -153,10 +266,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         email,
         password,
       });
-      if (error) {throw error;}
+
+      if (error) {
+        throw error;
+      }
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        throw sessionError;
+      }
+
+      await applySession(session);
     } catch (error) {
       console.error('Sign in error:', error);
-      throw error;
+      throw new Error(translateSupabaseError(error, 'Giriş yaparken bir hata oluştu.'));
     }
   };
 
@@ -166,15 +290,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     password: string,
     full_name: string,
     username: string,
-  ) => {
+  ): Promise<SignUpResult> => {
     try {
-
-      console.log('Signing up with:', { email, password, options: { data: { username, full_name, image_url: '' } } });
-
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: getAuthMobileCallbackUrl('signup'),
           data: {
             username,
             full_name,
@@ -184,53 +306,139 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       if (signUpError) {
-        console.log('🚀 ~ signUp ~ signUpError:', signUpError);
-        throw signUpError;
+        throw new Error(translateSupabaseError(signUpError, 'Kayıt olurken bir hata oluştu.'));
       }
 
       if (!authData.user) {
         throw new Error('No user data returned from signup');
       }
 
-      // Wait before retrying
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      // Wait for the trigger to create the profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authData.user.id)
-        .single();
-
-      if (profileData) {
-        // Profile was created successfully
-        setUser({
-          ...authData.user,
-          profile: profileData,
-        });
-        return;
+      if (sessionError) {
+        throw sessionError;
       }
 
-      if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-        console.error('Profile verification error:', profileError);
-        throw new Error('Failed to verify profile creation');
+      if (session?.user) {
+        await applySession(session);
+
+        return { needsEmailVerification: false };
       }
 
-      throw new Error('Profile creation timed out');
+      return { needsEmailVerification: true };
+    } catch (error) {
+      console.error('Sign up error:', error);
+      throw new Error(translateSupabaseError(error, 'Kayıt olurken bir hata oluştu.'));
+    }
+  };
 
-  } catch (error) {
-    console.error('Sign up error:', error);
-    throw error;
-  }
-};
+  const resetPasswordForEmail = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: getAuthMobileCallbackUrl('recovery'),
+      });
+
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Reset password email error:', error);
+      throw new Error(
+        translateSupabaseError(error, 'Şifre sıfırlama e-postası gönderilemedi.'),
+      );
+    }
+  };
+
+  const verifyEmailOtp = async (email: string, token: string) => {
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'signup',
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const session = data.session ?? (await supabase.auth.getSession()).data.session;
+
+      await applySession(session);
+    } catch (error) {
+      console.error('Verify email OTP error:', error);
+      throw new Error(translateSupabaseError(error, 'E-posta doğrulanamadı.'));
+    }
+  };
+
+  const verifyRecoveryOtp = async (email: string, token: string) => {
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'recovery',
+      });
+
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Verify recovery OTP error:', error);
+      throw new Error(translateSupabaseError(error, 'Doğrulama kodu geçersiz.'));
+    }
+  };
+
+  const updatePassword = async (password: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Update password error:', error);
+      throw new Error(translateSupabaseError(error, 'Şifre güncellenemedi.'));
+    }
+  };
+
+  const refreshAuthSession = async () => {
+    const { data: { session }, error } = await supabase.auth.getSession();
+
+    if (error) {
+      throw new Error(translateSupabaseError(error, 'Oturum yenilenemedi.'));
+    }
+
+    await applySession(session);
+  };
+
+  const isEmailConfirmed = Boolean(user?.email_confirmed_at);
+
+  const resendSignupConfirmation = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Resend signup confirmation error:', error);
+      throw new Error(
+        translateSupabaseError(error, 'Doğrulama kodu tekrar gönderilemedi.'),
+      );
+    }
+  };
 
 const logout = async () => {
   try {
     const { error } = await supabase.auth.signOut();
-    if (error) {throw error;}
+    if (error) {
+      throw error;
+    }
   } catch (error) {
     console.error('Logout error:', error);
-    throw error;
+    throw new Error(translateSupabaseError(error, 'Çıkış yapılırken bir hata oluştu.'));
   }
 };
 
@@ -238,10 +446,11 @@ const reloadAuth = () => {
   setIsLoading(true);
   setIsAuthenticated(false);
   setUser(null);
+  userIdRef.current = undefined;
+
   // Re-fetch session and profile
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    setIsAuthenticated(!!session);
-    setUser(session?.user ?? null);
+  supabase.auth.getSession().then(async ({ data: { session } }) => {
+    await applySession(session);
     setIsLoading(false);
   });
 };
@@ -254,6 +463,13 @@ return (
       user,
       signIn,
       signUp,
+      resetPasswordForEmail,
+      verifyEmailOtp,
+      verifyRecoveryOtp,
+      updatePassword,
+      resendSignupConfirmation,
+      isEmailConfirmed,
+      refreshAuthSession,
       logout,
       reloadAuth,
       unreadNotificationCount,

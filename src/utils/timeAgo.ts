@@ -10,8 +10,12 @@ export const getTimeAgo = (date: string): string => {
   const months = Math.floor(days / 30);
   const years = Math.floor(months / 12);
 
+  if (seconds < 0) {
+    return 'şimdi';
+  }
+
   if (seconds < 60) {
-    return `${seconds}s`; // seconds
+    return 'şimdi';
   }
   if (minutes < 60) {
     return `${minutes}dk`; // minutes

@@ -8,14 +8,14 @@ const ProfileStatsSkeleton: React.FC = () => {
       {[1, 2, 3].map((item) => (
         <View key={item} style={styles.statItem}>
           <SimpleSkeletonLoader
-            width={30}
-            height={20}
+            width={28}
+            height={16}
             borderRadius={4}
             style={styles.statValue}
           />
           <SimpleSkeletonLoader
-            width={60}
-            height={14}
+            width={48}
+            height={11}
             borderRadius={4}
             style={styles.statLabel}
           />
@@ -30,16 +30,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
-    paddingVertical: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#e8e8e8',
   },
   statItem: {
     alignItems: 'center',
     gap: 4,
   },
   statValue: {
-    marginBottom: 4,
+    marginBottom: 2,
   },
   statLabel: {},
 });

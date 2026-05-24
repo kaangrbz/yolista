@@ -14,8 +14,9 @@ import { useFocusEffect } from '@react-navigation/native';
 
 // Lazy imports
 const UniversalPost = React.lazy(() => import('../components/UniversalPost'));
-const HomeHeader = React.lazy(() => import('../components/header/Header'));
-const StoriesBar = React.lazy(() => import('../components/StoriesBar'));
+const HomeHeader = React.lazy(() =>
+  import('../components/header/Header').then(m => ({ default: m.HomeHeader })),
+);
 
 // Hooks
 import { useLazyList } from '../hooks/useLazyList';
@@ -23,7 +24,6 @@ import { usePosts } from '../hooks/usePosts';
 import { useAuth } from '../context/AuthContext';
 
 // Components
-import OptimizedImage from '../components/common/OptimizedImage';
 import LazyComponent from '../components/common/LazyComponent';
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -34,9 +34,9 @@ const PostItem = memo(({ item, userId, onRefresh }: any) => {
     <LazyComponent rootMargin={screenHeight * 0.5}>
       <React.Suspense fallback={<PostSkeleton />}>
         <UniversalPost
-          route={item}
+          postId={item?.id}
+          initialRoute={item}
           userId={userId}
-          onRefresh={onRefresh}
         />
       </React.Suspense>
     </LazyComponent>
@@ -78,14 +78,16 @@ export const OptimizedHomeScreen = memo(() => {
 
   // Use optimized posts hook
   const {
-    routes,
-    stories,
+    posts: routes,
     isLoading,
-    isLoadingMore,
     hasMore,
-    refreshRoutes,
-    loadMoreRoutes,
-  } = usePosts(userId);
+    refresh: refreshRoutes,
+    loadMore: loadMoreRoutes,
+  } = usePosts({
+    homeFeed: { loggedUserId: userId },
+  });
+
+  const isLoadingMore = isLoading && routes.length > 0;
 
   // Use lazy list for better performance
   const {
@@ -117,16 +119,6 @@ export const OptimizedHomeScreen = memo(() => {
     }
   }, [isLoadingMore, hasMore, loadMoreRoutes, loadMoreVisible]);
 
-  const handleStoryPress = useCallback((storyId: string) => {
-    // Handle story press
-    console.log('Story pressed:', storyId);
-  }, []);
-
-  const handleAddStory = useCallback(() => {
-    // Handle add story
-    console.log('Add story pressed');
-  }, []);
-
   // Optimized render functions
   const renderPost = useCallback(({ item }: { item: any }) => (
     <PostItem
@@ -135,18 +127,6 @@ export const OptimizedHomeScreen = memo(() => {
       onRefresh={refreshRoutes}
     />
   ), [userId, refreshRoutes]);
-
-  const renderHeader = useCallback(() => (
-    <LazyComponent>
-      <React.Suspense fallback={<StoriesSkeleton />}>
-        <StoriesBar
-          stories={stories}
-          onStoryPress={handleStoryPress}
-          onAddStory={handleAddStory}
-        />
-      </React.Suspense>
-    </LazyComponent>
-  ), [stories, handleStoryPress, handleAddStory]);
 
   const renderFooter = useCallback(() => {
     if (isLoadingMore) {
@@ -199,14 +179,6 @@ export const OptimizedHomeScreen = memo(() => {
     }
   }, [showSuccessMessage, fadeAnim]);
 
-  const StoriesSkeleton = memo(() => (
-    <View style={styles.storiesSkeletonContainer}>
-      {[...Array(5)].map((_, index) => (
-        <View key={index} style={styles.storySkeleton} />
-      ))}
-    </View>
-  ));
-
   return (
     <SafeAreaView style={styles.container}>
       <React.Suspense fallback={<HeaderSkeleton />}>
@@ -234,7 +206,6 @@ export const OptimizedHomeScreen = memo(() => {
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
-        ListHeaderComponent={renderHeader}
         ListFooterComponent={renderFooter}
         showsVerticalScrollIndicator={false}
         style={styles.flatList}
@@ -319,18 +290,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     borderRadius: 4,
     width: '80%',
-  },
-  storiesSkeletonContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  storySkeleton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#f0f0f0',
-    marginRight: 12,
   },
   headerSkeleton: {
     height: 60,

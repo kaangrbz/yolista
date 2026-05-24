@@ -1,3 +1,6 @@
+import type { RouteWithProfile } from '../model/routes.model';
+import type { RouteImageRow } from '../services/PostImageSlidesService';
+
 export interface Post {
   id: string;
   title: string;
@@ -13,6 +16,7 @@ export interface Post {
     username: string;
     full_name: string;
     image_url?: string;
+    image_preview_url?: string;
     is_verified: boolean;
   };
   cities?: {
@@ -29,12 +33,18 @@ export interface PostActions {
   onComment?: (postId: string) => void;
   onShare?: (postId: string) => void;
   onSave?: (postId: string) => void;
-  onProfilePress?: (userId: string) => void;
+  onProfilePress?: (username: string) => void;
 }
 
 export interface PostProps {
   postId: string;
   userId: string | null;
+  /** Feed / profil listesinden gelen satır; verilirse usePost tekrar istek atmaz. */
+  initialRoute?: RouteWithProfile;
+  /** Liste batch modu: resim meta tek sorguda gelir. */
+  batchImages?: boolean;
+  /** batchImages ile: undefined = bekleniyor, [] = resim yok. */
+  prefetchedImageRows?: RouteImageRow[];
   showFullScreen?: boolean;
   actions?: PostActions;
 }
@@ -45,14 +55,18 @@ export interface ImageCarouselProps {
   onIndexChange: (index: number) => void;
   height?: number;
   dynamicHeight?: boolean;
+  /** DB boyutlarından hesaplanan yükseklikler; verilirse Image.getSize çalışmaz. */
+  displayHeights?: number[];
   maxHeight?: number;
   minHeight?: number;
+  isLiked?: boolean;
   onDoubleTap?: () => void;
 }
 
 export interface PostHeaderProps {
   username: string;
   userImage?: string;
+  userImagePreview?: string;
   userId?: string;
   location?: string;
   onProfilePress: () => void;
@@ -71,6 +85,8 @@ export interface PostHeaderProps {
 
 export interface PostActionsProps {
   isLiked: boolean;
+  isSaved?: boolean;
+  isSaveLoading?: boolean;
   likeCount: number;
   commentCount: number;
   onLike: () => void;
@@ -85,8 +101,9 @@ export interface PostCaptionProps {
   description?: string;
   likeCount: number;
   commentCount: number;
-  timeAgo: string;
+  createdAt: string;
   onComment: () => void;
+  onLikesPress?: () => void;
   isExpanded?: boolean;
   onToggleExpanded?: () => void;
 }

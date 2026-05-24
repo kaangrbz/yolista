@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 interface ProfileEditHeaderProps {
   onClose: () => void;
@@ -21,75 +20,99 @@ const ProfileEditHeader: React.FC<ProfileEditHeaderProps> = ({
   loading,
   canSave,
 }) => {
+  const saveDisabled = loading || !canSave;
+
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-        <Icon name="close" size={24} color="#666" />
-      </TouchableOpacity>
+      <View style={styles.handle} />
 
-      <Text style={styles.title}>Profili Düzenle</Text>
+      <View style={styles.toolbar}>
+        <TouchableOpacity
+          onPress={onClose}
+          style={styles.cancelButton}
+          accessibilityRole="button"
+          accessibilityLabel="İptal"
+        >
+          <Text style={styles.cancelText}>İptal</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        onPress={onSave}
-        disabled={loading || !canSave}
-        style={[
-          styles.saveButton,
-          (!canSave || loading) && styles.saveButtonDisabled,
-        ]}
-        activeOpacity={0.7}
-      >
-        {loading ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text style={styles.saveButtonText}>Kaydet</Text>
-        )}
-      </TouchableOpacity>
+        <Text style={styles.title}>Profili düzenle</Text>
+
+        <TouchableOpacity
+          onPress={onSave}
+          disabled={saveDisabled}
+          style={styles.saveButton}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Kaydet"
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#1DA1F2" />
+          ) : (
+            <Text
+              style={[
+                styles.saveText,
+                saveDisabled && styles.saveTextDisabled,
+              ]}
+            >
+              Kaydet
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: '#fff',
+    paddingBottom: 4,
+  },
+  handle: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E2E8F0',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  toolbar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f8f9fa',
-    justifyContent: 'center',
-    alignItems: 'center',
+  cancelButton: {
+    minWidth: 64,
+    paddingVertical: 6,
+  },
+  cancelText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#64748B',
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
     flex: 1,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0F172A',
     textAlign: 'center',
-    marginHorizontal: 16,
+    letterSpacing: -0.3,
   },
   saveButton: {
-    backgroundColor: '#1DA1F2',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    minWidth: 80,
-    alignItems: 'center',
+    minWidth: 64,
+    alignItems: 'flex-end',
+    paddingVertical: 6,
   },
-  saveButtonDisabled: {
-    backgroundColor: '#bdc3c7',
-  },
-  saveButtonText: {
-    color: '#fff',
+  saveText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#1DA1F2',
+  },
+  saveTextDisabled: {
+    color: '#CBD5E1',
   },
 });
 

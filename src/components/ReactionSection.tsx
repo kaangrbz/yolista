@@ -2,8 +2,7 @@ import React, { useEffect } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useState } from 'react';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useCommentsSheet } from '../context/CommentsSheetContext';
 // import styles from '../styles';
 
 interface ReactionSectionProps {
@@ -12,6 +11,7 @@ interface ReactionSectionProps {
   viewCount: number;
   didLike?: boolean;
   routeId?: string;
+  routeOwnerId?: string;
   onLike?: (routeId: string, isLiked: boolean) => void;
 }
 
@@ -23,12 +23,12 @@ const ReactionSection = ({
   viewCount = 0,
   didLike = false,
   routeId,
+  routeOwnerId = '',
   onLike,
 }: ReactionSectionProps) => {
-  // Local state to handle optimistic UI updates
   const [isLiked, setIsLiked] = useState(didLike);
   const [localLikeCount, setLocalLikeCount] = useState(likeCount);
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { openComments } = useCommentsSheet();
 
   useEffect(() => {
     setIsLiked(didLike);
@@ -36,7 +36,9 @@ const ReactionSection = ({
   }, [didLike, likeCount]);
 
   const handleLike = () => {
-    if (!routeId) {return;}
+    if (!routeId) {
+      return;
+    }
 
     // Toggle like state
     const newLikeState = !isLiked;
@@ -52,8 +54,15 @@ const ReactionSection = ({
   };
 
   const handleComment = () => {
-    if (!routeId) {return;}
-    navigation.navigate('CommentSection', { routeId, parentType: 'routeDetail' });
+    if (!routeId) {
+      return;
+    }
+
+    openComments({
+      routeId,
+      routeOwnerId,
+      parentType: 'routeDetail',
+    });
   };
 
   return (

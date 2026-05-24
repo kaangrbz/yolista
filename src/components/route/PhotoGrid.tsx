@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,17 +8,30 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Animated,
+  PanResponder,
+  Pressable,
+  LayoutChangeEvent,
 } from 'react-native';
-import { launchImageLibrary, ImagePickerResponse } from 'react-native-image-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Photo } from '../../screens/CreateRoute/PhotoSelectionScreen';
-import { requestFilePermission } from '../../utils/PermissionController';
+import type { CreateFlowPhoto } from '../../types/createRouteFlowTypes';
+import { requestPhotos } from '../../permissions';
 import { showToast } from '../../utils/alert';
 import { randomString } from '../../utils/randomString';
+import { appTheme } from '../../theme/appTheme';
+import { useNestedScrollDragLock } from '../../hooks/useNestedScrollDragLock';
+import { clampIndex, reorderList } from '../../utils/reorderList';
+
+type PickerPhotoInput = Omit<CreateFlowPhoto, 'uploadStatus'>;
+
+const NUM_COLUMNS = 2;
+const ITEM_MARGIN_BOTTOM = 16;
+const LONG_PRESS_DRAG_MS = 220;
 
 interface PhotoGridProps {
-  selectedPhotos: Photo[];
-  onPhotoSelect: (photos: Photo[]) => void;
+  selectedPhotos: CreateFlowPhoto[];
+  onPhotoSelect: (photos: PickerPhotoInput[]) => void;
   onPhotoReorder: (fromIndex: number, toIndex: number) => void;
   onRemovePhoto: (photoId: string) => void;
   maxPhotos: number;
@@ -32,41 +45,185 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
   maxPhotos,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const dragOffsetX = useRef(new Animated.Value(0)).current;
+  const dragOffsetY = useRef(new Animated.Value(0)).current;
+  const draggingIndexRef = useRef<number | null>(null);
+  const photosRef = useRef(selectedPhotos);
+  const columnWidthRef = useRef(0);
+  const rowStrideRef = useRef(0);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingDragIndexRef = useRef<number | null>(null);
+  const isDragInteractionActiveRef = useRef(false);
+
+  const { scrollEnabled, setDragInteractionActive } = useNestedScrollDragLock({
+    reenableDelayMs: 1000,
+  });
+
+  useEffect(() => {
+    photosRef.current = selectedPhotos;
+  }, [selectedPhotos]);
+
+  const notifyDragInteraction = (isActive: boolean) => {
+    if (isDragInteractionActiveRef.current === isActive) {
+      return;
+    }
+
+    isDragInteractionActiveRef.current = isActive;
+    setDragInteractionActive(isActive);
+  };
+
+  const setDragging = (index: number | null) => {
+    draggingIndexRef.current = index;
+    setDraggingIndex(index);
+  };
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    pendingDragIndexRef.current = null;
+  };
+
+  const finishDrag = (translationX: number, translationY: number) => {
+    const fromIndex = draggingIndexRef.current;
+
+    if (fromIndex === null) {
+      notifyDragInteraction(false);
+
+      return;
+    }
+
+    const currentPhotos = photosRef.current;
+    const columnWidth = columnWidthRef.current;
+    const rowStride = rowStrideRef.current;
+
+    if (columnWidth <= 0 || rowStride <= 0) {
+      dragOffsetX.setValue(0);
+      dragOffsetY.setValue(0);
+      setDragging(null);
+      notifyDragInteraction(false);
+
+      return;
+    }
+
+    const colShift = Math.round(translationX / columnWidth);
+    const rowShift = Math.round(translationY / rowStride);
+    const indexShift = rowShift * NUM_COLUMNS + colShift;
+    const toIndex = clampIndex(fromIndex + indexShift, currentPhotos.length);
+
+    if (toIndex !== fromIndex) {
+      onPhotoReorder(fromIndex, toIndex);
+    }
+
+    dragOffsetX.setValue(0);
+    dragOffsetY.setValue(0);
+    setDragging(null);
+    notifyDragInteraction(false);
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: () => draggingIndexRef.current !== null,
+      onMoveShouldSetPanResponderCapture: () => draggingIndexRef.current !== null,
+      onPanResponderTerminationRequest: () => draggingIndexRef.current === null,
+      onPanResponderMove: (_, gestureState) => {
+        dragOffsetX.setValue(gestureState.dx);
+        dragOffsetY.setValue(gestureState.dy);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        finishDrag(gestureState.dx, gestureState.dy);
+      },
+      onPanResponderTerminate: (_, gestureState) => {
+        finishDrag(gestureState.dx, gestureState.dy);
+      },
+    }),
+  ).current;
+
+  const handlePhotoLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+
+    if (width > 0) {
+      columnWidthRef.current = width;
+    }
+
+    if (height > 0) {
+      rowStrideRef.current = height + ITEM_MARGIN_BOTTOM;
+    }
+  };
+
+  const handlePhotoPressIn = (index: number) => {
+    if (selectedPhotos.length <= 1) {
+      return;
+    }
+
+    pendingDragIndexRef.current = index;
+    notifyDragInteraction(true);
+    clearLongPressTimer();
+
+    longPressTimerRef.current = setTimeout(() => {
+      if (pendingDragIndexRef.current === index) {
+        setDragging(index);
+      }
+    }, LONG_PRESS_DRAG_MS);
+  };
+
+  const handlePhotoPressOut = () => {
+    if (draggingIndexRef.current === null) {
+      clearLongPressTimer();
+      notifyDragInteraction(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearLongPressTimer();
+      setDragInteractionActive(false);
+    };
+  }, [setDragInteractionActive]);
 
   const handleAddPhoto = async () => {
     try {
       setIsLoading(true);
 
-      // Check permission
-      const hasPermission = await requestFilePermission();
+      const hasPermission = await requestPhotos();
+
       if (!hasPermission) {
         showToast('error', 'Dosya erişim izni reddedildi');
+
         return;
       }
 
-      // Launch image picker
       const result = await launchImageLibrary({
         mediaType: 'photo',
         quality: 0.8,
         selectionLimit: maxPhotos - selectedPhotos.length,
         includeBase64: false,
+        assetRepresentationMode: 'compatible',
       });
 
-      if (result.didCancel) {return;}
+      if (result.didCancel) {
+        return;
+      }
 
       if (result.errorCode) {
         console.error('ImagePicker Error: ', result.errorMessage);
         showToast('error', result.errorMessage || 'Fotoğraf seçilirken bir hata oluştu');
+
         return;
       }
 
       if (result.assets && result.assets.length > 0) {
-        const newPhotos: Photo[] = result.assets.map(asset => ({
+        const newPhotos: PickerPhotoInput[] = result.assets.map((asset) => ({
           id: randomString(16),
           uri: asset.uri!,
           fileName: asset.fileName,
           type: asset.type,
           fileSize: asset.fileSize,
+          width: asset.width,
+          height: asset.height,
         }));
 
         const updatedPhotos = [...selectedPhotos, ...newPhotos];
@@ -95,34 +252,106 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
     );
   };
 
-  const renderPhotoItem = (photo: Photo, index: number) => (
-    <View key={photo.id} style={styles.photoItem}>
-      <Image source={{ uri: photo.uri }} style={styles.photoImage} />
+  const renderUploadBadge = (photo: CreateFlowPhoto) => {
+    if (photo.uploadStatus === 'done') {
+      return (
+        <View style={[styles.uploadBadge, styles.uploadBadgeDone]}>
+          <Icon name="check" size={14} color="#fff" />
+        </View>
+      );
+    }
 
-      {/* Order number */}
-      <View style={styles.orderBadge}>
-        <Text style={styles.orderText}>{index + 1}</Text>
-      </View>
+    if (photo.uploadStatus === 'failed') {
+      return (
+        <View style={[styles.uploadBadge, styles.uploadBadgeFailed]}>
+          <Icon name="alert-circle-outline" size={14} color="#fff" />
+        </View>
+      );
+    }
 
-      {/* Remove button */}
-      <TouchableOpacity
-        style={styles.removeButton}
-        onPress={() => handleRemovePhoto(photo.id)}>
-        <Icon name="close" size={16} color="#fff" />
-      </TouchableOpacity>
-    </View>
-  );
+    if (
+      photo.uploadStatus === 'processing' ||
+      photo.uploadStatus === 'uploading' ||
+      photo.uploadStatus === 'pending'
+    ) {
+      return (
+        <View style={[styles.uploadBadge, styles.uploadBadgePending]}>
+          <ActivityIndicator size="small" color="#fff" />
+        </View>
+      );
+    }
+
+    return null;
+  };
+
+  const canReorder = selectedPhotos.length > 1;
+
+  const renderPhotoItem = (photo: CreateFlowPhoto, index: number) => {
+    const displayUri = photo.processedLocalUri || photo.uri;
+    const isDragging = draggingIndex === index;
+
+    const photoItemStyle = isDragging
+      ? [
+          styles.photoItem,
+          styles.photoItemDragging,
+          {
+            transform: [
+              { translateX: dragOffsetX },
+              { translateY: dragOffsetY },
+            ],
+          },
+        ]
+      : styles.photoItem;
+
+    return (
+      <Animated.View
+        key={photo.id}
+        style={photoItemStyle}
+        onLayout={index === 0 ? handlePhotoLayout : undefined}
+      >
+        <Pressable
+          style={styles.photoPressable}
+          onPressIn={() => handlePhotoPressIn(index)}
+          onPressOut={handlePhotoPressOut}
+          disabled={!canReorder}
+          accessibilityLabel="Sıralamak için basılı tut"
+        >
+          <Image source={{ uri: displayUri }} style={styles.photoImage} />
+
+          <View style={styles.orderBadge}>
+            <Text style={styles.orderText}>{index + 1}</Text>
+          </View>
+
+          {renderUploadBadge(photo)}
+
+          {canReorder ? (
+            <View style={styles.dragHintBadge}>
+              <Icon name="drag" size={14} color="#fff" />
+            </View>
+          ) : null}
+        </Pressable>
+
+        <TouchableOpacity
+          style={styles.removeButton}
+          onPress={() => handleRemovePhoto(photo.id)}
+        >
+          <Icon name="close" size={16} color="#fff" />
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
   const renderAddButton = () => (
     <TouchableOpacity
       style={styles.addButton}
       onPress={handleAddPhoto}
-      disabled={isLoading || selectedPhotos.length >= maxPhotos}>
+      disabled={isLoading || selectedPhotos.length >= maxPhotos}
+    >
       {isLoading ? (
-        <ActivityIndicator size="small" color="#666" />
+        <ActivityIndicator size="small" color={appTheme.textSecondary} />
       ) : (
         <>
-          <Icon name="plus" size={32} color="#666" />
+          <Icon name="plus" size={32} color={appTheme.textSecondary} />
           <Text style={styles.addButtonText}>
             Fotoğraf Ekle
           </Text>
@@ -132,31 +361,36 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
   );
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.grid}>
-        {/* Selected Photos */}
-        {selectedPhotos.map((photo, index) => renderPhotoItem(photo, index))}
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      scrollEnabled={scrollEnabled}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View {...panResponder.panHandlers}>
+        <View style={styles.grid}>
+          {selectedPhotos.map((photo, index) => renderPhotoItem(photo, index))}
 
-        {/* Add Button */}
-        {selectedPhotos.length < maxPhotos && renderAddButton()}
+          {selectedPhotos.length < maxPhotos && renderAddButton()}
+        </View>
       </View>
 
-      {/* Info Text */}
       {selectedPhotos.length > 0 && (
         <View style={styles.infoContainer}>
           <Text style={styles.infoText}>
-            💡 Fotoğrafları sürükleyerek sıralayabilirsiniz
+            {canReorder
+              ? 'Sırayı değiştirmek için fotoğrafa basılı tutup sürükleyin.'
+              : 'En az iki fotoğraf eklediğinde sıralama yapabilirsin.'}
           </Text>
         </View>
       )}
 
-      {/* Empty State */}
       {selectedPhotos.length === 0 && (
         <View style={styles.emptyState}>
-          <Icon name="image-multiple" size={64} color="#ccc" />
-          <Text style={styles.emptyTitle}>Henüz fotoğraf seçmediniz</Text>
+          <Icon name="image-multiple" size={64} color={appTheme.borderStrong} />
+          <Text style={styles.emptyTitle}>Henüz fotoğraf yok</Text>
           <Text style={styles.emptySubtitle}>
-            Rotanız için en az 1, en fazla {maxPhotos} fotoğraf seçebilirsiniz
+            En az 1, en fazla {maxPhotos} fotoğraf ekleyebilirsin
           </Text>
         </View>
       )}
@@ -177,7 +411,7 @@ const styles = StyleSheet.create({
   photoItem: {
     width: '48%',
     aspectRatio: 1,
-    marginBottom: 16,
+    marginBottom: ITEM_MARGIN_BOTTOM,
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
@@ -186,6 +420,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  photoItemDragging: {
+    zIndex: 20,
+    elevation: 10,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  photoPressable: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
   photoImage: {
     width: '100%',
@@ -208,6 +453,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  dragHintBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderRadius: 10,
+    width: 22,
+    height: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   removeButton: {
     position: 'absolute',
     top: 8,
@@ -218,37 +474,60 @@ const styles = StyleSheet.create({
     height: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 2,
+  },
+  uploadBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadBadgeDone: {
+    backgroundColor: 'rgba(34, 139, 34, 0.9)',
+  },
+  uploadBadgeFailed: {
+    backgroundColor: 'rgba(220, 53, 69, 0.9)',
+  },
+  uploadBadgePending: {
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
   },
   addButton: {
     width: '48%',
     aspectRatio: 1,
-    marginBottom: 16,
+    marginBottom: ITEM_MARGIN_BOTTOM,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#e0e0e0',
+    borderColor: appTheme.borderStrong,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: appTheme.surfaceMuted,
   },
   addButtonText: {
-    color: '#666',
+    color: appTheme.textSecondary,
     fontSize: 14,
     fontWeight: '500',
     marginTop: 8,
     textAlign: 'center',
   },
   infoContainer: {
-    backgroundColor: '#f0f8ff',
+    backgroundColor: appTheme.surfaceMuted,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: appTheme.border,
   },
   infoText: {
-    color: '#0066cc',
+    color: appTheme.textSecondary,
     fontSize: 14,
     textAlign: 'center',
+    lineHeight: 20,
   },
   emptyState: {
     flex: 1,
@@ -259,13 +538,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: appTheme.textPrimary,
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: appTheme.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 40,

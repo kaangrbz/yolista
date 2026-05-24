@@ -6,7 +6,13 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, {
+  Marker,
+  Polyline,
+  PROVIDER_DEFAULT,
+  UrlTile,
+} from 'react-native-maps';
+import { getTileSource } from '../../constants/mapStyles';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteStop } from '../../screens/CreateRoute/StopDetailsScreen';
 
@@ -108,7 +114,8 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 
       {/* Map */}
       <MapView
-        provider={PROVIDER_GOOGLE}
+        provider={PROVIDER_DEFAULT}
+        mapType="none"
         style={styles.map}
         region={region}
         onRegionChangeComplete={setRegion}
@@ -117,6 +124,13 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         showsMyLocationButton={false}
         showsCompass={false}
         toolbarEnabled={false}>
+
+        <UrlTile
+          urlTemplate={getTileSource('light').urlTemplate}
+          maximumZ={getTileSource('light').maximumZ}
+          flipY={false}
+          shouldReplaceMapContent
+        />
 
         {/* Stop Markers */}
         {stopsWithCoordinates.map((stop, index) => {

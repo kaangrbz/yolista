@@ -10,10 +10,12 @@ import { showToast } from '../utils/alert';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { DefaultAvatar, NoImage } from '../assets';
 import { useProfileImageDownload } from '../hooks/useImageDownload';
+import { buildProfileNavigationParams } from '../utils/profileSlug';
 
-const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId, cityName }: {
+const AuthorInfo = ({ fullName, image_url, image_preview_url, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId, cityName }: {
   fullName: string;
   image_url?: string;
+  image_preview_url?: string;
   isVerified: boolean;
   username: string;
   createdAt: string;
@@ -28,7 +30,7 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
   const screenName = useNavigationState((state) => state.routes[state.index].name);
 
   // Use the new profile image download hook
-  const { imageUri, loading: imageLoading, error: imageError } = useProfileImageDownload(image_url, authorId);
+  const { imageUri, loading: imageLoading, error: imageError } = useProfileImageDownload(image_url, authorId, image_preview_url);
   console.log('🚀 ~ AuthorInfo ~ imageUri:', imageUri);
 
   const handleDeleteRoute = async () => {
@@ -105,7 +107,15 @@ const AuthorInfo = ({ fullName, image_url, isVerified, username, createdAt, auth
   return (
     <View style={styles.authorContainer}>
       <View style={styles.authorInfo}>
-        <TouchableOpacity style={styles.row} onPress={() => (navigation as any).navigate('ProfileMain', { userId: authorId })}>
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() =>
+            (navigation as any).navigate(
+              'ProfileMain',
+              buildProfileNavigationParams({ username }),
+            )
+          }
+        >
           <Image
             source={imageUri ? { uri: imageUri } : DefaultAvatar}
             style={styles.authorImage}

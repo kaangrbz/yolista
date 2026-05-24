@@ -1,14 +1,16 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, RefreshControl, ActivityIndicator, Animated } from 'react-native';
 import { RouteWithProfile } from '../model/routes.model';
-import { checkFirstTime } from '../utils/welcome';
+import WelcomeModal from '../components/common/WelcomeModal';
+import { markWelcomeSeen, shouldShowWelcome } from '../utils/welcome';
 import { supabase } from '../lib/supabase';
 import { HomeHeader } from '../components/header/Header';
-import StoriesBar from '../components/StoriesBar';
 import UniversalPost from '../components/UniversalPost';
 import { useHomePosts } from '../hooks/usePosts';
-import { useRoute } from '@react-navigation/native';
-
+import { useListPostImagesBatch } from '../hooks/useListPostImagesBatch';
+import { useRoutePublishStore } from '../store/routePublishStore';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { isInitialListLoading } from '../utils/listRefreshUtils';
 
 export const HomeScreen = () => {
   const [userId, setUserId] = useState<string>('');
@@ -16,21 +18,17 @@ export const HomeScreen = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const fadeAnim = useState(new Animated.Value(0))[0];
+  const flatListRef = useRef<FlatList<RouteWithProfile>>(null);
 
   const route = useRoute();
+  const navigation = useNavigation();
 
-  // Mock stories data
-  const [stories] = useState([
-    { id: '1', username: 'mark_zuckerberg', image_url: 'https://picsum.photos/100/100?random=1', isViewed: false },
-    { id: '2', username: 'elon_musk', image_url: 'https://picsum.photos/100/100?random=2', isViewed: true },
-    { id: '3', username: 'bill_gates', image_url: 'https://picsum.photos/100/100?random=3', isViewed: true },
-    { id: '4', username: 'taylor_swift', image_url: 'https://picsum.photos/100/100?random=4', isViewed: true },
-    { id: '5', username: 'jeff_bezos', image_url: 'https://picsum.photos/100/100?random=5', isViewed: true },
-  ]);
-
-  // Posts hook
   const { posts: routes, isLoading, refresh: refreshPosts, loadMore, hasMore } = useHomePosts(userId, 10);
+  const isInitialLoading = isInitialListLoading(isLoading, routes.length);
+
+  const { rowsByPostId } = useListPostImagesBatch(routes);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -45,24 +43,31 @@ export const HomeScreen = () => {
     };
 
     fetchUserId();
-    checkFirstTime();
+
+    shouldShowWelcome().then((shouldShow) => {
+      if (shouldShow) {
+        setShowWelcomeModal(true);
+      }
+    });
   }, []);
 
-  // Check for success message from navigation params
+  const handleWelcomeDismiss = async () => {
+    await markWelcomeSeen();
+    setShowWelcomeModal(false);
+  };
+
   useEffect(() => {
     const params = route.params as { showSuccessMessage?: boolean; successMessage?: string } | undefined;
     if (params?.showSuccessMessage) {
       setSuccessMessage(params.successMessage || 'Rota başarıyla paylaşıldı! 🎉');
       setShowSuccessMessage(true);
 
-      // Show success message with animation
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 300,
         useNativeDriver: true,
       }).start();
 
-      // Hide message after 3 seconds
       const timer = setTimeout(() => {
         Animated.timing(fadeAnim, {
           toValue: 0,
@@ -77,6 +82,32 @@ export const HomeScreen = () => {
     }
   }, [route.params, fadeAnim]);
 
+  useFocusEffect(
+    useCallback(() => {
+      const params = route.params as { scrollToTop?: boolean } | undefined;
+
+      if (params?.scrollToTop) {
+        requestAnimationFrame(() => {
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        });
+        navigation.setParams({ scrollToTop: undefined } as never);
+      }
+    }, [route.params, navigation]),
+  );
+
+  useEffect(() => {
+    let previousPhase = useRoutePublishStore.getState().phase;
+
+    return useRoutePublishStore.subscribe((state) => {
+      if (state.phase === 'success' && previousPhase !== 'success') {
+        Promise.resolve(refreshPosts()).catch(() => {
+          // Feed refresh is best-effort
+        });
+      }
+
+      previousPhase = state.phase;
+    });
+  }, [refreshPosts]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -93,27 +124,37 @@ export const HomeScreen = () => {
     }
   }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
-  const handleStoryPress = (storyId: string) => {
-    // Story görüntüleme logic'i buraya gelecek
-  };
+  const renderPost = useCallback(({ item }: { item: RouteWithProfile }) => {
+    const postId = item.id || '';
 
-  const handleAddStory = () => {
-    // Hikaye ekleme logic'i buraya gelecek
-  };
+    return (
+      <UniversalPost
+        postId={postId}
+        userId={userId}
+        initialRoute={item}
+        batchImages={true}
+        prefetchedImageRows={rowsByPostId[postId]}
+      />
+    );
+  }, [userId, rowsByPostId]);
 
-  const renderPost = ({ item }: { item: RouteWithProfile }) => (
-    <UniversalPost
-      postId={item.id || ''}
-      userId={userId}
-    />
-  );
+  const renderEmpty = () => {
+    if (!isInitialLoading) {
+      return null;
+    }
+
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="small" color="#1DA1F2" />
+      </View>
+    );
+  };
 
   const renderFooter = () => {
     if (isLoadingMore) {
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color="#1DA1F2" />
-          {/* <Text style={styles.loadingText}>Daha fazla yükleniyor...</Text> */}
         </View>
       );
     }
@@ -130,26 +171,20 @@ export const HomeScreen = () => {
     return null;
   };
 
-  const renderHeader = () => (
-    <StoriesBar
-      stories={stories}
-      onStoryPress={handleStoryPress}
-      onAddStory={handleAddStory}
-    />
-  );
-
   return (
     <SafeAreaView style={styles.container}>
       <HomeHeader />
 
-      {/* Success Message */}
       {showSuccessMessage && (
         <Animated.View style={[styles.successMessage, { opacity: fadeAnim }]}>
           <Text style={styles.successText}>{successMessage}</Text>
         </Animated.View>
       )}
 
+      <WelcomeModal visible={showWelcomeModal} onDismiss={handleWelcomeDismiss} />
+
       <FlatList
+        ref={flatListRef}
         data={routes}
         renderItem={renderPost}
         keyExtractor={(item) => item.id || ''}
@@ -163,7 +198,7 @@ export const HomeScreen = () => {
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
-        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         showsVerticalScrollIndicator={false}
         style={styles.flatList}

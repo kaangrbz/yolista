@@ -5,102 +5,37 @@ import { ImageCarouselProps } from '../../types/post.types';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-interface ImageDimensions {
-  width: number;
-  height: number;
-}
-
-// Cache for image dimensions to avoid recalculating
-const imageDimensionsCache = new Map<string, ImageDimensions>();
-
 const ImageCarousel: React.FC<ImageCarouselProps> = ({
   images,
   currentIndex,
   onIndexChange,
   height = 400,
   dynamicHeight = false,
+  displayHeights,
   maxHeight = 600,
   minHeight = 200,
+  isLiked = false,
   onDoubleTap,
 }) => {
-  const [imageDimensions, setImageDimensions] = useState<ImageDimensions[]>([]);
   const [calculatedHeight, setCalculatedHeight] = useState(height);
+  const hasPresetHeights = Boolean(displayHeights?.length);
 
-  // Double tap animation
   const heartScale = useRef(new Animated.Value(0)).current;
   const heartOpacity = useRef(new Animated.Value(0)).current;
 
-  // Calculate image dimensions when images change
   useEffect(() => {
-    if (dynamicHeight && images.length > 0) {
-      const loadImageDimensions = async () => {
-        const dimensions: ImageDimensions[] = [];
-
-        for (const imageUri of images) {
-          // Check cache first
-          if (imageDimensionsCache.has(imageUri)) {
-            dimensions.push(imageDimensionsCache.get(imageUri)!);
-            continue;
-          }
-
-          try {
-            const dim = await new Promise<ImageDimensions>((resolve, reject) => {
-              Image.getSize(
-                imageUri,
-                (width, height) => {
-                  // Calculate aspect ratio and adjust for screen width
-                  const aspectRatio = height / width;
-                  const adjustedHeight = screenWidth * aspectRatio;
-
-                  // Clamp height between min and max
-                  const clampedHeight = Math.max(
-                    minHeight,
-                    Math.min(maxHeight, adjustedHeight)
-                  );
-
-                  const result = { width: screenWidth, height: clampedHeight };
-
-                  // Cache the result
-                  imageDimensionsCache.set(imageUri, result);
-
-                  resolve(result);
-                },
-                (error) => {
-                  console.warn('Error getting image size:', error);
-                  const fallback = { width: screenWidth, height: height };
-                  imageDimensionsCache.set(imageUri, fallback);
-                  resolve(fallback);
-                }
-              );
-            });
-
-            dimensions.push(dim);
-          } catch (error) {
-            console.warn('Error processing image:', error);
-            const fallback = { width: screenWidth, height: height };
-            imageDimensionsCache.set(imageUri, fallback);
-            dimensions.push(fallback);
-          }
-        }
-
-        setImageDimensions(dimensions);
-
-        // Set height to current image's height
-        if (dimensions[currentIndex]) {
-          setCalculatedHeight(dimensions[currentIndex].height);
-        }
-      };
-
-      loadImageDimensions();
+    if (!dynamicHeight) {
+      setCalculatedHeight(height);
+      return;
     }
-  }, [images, dynamicHeight, currentIndex, height, maxHeight, minHeight]);
 
-  // Update height when current index changes
-  useEffect(() => {
-    if (dynamicHeight && imageDimensions[currentIndex]) {
-      setCalculatedHeight(imageDimensions[currentIndex].height);
+    if (hasPresetHeights && displayHeights && displayHeights[currentIndex] !== undefined) {
+      setCalculatedHeight(displayHeights[currentIndex]);
+      return;
     }
-  }, [currentIndex, imageDimensions, dynamicHeight]);
+
+    setCalculatedHeight(height);
+  }, [dynamicHeight, hasPresetHeights, displayHeights, currentIndex, height]);
 
   const handleImageScroll = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -109,33 +44,34 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   };
 
   const getImageHeight = (index: number) => {
-    if (dynamicHeight && imageDimensions[index]) {
-      return imageDimensions[index].height;
+    if (dynamicHeight && displayHeights && displayHeights[index] !== undefined) {
+      return displayHeights[index];
     }
+
     return calculatedHeight;
   };
 
   const lastTap = useRef<number>(0);
-  const doubleTapDelay = 300; // milliseconds
+  const doubleTapDelay = 300;
 
   const handleDoubleTap = () => {
     const now = Date.now();
+
     if (now - lastTap.current < doubleTapDelay) {
-      // Double tap detected
-      if (onDoubleTap) {
+      showHeartAnimation();
+
+      if (onDoubleTap && !isLiked) {
         onDoubleTap();
-        showHeartAnimation();
       }
     }
+
     lastTap.current = now;
   };
 
   const showHeartAnimation = () => {
-    // Reset animation values
     heartScale.setValue(0);
     heartOpacity.setValue(1);
 
-    // Animate heart
     Animated.parallel([
       Animated.timing(heartScale, {
         toValue: 1,
@@ -191,7 +127,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         ))}
       </ScrollView>
 
-      {/* Image Indicators */}
       {images.length > 1 && (
         <View style={styles.indicators}>
           {images.map((_, index) => (
@@ -206,7 +141,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         </View>
       )}
 
-      {/* Heart Animation */}
       <Animated.View
         style={[
           styles.heartAnimation,

@@ -3,7 +3,6 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, ActivityInd
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AuthorInfo from '../AuthorInfo';
 import RouteModel, { RouteWithProfile } from '../../model/routes.model';
-import { navigate, PageName } from '../../types/navigation';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Seperator from '../Seperator';
@@ -12,6 +11,9 @@ import { supabase } from '../../lib/supabase';
 import { showToast } from '../../utils/alert';
 import ImageViewer from '../ImageViewer';
 import KeyboardAwareContainer from '../common/KeyboardAwareContainer';
+import ShareModal from '../ShareModal';
+import { ShareService } from '../../services/ShareService';
+import { useCommentsSheet } from '../../context/CommentsSheetContext';
 
 // Define the navigation param list type
 type RootStackParamList = {
@@ -19,9 +21,11 @@ type RootStackParamList = {
   RouteDetail: { routeId: string };
   AddCategory: undefined;
   Explore: { categoryId?: number };
-  ProfileMain: { userId: string; currentUserId: string };
-  Followers: { userId: string };
-  Following: { userId: string };
+  ProfileMain: { username: string; currentUserId?: string };
+  SocialUserList:
+    | { kind: 'followers'; userId: string }
+    | { kind: 'following'; userId: string }
+    | { kind: 'route_likers'; routeId: string; likeCount?: number };
   ExploreMain: { categoryId?: number };
 };
 
@@ -36,6 +40,8 @@ interface RouteCardProps {
   showAuthorHeader?: boolean;
   showConnectingLine?: boolean;
   isLastItem?: boolean;
+  /** Keşfet masonry modunda hücre yüksekliği (image_alignment ile uyumlu). */
+  exploreCellHeight?: number;
 }
 
 const RouteCard: React.FC<RouteCardProps> = ({
@@ -47,6 +53,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
   showAuthorHeader = true,
   showConnectingLine = true,
   isLastItem = false,
+  exploreCellHeight,
 }) => {
   const routeKey = String(route.id ?? '');
   const isMainRoute = route.order_index === 0;
@@ -55,12 +62,14 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const [localDidLike, setLocalDidLike] = useState(route.did_like || false);
   const [localCommentCount, setLocalCommentCount] = useState(route.comment_count || 0);
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { openComments } = useCommentsSheet();
   const currentRoute = useRoute();
   const isExploreScreen = currentRoute.name === 'ExploreMain';
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingImage, setLoadingImage] = useState(true);
   const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
+  const [isShareModalVisible, setIsShareModalVisible] = useState(false);
 
   // Handle text layout if needed
   const handleTextLayout = (e: any, key: string) => {
@@ -72,7 +81,11 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const safeUsername = route.profiles?.username || 'unknown';
   const safeCreatedAt = route.created_at || new Date().toISOString();
   const safeAuthorId = route.user_id || '';
-  const safeRouteId = route.id || ''; // Ensure we have a valid route ID
+  const safeRouteId = route.id || '';
+
+  const handleSharePress = () => {
+    setIsShareModalVisible(true);
+  };
 
   // Function to download the image
   const downloadImage = async (image_url: string | undefined) => {
@@ -119,16 +132,14 @@ const RouteCard: React.FC<RouteCardProps> = ({
     downloadImage(route.image_url);
   }, [route.image_url]);
 
-  // Generate random size for explore items
-  const getRandomSize = () => {
-    const sizes = ['normal', 'doubleWidth', 'doubleHeight'];
-    return sizes[Math.floor(Math.random() * sizes.length)];
-  };
-
   if (isExploreScreen) {
+    const exploreCardStyle = exploreCellHeight
+      ? { height: exploreCellHeight }
+      : undefined;
+
     return (
       <TouchableOpacity
-        style={styles.exploreCard}
+        style={[styles.exploreCard, exploreCardStyle]}
         onPress={() => navigation.navigate('RouteDetail', { routeId: route.id || '' })}
       >
         <TouchableOpacity
@@ -179,6 +190,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
           <AuthorInfo
             fullName={safeFullName}
             image_url={route.profiles?.image_url}
+            image_preview_url={route.profiles?.image_preview_url}
             isVerified={route.profiles?.is_verified || false}
             username={safeUsername}
             createdAt={safeCreatedAt}
@@ -277,12 +289,10 @@ const RouteCard: React.FC<RouteCardProps> = ({
               <TouchableOpacity
                 style={styles.reactionItem}
                 onPress={() => {
-                  // Optimistically update comment count
-                  setLocalCommentCount((prev: number) => prev + 1);
-                  navigation.navigate('CommentSection', {
-                    routeId: route.id || '',
+                  openComments({
+                    routeId: safeRouteId,
+                    routeOwnerId: safeAuthorId,
                     parentType: 'routeDetail',
-                    routeOwnerId: route.user_id || '',
                   });
                 }}
               >
@@ -316,7 +326,13 @@ const RouteCard: React.FC<RouteCardProps> = ({
               <TouchableOpacity style={styles.reactionItem}>
                 <Icon name="bookmark-outline" size={18} color="#121" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.reactionItem}>
+              <TouchableOpacity
+                style={styles.reactionItem}
+                onPress={(event) => {
+                  event?.stopPropagation?.();
+                  handleSharePress();
+                }}
+              >
                 <Icon name="share-variant" size={18} color="#121" />
               </TouchableOpacity>
             </View>
@@ -345,6 +361,15 @@ const RouteCard: React.FC<RouteCardProps> = ({
         images={imageUri ? [{ uri: imageUri }] : []}
         visible={isImageViewerVisible}
         onRequestClose={() => setIsImageViewerVisible(false)}
+      />
+
+      <ShareModal
+        visible={isShareModalVisible}
+        onClose={() => setIsShareModalVisible(false)}
+        postId={safeRouteId}
+        postTitle={route.title || 'Rota'}
+        postImage={imageUri || undefined}
+        postUrl={ShareService.generatePostUrl(safeRouteId)}
       />
     </View>
   );
