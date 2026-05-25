@@ -2,6 +2,7 @@ import { NavigationContainerRef } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { parseAuthLink } from '../utils/parseAuthLink';
 import { showToast } from '../utils/alert';
+import { AUTH_MOBILE } from '../shared/auth-messages';
 
 type AuthLinkNavigation = {
   navigate: (screen: string, params?: Record<string, unknown>) => void;
@@ -41,7 +42,9 @@ class AuthLinkingService {
       console.error('[AuthLink] Handle error:', error);
 
       const message =
-        error instanceof Error ? error.message : 'Bağlantı işlenirken bir hata oluştu';
+        error instanceof Error
+          ? error.message
+          : AUTH_MOBILE.linking.linkErrorFallback;
 
       showToast('error', message);
 
@@ -133,7 +136,7 @@ class AuthLinkingService {
         fromDeepLink: true,
       } as Record<string, unknown>);
 
-      showToast('success', 'Şifre sıfırlama bağlantısı doğrulandı. Yeni şifreni belirle.');
+      showToast('success', AUTH_MOBILE.linking.recoveryVerifiedToast);
 
       return;
     }
@@ -143,7 +146,7 @@ class AuthLinkingService {
       verifiedFromLink: true,
     } as Record<string, unknown>);
 
-    showToast('success', 'E-posta bağlantısı doğrulandı.');
+    showToast('success', AUTH_MOBILE.linking.emailVerifiedToast);
   }
 }
 

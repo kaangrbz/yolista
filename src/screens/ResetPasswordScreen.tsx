@@ -4,6 +4,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { showToast } from '../utils/alert';
 import { validatePassword } from '../utils/validationUtils';
+import { AUTH_MOBILE } from '../shared/auth-messages';
 import {
   AuthAnimatedSection,
   AuthErrorBanner,
@@ -13,7 +14,7 @@ import {
   AuthTextInput,
   OTP_LENGTH,
 } from '../components/auth/shared';
-import { authTheme } from '../theme/authTheme';
+import { useAuthThemedStyles } from '../theme/useAuthThemedStyles';
 
 type ResetPasswordRouteParams = {
   ResetPassword: {
@@ -23,6 +24,24 @@ type ResetPasswordRouteParams = {
 };
 
 export const ResetPasswordScreen = () => {
+  const styles = useAuthThemedStyles((t) => ({
+    deepLinkHint: {
+      fontSize: 14,
+      color: t.textSecondary,
+      lineHeight: 20,
+      marginBottom: 12,
+    },
+    linkContainer: {
+      alignItems: 'center',
+      marginTop: 20,
+    },
+    linkText: {
+      fontSize: 15,
+      color: t.primary,
+      fontWeight: '600',
+    },
+  }));
+
   const navigation = useNavigation();
   const route = useRoute<RouteProp<ResetPasswordRouteParams, 'ResetPassword'>>();
   const { verifyRecoveryOtp, updatePassword } = useAuth();
@@ -39,17 +58,17 @@ export const ResetPasswordScreen = () => {
 
   const handleReset = async () => {
     if (!fromDeepLink && otp.length !== OTP_LENGTH) {
-      setError('6 haneli doğrulama kodunu girin');
+      setError(AUTH_MOBILE.errors.otpRequired);
       return;
     }
 
     if (!validatePassword(password)) {
-      setError('Şifre en az 8 karakter olmalı ve harf ile rakam içermeli');
+      setError(AUTH_MOBILE.errors.passwordRules);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Şifreler eşleşmiyor');
+      setError(AUTH_MOBILE.errors.passwordMismatch);
       return;
     }
 
@@ -62,13 +81,13 @@ export const ResetPasswordScreen = () => {
       }
 
       await updatePassword(password);
-      showToast('success', 'Şifren güncellendi. Giriş yapabilirsin.');
+      showToast('success', AUTH_MOBILE.reset.successToast);
       navigation.navigate('Login' as never);
     } catch (resetError: unknown) {
       const message =
         resetError instanceof Error
           ? resetError.message
-          : 'Şifre sıfırlanırken bir hata oluştu';
+          : AUTH_MOBILE.errors.resetFailed;
 
       setError(message);
     } finally {
@@ -94,7 +113,7 @@ export const ResetPasswordScreen = () => {
       {fromDeepLink ? (
         <AuthAnimatedSection delay={40}>
           <Text style={styles.deepLinkHint}>
-            E-posta bağlantın doğrulandı. Yeni şifreni belirleyebilirsin.
+            {AUTH_MOBILE.reset.deepLinkHint}
           </Text>
         </AuthAnimatedSection>
       ) : null}
@@ -121,7 +140,7 @@ export const ResetPasswordScreen = () => {
       <AuthAnimatedSection delay={180}>
         <AuthTextInput
           icon="lock-outline"
-          label="Yeni şifre"
+          label={AUTH_MOBILE.reset.newPasswordLabel}
           placeholder="En az 8 karakter"
           value={password}
           onChangeText={setPassword}
@@ -134,8 +153,8 @@ export const ResetPasswordScreen = () => {
       <AuthAnimatedSection delay={220}>
         <AuthTextInput
           icon="lock-check-outline"
-          label="Şifre tekrar"
-          placeholder="Şifreni tekrar gir"
+          label={AUTH_MOBILE.reset.confirmPasswordLabel}
+          placeholder={AUTH_MOBILE.reset.confirmPasswordPlaceholder}
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           showToggle
@@ -146,7 +165,7 @@ export const ResetPasswordScreen = () => {
 
       <AuthAnimatedSection delay={260}>
         <AuthPrimaryButton
-          label="Şifreyi Güncelle"
+          label={AUTH_MOBILE.reset.submitButton}
           onPress={handleReset}
           loading={isLoading}
           disabled={!isFormValid}
@@ -161,30 +180,12 @@ export const ResetPasswordScreen = () => {
             style={styles.linkContainer}
             activeOpacity={0.7}
           >
-            <Text style={styles.linkText}>Kodu tekrar gönder</Text>
+            <Text style={styles.linkText}>{AUTH_MOBILE.reset.resendLink}</Text>
           </TouchableOpacity>
         </AuthAnimatedSection>
       ) : null}
     </AuthScreenLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  deepLinkHint: {
-    fontSize: 14,
-    color: authTheme.textSecondary,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  linkContainer: {
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  linkText: {
-    fontSize: 15,
-    color: authTheme.primary,
-    fontWeight: '600',
-  },
-});
 
 export default ResetPasswordScreen;

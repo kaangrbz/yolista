@@ -1,5 +1,7 @@
 pod 'RNFS', :path => '../node_modules/react-native-fs'
 
+ENV['RCT_USE_PREBUILT_RNCORE'] = '0'
+
 # Resolve react_native_pods.rb with node to allow for hoisting
 def node_require(script)
   # Resolve script with node to allow for hoisting

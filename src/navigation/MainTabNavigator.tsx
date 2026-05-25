@@ -16,7 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { SocialUserListRouteScreen } from '../screens/SocialUserListRouteScreen';
 import type { SocialUserListRouteParams } from '../types/socialUserList';
 import { VerifyEmailScreen } from '../screens/VerifyEmailScreen';
-import { appTheme } from '../theme/appTheme';
+import { useAppTheme } from '../context/AppThemeContext';
 import { AppTabBar } from './AppTabBar';
 
 type ProfileStackParamList = {
@@ -170,16 +170,18 @@ const ExploreStackScreen = () => {
 };
 
 const MainTabNavigator = () => {
+  const theme = useAppTheme();
+
   return (
     <Tab.Navigator
       tabBar={(props) => <AppTabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: appTheme.textPrimary,
-        tabBarInactiveTintColor: appTheme.textMuted,
+        tabBarActiveTintColor: theme.textPrimary,
+        tabBarInactiveTintColor: theme.textMuted,
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: appTheme.background,
+          backgroundColor: theme.background,
         },
         tabBarButton: (props) => (
           <PlatformPressable

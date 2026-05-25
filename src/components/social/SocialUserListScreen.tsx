@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -20,6 +19,7 @@ import { mergeProfilesPreservingUnchanged } from '../../utils/listRefreshUtils';
 import { sanitizeSocialListSearchInput } from '../../utils/socialListSearch';
 import { buildProfileNavigationParams } from '../../utils/profileSlug';
 import { showToast } from '../../utils/alert';
+import { showConfirm } from '../common/ConfirmModal';
 import UserModel from '../../model/user.model';
 import { useAuth } from '../../context/AuthContext';
 import UserCard from '../user/UserCard';
@@ -311,20 +311,22 @@ export const SocialUserListScreen: React.FC<SocialUserListScreenProps> = ({
         explicit !== undefined ? Boolean(explicit) : assumeAllFollowed;
 
       if (isFollowing) {
-        Alert.alert(
-          'Takibi bırak',
-          'Bu kullanıcıyı takipten çıkarmak istiyor musun?',
-          [
-            { text: 'İptal', style: 'cancel' },
+        showConfirm({
+          title: 'Takibi bırak',
+          message: 'Bu kullanıcıyı takipten çıkarmak istiyor musun?',
+          icon: 'account-remove-outline',
+          actions: [
+            { key: 'cancel', label: 'İptal', variant: 'ghost' },
             {
-              text: 'Takibi bırak',
-              style: 'destructive',
+              key: 'unfollow',
+              label: 'Takibi bırak',
+              variant: 'destructive',
               onPress: () => {
                 void runUnfollow(targetId);
               },
             },
           ],
-        );
+        });
 
         return;
       }

@@ -1,39 +1,71 @@
 import React from 'react';
 import {
+  Image,
   Modal,
-  View,
-  Text,
   StyleSheet,
+  Text,
   TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { PROFILE_BADGE_INFO, ProfileBadgeKind } from './profileBadgeInfo';
+import type { ProfileBadge } from '../../model/profile.model';
+import { PROFILE_BADGE_ASSETS } from '../../lib/profileBadges';
 
 interface ProfileBadgeInfoSheetProps {
   visible: boolean;
-  badgeKind: ProfileBadgeKind | null;
+  badge: ProfileBadge | null;
   onClose: () => void;
 }
 
+const SheetIcon: React.FC<{ badge: ProfileBadge; size: number }> = ({
+  badge,
+  size,
+}) => {
+  if (badge.icon_type === 'asset_key') {
+    const asset = PROFILE_BADGE_ASSETS[badge.icon_value];
+    if (asset) {
+      return (
+        <Image
+          source={asset.source}
+          style={{
+            width: size,
+            height: size,
+            tintColor: asset.tintColor ?? badge.color,
+          }}
+          resizeMode="contain"
+        />
+      );
+    }
+  }
+  if (badge.icon_type === 'svg_url') {
+    return (
+      <Image
+        source={{ uri: badge.icon_value }}
+        style={{ width: size, height: size }}
+        resizeMode="contain"
+      />
+    );
+  }
+  return <MaterialIcons name={badge.icon_value} size={size} color={badge.color} />;
+};
+
 const ProfileBadgeInfoSheet: React.FC<ProfileBadgeInfoSheetProps> = ({
   visible,
-  badgeKind,
+  badge,
   onClose,
 }) => {
   const insets = useSafeAreaInsets();
 
-  if (!badgeKind) {
+  if (!badge) {
     return null;
   }
-
-  const content = PROFILE_BADGE_INFO[badgeKind];
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      transparent={true}
+      transparent
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
@@ -51,16 +83,12 @@ const ProfileBadgeInfoSheet: React.FC<ProfileBadgeInfoSheetProps> = ({
         >
           <View style={styles.handle} />
           <View style={styles.iconWrap}>
-            <MaterialIcons
-              name={content.iconName}
-              size={28}
-              color={content.iconColor}
-            />
+            <SheetIcon badge={badge} size={28} />
           </View>
-          <Text style={styles.title}>{content.title}</Text>
-          <Text style={styles.message}>{content.message}</Text>
+          <Text style={styles.title}>{badge.label}</Text>
+          <Text style={styles.message}>{badge.description}</Text>
           <TouchableOpacity
-            style={styles.closeButton}
+            style={[styles.closeButton, { backgroundColor: badge.color }]}
             onPress={onClose}
             accessibilityRole="button"
             accessibilityLabel="Tamam"
@@ -79,7 +107,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0, 0, 0, 0.45)',
   },
   sheet: {
@@ -123,7 +151,6 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     alignSelf: 'stretch',
-    backgroundColor: '#1DA1F2',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',

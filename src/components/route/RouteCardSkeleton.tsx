@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
-import Animated, {
+import {
   useAnimatedStyle,
   withRepeat,
   withTiming,
@@ -8,6 +8,7 @@ import Animated, {
   withSequence,
   Easing,
 } from 'react-native-reanimated';
+import { ReanimatedView } from '../../utils/reanimatedComponents';
 
 const { width } = Dimensions.get('window');
 
@@ -39,9 +40,9 @@ const RouteCardSkeleton: React.FC<RouteCardSkeletonProps> = ({ isExploreScreen =
     return (
       <View style={styles.exploreCard}>
         <View style={styles.exploreImageContainer}>
-          <Animated.View style={[styles.shimmer, shimmerStyle]}>
+          <ReanimatedView style={[styles.shimmer, shimmerStyle]}>
             <View style={styles.shimmerOverlay} />
-          </Animated.View>
+          </ReanimatedView>
         </View>
         <View style={styles.exploreInfo}>
           <View style={styles.exploreTitleSkeleton} />
@@ -65,9 +66,9 @@ const RouteCardSkeleton: React.FC<RouteCardSkeletonProps> = ({ isExploreScreen =
 
         {/* Image Skeleton */}
         <View style={styles.imageContainer}>
-          <Animated.View style={[styles.shimmer, shimmerStyle]}>
+          <ReanimatedView style={[styles.shimmer, shimmerStyle]}>
             <View style={styles.shimmerOverlay} />
-          </Animated.View>
+          </ReanimatedView>
         </View>
 
         {/* Content Skeleton */}

@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { RouteWithProfile } from '../model/routes.model';
+import { getCityCenter, getCityIdsInBbox } from '../data/cityCenters';
 
 export interface BoundingBox {
   minLat: number;
@@ -115,6 +116,20 @@ export const RouteDiscoveryService = {
       return cached.data;
     }
 
+    const cityIdsInBbox = getCityIdsInBbox(bbox);
+
+    // Rotalar: ya kendi lat/lng'leri bbox içinde, ya da lat/lng yok ama
+    // city_id bbox'taki şehirlerden birine işaret ediyor (eski kayıtlar için fallback).
+    const orFilters: string[] = [
+      `and(latitude.gte.${bbox.minLat},latitude.lte.${bbox.maxLat},longitude.gte.${bbox.minLng},longitude.lte.${bbox.maxLng})`,
+    ];
+
+    if (cityIdsInBbox.length > 0) {
+      orFilters.push(
+        `and(latitude.is.null,city_id.in.(${cityIdsInBbox.join(',')}))`,
+      );
+    }
+
     let query = supabase
       .from('routes')
       .select(`
@@ -126,12 +141,7 @@ export const RouteDiscoveryService = {
       .eq('is_deleted', false)
       .eq('is_hidden', false)
       .eq('order_index', 0)
-      .not('latitude', 'is', null)
-      .not('longitude', 'is', null)
-      .gte('latitude', bbox.minLat)
-      .lte('latitude', bbox.maxLat)
-      .gte('longitude', bbox.minLng)
-      .lte('longitude', bbox.maxLng)
+      .or(orFilters.join(','))
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -146,7 +156,24 @@ export const RouteDiscoveryService = {
       throw new Error(`Failed to fetch routes in viewport: ${error.message}`);
     }
 
-    let rows = data || [];
+    let rows = (data || []).map((row: any) => {
+      if (
+        (typeof row.latitude !== 'number' || typeof row.longitude !== 'number') &&
+        row.city_id != null
+      ) {
+        const cityCenter = getCityCenter(row.city_id);
+
+        if (cityCenter) {
+          return {
+            ...row,
+            latitude: cityCenter.latitude,
+            longitude: cityCenter.longitude,
+          };
+        }
+      }
+
+      return row;
+    });
 
     if (
       filters?.maxDistanceKm &&

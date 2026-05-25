@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { DefaultAvatar } from '../../assets';
 import { PostHeaderProps } from '../../types/post.types';
 import { useProfileImageDownload } from '../../hooks/useImageDownload';
@@ -23,6 +24,7 @@ const PostHeader: React.FC<PostHeaderProps> = ({
   onCopyLinkPress,
   isOwnPost = false,
   isFollowing = false,
+  isVerified = false,
 }) => {
   // Use the profile image download hook if userId is provided
   const { imageUri: downloadedImageUri, loading: imageLoading } = useProfileImageDownload(
@@ -47,7 +49,17 @@ const PostHeader: React.FC<PostHeaderProps> = ({
           resizeMode="cover"
         />
         <View style={styles.userDetails}>
-          <Text style={styles.username}>{username}</Text>
+          <View style={styles.usernameRow}>
+            <Text style={styles.username} numberOfLines={1}>{username}</Text>
+            {isVerified ? (
+              <MaterialIcons
+                name="verified"
+                size={14}
+                color="#1DA1F2"
+                style={styles.verifiedIcon}
+              />
+            ) : null}
+          </View>
           {location && <Text style={styles.location}>{location}</Text>}
         </View>
       </TouchableOpacity>
@@ -89,10 +101,18 @@ const styles = StyleSheet.create({
   userDetails: {
     flex: 1,
   },
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   username: {
     fontSize: 14,
     fontWeight: '600',
     color: '#262626',
+    flexShrink: 1,
+  },
+  verifiedIcon: {
+    marginLeft: 4,
   },
   location: {
     fontSize: 12,

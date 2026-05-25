@@ -1,4 +1,3 @@
-import { Alert } from 'react-native';
 import {
   check,
   openSettings,
@@ -10,6 +9,7 @@ import {
 import { getBlockedMessage } from './messages';
 import { getNativePermissions } from './nativePermissionMap';
 import { PermissionKind, PermissionResult } from './types';
+import { showConfirm } from '../components/common/ConfirmModal';
 
 const statusToResult = (status: PermissionStatus): PermissionResult => {
   if (status === RESULTS.GRANTED || status === RESULTS.LIMITED) {
@@ -50,10 +50,15 @@ const combineResults = (results: PermissionResult[]): PermissionResult => {
 const showBlockedAlert = (kind: PermissionKind) => {
   const { title, body } = getBlockedMessage(kind);
 
-  Alert.alert(title, body, [
-    { text: 'Vazgeç', style: 'cancel' },
-    { text: 'Ayarları Aç', onPress: () => openSettings() },
-  ]);
+  showConfirm({
+    title,
+    message: body,
+    icon: 'shield-lock-outline',
+    actions: [
+      { key: 'cancel', label: 'Vazgeç', variant: 'ghost' },
+      { key: 'open-settings', label: 'Ayarları Aç', variant: 'primary', onPress: () => openSettings() },
+    ],
+  });
 };
 
 export const checkNativePermissions = async (

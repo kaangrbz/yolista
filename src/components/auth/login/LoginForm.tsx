@@ -6,7 +6,7 @@ import {
   AuthPrimaryButton,
   AuthTextInput,
 } from '../shared';
-import { authTheme } from '../../../theme/authTheme';
+import { useAuthThemedStyles } from '../../../theme/useAuthThemedStyles';
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -21,6 +21,50 @@ const LoginForm: React.FC<LoginFormProps> = ({
   onNavigateToForgotPassword,
   onNavigateToVerifyEmail,
 }) => {
+  const styles = useAuthThemedStyles((t) => ({
+    container: {
+      width: '100%',
+    },
+    forgotLink: {
+      alignSelf: 'flex-end',
+      marginBottom: 4,
+      marginTop: -4,
+    },
+    forgotText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: t.primary,
+    },
+    dividerContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 20,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: t.inputBorder,
+    },
+    dividerText: {
+      color: t.textMuted,
+      fontSize: 13,
+      marginHorizontal: 14,
+      fontWeight: '500',
+    },
+    linkContainer: {
+      alignItems: 'center',
+      paddingVertical: 4,
+    },
+    linkText: {
+      fontSize: 15,
+      color: t.textSecondary,
+    },
+    linkHighlight: {
+      color: t.primary,
+      fontWeight: '700',
+    },
+  }));
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -132,49 +176,5 @@ const LoginForm: React.FC<LoginFormProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-  },
-  forgotLink: {
-    alignSelf: 'flex-end',
-    marginBottom: 4,
-    marginTop: -4,
-  },
-  forgotText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: authTheme.primary,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: authTheme.inputBorder,
-  },
-  dividerText: {
-    color: authTheme.textMuted,
-    fontSize: 13,
-    marginHorizontal: 14,
-    fontWeight: '500',
-  },
-  linkContainer: {
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  linkText: {
-    fontSize: 15,
-    color: authTheme.textSecondary,
-  },
-  linkHighlight: {
-    color: authTheme.primary,
-    fontWeight: '700',
-  },
-});
 
 export default LoginForm;

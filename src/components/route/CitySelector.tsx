@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,195 +6,196 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
-  ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { City } from '../../screens/CreateRoute/CategorySelectionScreen';
-import CityModel from '../../model/cities.model';
-import KeyboardAwareContainer from '../common/KeyboardAwareContainer';
+import { CITY_CENTERS } from '../../data/cityCenters';
 
 interface CitySelectorProps {
   selectedCity: City | null;
   onCitySelect: (city: City | null) => void;
 }
 
+const POPULAR_CITY_NAMES = ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana'];
+
+/**
+ * Türkçe dahil tüm büyük/küçük harf ve aksan farklarını kaldırarak
+ * arama için kullanılan normalize fonksiyonu.
+ */
+const normalize = (input: string): string => {
+  return input
+    .toLocaleLowerCase('tr')
+    .replace(/i̇/g, 'i')
+    .replace(/ı/g, 'i')
+    .replace(/ş/g, 's')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .trim();
+};
+
+const ALL_CITIES: City[] = (() => {
+  const popularLower = POPULAR_CITY_NAMES.map((n) => normalize(n));
+
+  const base: City[] = CITY_CENTERS.map((c) => ({
+    id: c.id,
+    name: c.name,
+    is_disabled: false,
+  }));
+
+  const popular: City[] = [];
+  popularLower.forEach((p) => {
+    const found = base.find((c) => normalize(c.name) === p);
+    if (found) popular.push(found);
+  });
+
+  const rest = base
+    .filter((c) => !popularLower.includes(normalize(c.name)))
+    .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+
+  return [...popular, ...rest];
+})();
+
 export const CitySelector: React.FC<CitySelectorProps> = ({
   selectedCity,
   onCitySelect,
 }) => {
-  const [cities, setCities] = useState<City[]>([]);
-  const [filteredCities, setFilteredCities] = useState<City[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  useEffect(() => {
-    fetchCities();
-  }, []);
+  const filteredCities = useMemo(() => {
+    const q = normalize(searchQuery);
 
-  useEffect(() => {
-    // Filter cities based on search query
-    if (searchQuery.trim() === '') {
-      setFilteredCities(cities.slice(0, 10)); // Show first 10 cities
-    } else {
-      const filtered = cities.filter(city =>
-        city.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredCities(filtered.slice(0, 20)); // Show max 20 results
+    if (!q) {
+      return ALL_CITIES;
     }
-  }, [searchQuery, cities]);
 
-  const fetchCities = async () => {
-    try {
-      setIsLoading(true);
-      const fetchedCities = await CityModel.getCities();
-
-      if (fetchedCities) {
-        // Filter out disabled cities and sort by name
-        const activeCities = fetchedCities
-          .filter(city => !city.is_disabled)
-          .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
-
-        setCities(activeCities);
-        setFilteredCities(activeCities.slice(0, 10));
-      }
-    } catch (error) {
-      console.error('Error fetching cities:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    return ALL_CITIES.filter((city) => normalize(city.name).includes(q));
+  }, [searchQuery]);
 
   const handleCityPress = (city: City) => {
     if (selectedCity?.id === city.id) {
-      // Deselect if already selected
       onCitySelect(null);
       setSearchQuery('');
     } else {
       onCitySelect(city);
-      setSearchQuery(city.name);
+      setSearchQuery('');
     }
     setShowDropdown(false);
+    Keyboard.dismiss();
   };
 
   const handleClearSelection = () => {
     onCitySelect(null);
     setSearchQuery('');
-    setShowDropdown(false);
   };
 
-  const handleSearchFocus = () => {
-    setShowDropdown(true);
+  const toggleDropdown = () => {
+    setShowDropdown((prev) => {
+      const next = !prev;
+      if (!next) {
+        Keyboard.dismiss();
+      }
+      return next;
+    });
   };
-
-  const handleSearchBlur = () => {
-    // Delay hiding dropdown to allow for city selection
-    setTimeout(() => {
-      setShowDropdown(false);
-    }, 200);
-  };
-
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="small" color="#666" />
-        <Text style={styles.loadingText}>Şehirler yükleniyor...</Text>
-      </View>
-    );
-  }
 
   return (
-    <KeyboardAwareContainer style={styles.container}>
-      {/* Search Input */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <Icon name="magnify" size={20} color="#666" />
+    <View style={styles.container}>
+      <TouchableOpacity
+        style={styles.fieldRow}
+        activeOpacity={0.85}
+        onPress={toggleDropdown}>
+        <Icon name="magnify" size={20} color="#666" />
+
+        {showDropdown ? (
           <TextInput
             style={styles.searchInput}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            onFocus={handleSearchFocus}
-            onBlur={handleSearchBlur}
             placeholder="Şehir ara..."
             placeholderTextColor="#999"
+            autoFocus
+            autoCorrect={false}
+            autoCapitalize="none"
           />
-          {(searchQuery || selectedCity) && (
-            <TouchableOpacity
-              style={styles.clearSearchButton}
-              onPress={handleClearSelection}>
-              <Icon name="close" size={20} color="#666" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+        ) : (
+          <Text
+            style={[
+              styles.fieldText,
+              !selectedCity && styles.fieldPlaceholder,
+            ]}
+            numberOfLines={1}>
+            {selectedCity ? selectedCity.name : 'Şehir seç...'}
+          </Text>
+        )}
 
-      {/* Selected City Display */}
-      {selectedCity && !showDropdown && (
-        <View style={styles.selectedCityContainer}>
-          <View style={styles.selectedCityContent}>
-            <Icon name="city" size={20} color="#4CAF50" />
-            <Text style={styles.selectedCityText}>{selectedCity.name}</Text>
-            <TouchableOpacity
-              style={styles.removeButton}
-              onPress={handleClearSelection}>
-              <Icon name="close" size={16} color="#666" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+        {selectedCity && !showDropdown ? (
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={handleClearSelection}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Icon name="close" size={20} color="#666" />
+          </TouchableOpacity>
+        ) : (
+          <Icon
+            name={showDropdown ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color="#666"
+          />
+        )}
+      </TouchableOpacity>
 
-      {/* Cities Dropdown */}
-      {showDropdown && (
+      {showDropdown ? (
         <View style={styles.dropdown}>
           {filteredCities.length > 0 ? (
             <ScrollView
               style={styles.citiesList}
+              keyboardShouldPersistTaps="always"
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled>
-              {filteredCities.map((city) => (
-                <TouchableOpacity
-                  key={city.id}
-                  style={[
-                    styles.cityItem,
-                    selectedCity?.id === city.id && styles.cityItemSelected,
-                  ]}
-                  onPress={() => handleCityPress(city)}>
-                  <Icon name="city" size={16} color="#666" />
-                  <Text style={styles.cityText}>{city.name}</Text>
-                  {selectedCity?.id === city.id && (
-                    <Icon name="check" size={16} color="#4CAF50" />
-                  )}
-                </TouchableOpacity>
-              ))}
+              {filteredCities.map((city) => {
+                const isSelected = selectedCity?.id === city.id;
+
+                return (
+                  <TouchableOpacity
+                    key={city.id}
+                    style={[
+                      styles.cityItem,
+                      isSelected && styles.cityItemSelected,
+                    ]}
+                    activeOpacity={0.7}
+                    onPress={() => handleCityPress(city)}>
+                    <Icon
+                      name="city"
+                      size={16}
+                      color={isSelected ? '#4CAF50' : '#666'}
+                    />
+                    <Text
+                      style={[
+                        styles.cityText,
+                        isSelected && styles.cityTextSelected,
+                      ]}>
+                      {city.name}
+                    </Text>
+                    {isSelected ? (
+                      <Icon name="check" size={16} color="#4CAF50" />
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           ) : (
             <View style={styles.noCitiesContainer}>
               <Icon name="city-variant-outline" size={32} color="#ccc" />
-              <Text style={styles.noCitiesText}>
-                {searchQuery ? 'Aradığınız şehir bulunamadı' : 'Şehir bulunamadı'}
-              </Text>
+              <Text style={styles.noCitiesText}>Aradığınız şehir bulunamadı</Text>
             </View>
           )}
         </View>
-      )}
-
-      {/* Popular Cities (when not searching) */}
-      {!showDropdown && !selectedCity && (
-        <View style={styles.popularCitiesContainer}>
-          <Text style={styles.popularCitiesTitle}>Popüler Şehirler</Text>
-          <View style={styles.popularCitiesGrid}>
-            {cities.slice(0, 6).map((city) => (
-              <TouchableOpacity
-                key={city.id}
-                style={styles.popularCityChip}
-                onPress={() => handleCityPress(city)}>
-                <Text style={styles.popularCityText}>{city.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
-    </KeyboardAwareContainer>
+      ) : null}
+    </View>
   );
 };
 
@@ -202,97 +203,70 @@ const styles = StyleSheet.create({
   container: {
     position: 'relative',
   },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 8,
-  },
-  searchContainer: {
-    marginBottom: 12,
-  },
-  searchInputContainer: {
+  fieldRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8f9fa',
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#e0e0e0',
+    gap: 8,
+  },
+  fieldText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+  },
+  fieldPlaceholder: {
+    color: '#999',
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
     color: '#333',
-    marginLeft: 8,
+    padding: 0,
   },
-  clearSearchButton: {
-    padding: 4,
-  },
-  selectedCityContainer: {
-    marginBottom: 12,
-  },
-  selectedCityContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0f8ff',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-  },
-  selectedCityText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-    marginLeft: 8,
-  },
-  removeButton: {
-    padding: 4,
+  iconButton: {
+    padding: 2,
   },
   dropdown: {
-    position: 'absolute',
-    top: 60,
-    left: 0,
-    right: 0,
+    marginTop: 8,
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e0e0e0',
-    maxHeight: 200,
+    maxHeight: 300,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 1000,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 4,
   },
   citiesList: {
-    maxHeight: 200,
+    maxHeight: 300,
   },
   cityItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#f0f0f0',
+    gap: 10,
   },
   cityItemSelected: {
     backgroundColor: '#f0f8ff',
   },
   cityText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     color: '#333',
-    marginLeft: 8,
+  },
+  cityTextSelected: {
+    fontWeight: '600',
+    color: '#121212',
   },
   noCitiesContainer: {
     alignItems: 'center',
@@ -304,32 +278,5 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 8,
     textAlign: 'center',
-  },
-  popularCitiesContainer: {
-    marginTop: 8,
-  },
-  popularCitiesTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
-  },
-  popularCitiesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  popularCityChip: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  popularCityText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
   },
 });

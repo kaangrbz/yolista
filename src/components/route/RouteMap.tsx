@@ -4,8 +4,8 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
+import { showConfirm } from '../common/ConfirmModal';
 import MapView, {
   Marker,
   Polyline,
@@ -53,14 +53,15 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 
   const handleStartLocationSelection = () => {
     setIsSelecting(true);
-    Alert.alert(
-      'Konum Seçimi',
-      'Haritada bir noktaya dokunarak durak konumunu belirleyin.',
-      [
-        { text: 'İptal', onPress: () => setIsSelecting(false) },
-        { text: 'Tamam' },
+    showConfirm({
+      title: 'Konum Seçimi',
+      message: 'Haritada bir noktaya dokunarak durak konumunu belirleyin.',
+      icon: 'map-marker-radius',
+      actions: [
+        { key: 'cancel', label: 'İptal', variant: 'ghost', onPress: () => setIsSelecting(false) },
+        { key: 'ok', label: 'Tamam', variant: 'primary' },
       ],
-    );
+    });
   };
 
   const handleCenterOnCurrentStop = () => {

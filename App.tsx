@@ -8,7 +8,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Text, ActivityIndicator, Animated } from 'react-native';
 import { useAlert } from './src/context/AlertContext';
-import {AuthProvider} from './src/context/AuthContext';
+import { AuthProvider} from './src/context/AuthContext';
+import { AppThemeProvider } from './src/context/AppThemeContext';
 import {AlertProvider} from './src/context/AlertContext';
 import {AppNavigator} from './src/navigation/AppNavigator';
 import Toast, {BaseToast} from 'react-native-toast-message';
@@ -16,6 +17,9 @@ import { LogBox } from 'react-native';
 import { Logo } from './src/components/Logo';
 import { ImageService } from './src/services/ImageService';
 import GlobalAlert from './src/components/common/GlobalAlert';
+import CreateFlowExitModalHost from './src/components/createFlow/CreateFlowExitModal';
+import { ConfirmModalHost } from './src/components/common/ConfirmModal';
+import { getCachedCategories } from './src/services/categoriesCache';
 import DeepLinkingService from './src/services/DeepLinkingService';
 import AuthLinkingService from './src/services/AuthLinkingService';
 import { useRoutePublishStore } from './src/store/routePublishStore';
@@ -76,6 +80,11 @@ const AppContent = (): React.JSX.Element => {
 
       // Initialize image cache
       ImageService.initializeCache();
+
+      // Kategorileri arka planda ısıt — uygulama açılır açılmaz cache hazır olsun.
+      getCachedCategories().catch(() => {
+        // ilk açılışta ağ yoksa sessizce geç; bir sonraki ekran tekrar deneyecek.
+      });
 
       Promise.resolve(useRoutePublishStore.getState().resumePendingDraftIfAny()).catch(() => {
         // Resume is best-effort
@@ -141,6 +150,8 @@ const AppContent = (): React.JSX.Element => {
         alert={currentAlert}
         onDismiss={hideAlert}
       />
+      <CreateFlowExitModalHost />
+      <ConfirmModalHost />
     </>
   );
 };
@@ -149,13 +160,15 @@ function App(): React.JSX.Element {
   return (
     <GestureHandlerRootView style={styles.rootGesture}>
       <SafeAreaProvider>
-        <AuthProvider>
-          <AlertProvider>
-            <BottomSheetModalProvider>
-              <AppContent />
-            </BottomSheetModalProvider>
-          </AlertProvider>
-        </AuthProvider>
+        <AppThemeProvider>
+          <AuthProvider>
+            <AlertProvider>
+              <BottomSheetModalProvider>
+                <AppContent />
+              </BottomSheetModalProvider>
+            </AlertProvider>
+          </AuthProvider>
+        </AppThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

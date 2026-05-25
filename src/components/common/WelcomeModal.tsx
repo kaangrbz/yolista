@@ -2,7 +2,8 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Logo } from '../Logo';
-import { authTheme } from '../../theme/authTheme';
+import { useAuthTheme } from '../../context/AppThemeContext';
+import { useAuthThemedStyles } from '../../theme/useAuthThemedStyles';
 import AppModal from './AppModal';
 
 interface WelcomeModalProps {
@@ -35,6 +36,52 @@ const welcomeFeatures: WelcomeFeature[] = [
 ];
 
 const WelcomeModal: React.FC<WelcomeModalProps> = ({ visible, onDismiss }) => {
+  const theme = useAuthTheme();
+  const styles = useAuthThemedStyles((t) => ({
+    brandRow: {
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    features: {
+      gap: 12,
+    },
+    featureRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      backgroundColor: t.inputBg,
+      borderRadius: 16,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: t.inputBorder,
+    },
+    featureIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: t.inputFocusBg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+      borderWidth: 1,
+      borderColor: t.cardBorder,
+    },
+    featureText: {
+      flex: 1,
+      paddingTop: 2,
+    },
+    featureTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: t.textPrimary,
+      marginBottom: 4,
+    },
+    featureDescription: {
+      fontSize: 13,
+      lineHeight: 19,
+      color: t.textSecondary,
+    },
+  }));
+
   const handleStart = () => {
     onDismiss();
   };
@@ -54,14 +101,14 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ visible, onDismiss }) => {
       }}
     >
       <View style={styles.brandRow}>
-        <Logo size="small" color={authTheme.primary} />
+        <Logo size="small" color={theme.primary} />
       </View>
 
       <View style={styles.features}>
         {welcomeFeatures.map((feature) => (
           <View key={feature.title} style={styles.featureRow}>
             <View style={styles.featureIconWrap}>
-              <Icon name={feature.icon} size={22} color={authTheme.primary} />
+              <Icon name={feature.icon} size={22} color={theme.primary} />
             </View>
             <View style={styles.featureText}>
               <Text style={styles.featureTitle}>{feature.title}</Text>
@@ -73,50 +120,5 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ visible, onDismiss }) => {
     </AppModal>
   );
 };
-
-const styles = StyleSheet.create({
-  brandRow: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  features: {
-    gap: 12,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: authTheme.inputBg,
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: authTheme.inputBorder,
-  },
-  featureIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: authTheme.cardBorder,
-  },
-  featureText: {
-    flex: 1,
-    paddingTop: 2,
-  },
-  featureTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: authTheme.textPrimary,
-    marginBottom: 4,
-  },
-  featureDescription: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: authTheme.textSecondary,
-  },
-});
 
 export default WelcomeModal;

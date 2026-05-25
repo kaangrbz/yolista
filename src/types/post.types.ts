@@ -81,6 +81,7 @@ export interface PostHeaderProps {
   onCopyLinkPress?: () => void;
   isOwnPost?: boolean;
   isFollowing?: boolean;
+  isVerified?: boolean;
 }
 
 export interface PostActionsProps {

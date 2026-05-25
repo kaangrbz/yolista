@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TextInput,
-  StyleSheet,
   TouchableOpacity,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -13,7 +12,8 @@ import {
   STOP_DESCRIPTION_MAX_LENGTH,
   STOP_TITLE_MAX_LENGTH,
 } from '../../constants/routeContentLimits';
-import { appTheme } from '../../theme/appTheme';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface StopFormProps {
   stop: RouteStop;
@@ -21,11 +21,100 @@ interface StopFormProps {
 }
 
 export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+      paddingVertical: 8,
+    },
+    inputGroup: {
+      marginBottom: 20,
+    },
+    labelContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    label: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: t.textPrimary,
+      marginLeft: 8,
+    },
+    optional: {
+      fontSize: 12,
+      color: t.textMuted,
+      marginLeft: 6,
+      textTransform: 'lowercase',
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: t.borderStrong,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 16,
+      color: t.textPrimary,
+      backgroundColor: t.background,
+    },
+    textArea: {
+      minHeight: 120,
+      maxHeight: 220,
+      paddingTop: 12,
+    },
+    charCount: {
+      fontSize: 12,
+      color: t.textMuted,
+      textAlign: 'right',
+      marginTop: 4,
+    },
+    locationInfo: {
+      backgroundColor: t.surfaceMuted,
+      borderRadius: 12,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    locationHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    locationLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: t.textSecondary,
+      marginLeft: 8,
+    },
+    locationDetails: {
+      gap: 4,
+    },
+    coordinatesText: {
+      fontSize: 12,
+      color: t.textSecondary,
+      fontFamily: 'monospace',
+    },
+    addressText: {
+      fontSize: 14,
+      color: t.textPrimary,
+      marginTop: 4,
+    },
+    clearLocationButton: {
+      marginTop: 8,
+      alignSelf: 'flex-start',
+    },
+    clearLocationText: {
+      fontSize: 13,
+      color: '#c62828',
+      fontWeight: '500',
+    },
+  }));
+
   return (
     <View style={styles.container}>
       <View style={styles.inputGroup}>
         <View style={styles.labelContainer}>
-          <Icon name="text-short" size={16} color={appTheme.textSecondary} />
+          <Icon name="text-short" size={16} color={theme.textSecondary} />
           <Text style={styles.label}>Başlık</Text>
           <Text style={styles.optional}>opsiyonel</Text>
         </View>
@@ -34,7 +123,7 @@ export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
           value={stop.title}
           onChangeText={(text) => onUpdate('title', text)}
           placeholder="Örn: Galata, sahilde gün batımı…"
-          placeholderTextColor={appTheme.textMuted}
+          placeholderTextColor={theme.textMuted}
           maxLength={STOP_TITLE_MAX_LENGTH}
         />
         <Text style={styles.charCount}>
@@ -44,7 +133,7 @@ export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
 
       <View style={styles.inputGroup}>
         <View style={styles.labelContainer}>
-          <Icon name="text" size={16} color={appTheme.textSecondary} />
+          <Icon name="text" size={16} color={theme.textSecondary} />
           <Text style={styles.label}>Not</Text>
           <Text style={styles.optional}>opsiyonel</Text>
         </View>
@@ -53,7 +142,7 @@ export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
           value={stop.description}
           onChangeText={(text) => onUpdate('description', text)}
           placeholder="Bu karede neler var, kısa bir ipucu…"
-          placeholderTextColor={appTheme.textMuted}
+          placeholderTextColor={theme.textMuted}
           multiline
           numberOfLines={4}
           textAlignVertical="top"
@@ -67,7 +156,7 @@ export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
       {stop.coordinate ? (
         <View style={styles.locationInfo}>
           <View style={styles.locationHeader}>
-            <Icon name="map-marker" size={16} color={appTheme.textSecondary} />
+            <Icon name="map-marker" size={16} color={theme.textSecondary} />
             <Text style={styles.locationLabel}>Konum</Text>
           </View>
 
@@ -92,91 +181,3 @@ export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingVertical: 8,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  labelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: appTheme.textPrimary,
-    marginLeft: 8,
-  },
-  optional: {
-    fontSize: 12,
-    color: appTheme.textMuted,
-    marginLeft: 6,
-    textTransform: 'lowercase',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: appTheme.borderStrong,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: appTheme.textPrimary,
-    backgroundColor: appTheme.background,
-  },
-  textArea: {
-    minHeight: 120,
-    maxHeight: 220,
-    paddingTop: 12,
-  },
-  charCount: {
-    fontSize: 12,
-    color: appTheme.textMuted,
-    textAlign: 'right',
-    marginTop: 4,
-  },
-  locationInfo: {
-    backgroundColor: appTheme.surfaceMuted,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: appTheme.border,
-  },
-  locationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  locationLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: appTheme.textSecondary,
-    marginLeft: 8,
-  },
-  locationDetails: {
-    gap: 4,
-  },
-  coordinatesText: {
-    fontSize: 12,
-    color: appTheme.textSecondary,
-    fontFamily: 'monospace',
-  },
-  addressText: {
-    fontSize: 14,
-    color: appTheme.textPrimary,
-    marginTop: 4,
-  },
-  clearLocationButton: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-  },
-  clearLocationText: {
-    fontSize: 13,
-    color: '#c62828',
-    fontWeight: '500',
-  },
-});

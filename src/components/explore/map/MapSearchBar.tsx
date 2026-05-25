@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   FlatList,
   Keyboard,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -20,7 +19,8 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import GeocodingService, {
   GeocodingResult,
 } from '../../../services/GeocodingService';
-import { appTheme } from '../../../theme/appTheme';
+import { useAppTheme } from '../../../context/AppThemeContext';
+import { useThemedStyles } from '../../../theme/useThemedStyles';
 
 interface MapSearchBarProps {
   onResultPress: (result: GeocodingResult) => void;
@@ -58,6 +58,94 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
   onResultPress,
   placeholder = 'Şehir, tarihi yer, mekan ara...',
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+    },
+    inputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.background,
+      borderRadius: 22,
+      paddingHorizontal: 12,
+      height: 44,
+      borderWidth: 1,
+      borderColor: t.border,
+      shadowColor: '#000',
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 3,
+    },
+    leadingIcon: {
+      marginRight: 6,
+    },
+    input: {
+      flex: 1,
+      fontSize: 14,
+      color: t.textPrimary,
+      paddingVertical: 0,
+    },
+    trailingIcon: {
+      marginLeft: 6,
+    },
+    resultsCard: {
+      marginTop: 6,
+      backgroundColor: t.background,
+      borderRadius: 12,
+      maxHeight: 280,
+      borderWidth: 1,
+      borderColor: t.border,
+      shadowColor: '#000',
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+    resultRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    resultIconWrapper: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: t.surfaceMuted,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 10,
+    },
+    resultTexts: {
+      flex: 1,
+    },
+    resultTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: t.textPrimary,
+    },
+    resultSubtitle: {
+      fontSize: 11,
+      color: t.textSecondary,
+      marginTop: 2,
+    },
+    separator: {
+      height: 1,
+      backgroundColor: t.border,
+      marginHorizontal: 12,
+    },
+    emptyState: {
+      padding: 16,
+      alignItems: 'center',
+    },
+    emptyText: {
+      fontSize: 12,
+      color: t.textSecondary,
+    },
+  }));
+
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GeocodingResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -131,7 +219,7 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
             <Icon
               name={iconForType(item.type)}
               size={16}
-              color={appTheme.textSecondary}
+              color={theme.textSecondary}
             />
           </View>
 
@@ -146,7 +234,7 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
         </TouchableOpacity>
       );
     },
-    [handleSelect],
+    [handleSelect, styles, theme.textSecondary],
   );
 
   return (
@@ -155,7 +243,7 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
         <Icon
           name="magnify"
           size={18}
-          color={appTheme.textSecondary}
+          color={theme.textSecondary}
           style={styles.leadingIcon}
         />
 
@@ -164,7 +252,7 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
           value={query}
           onChangeText={setQuery}
           placeholder={placeholder}
-          placeholderTextColor={appTheme.textMuted}
+          placeholderTextColor={theme.textMuted}
           returnKeyType="search"
           autoCorrect={false}
           autoCapitalize="none"
@@ -175,12 +263,12 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
         {loading ? (
           <ActivityIndicator
             size="small"
-            color={appTheme.textSecondary}
+            color={theme.textSecondary}
             style={styles.trailingIcon}
           />
         ) : query.length > 0 ? (
           <TouchableOpacity onPress={handleClear} style={styles.trailingIcon}>
-            <Icon name="close-circle" size={16} color={appTheme.textMuted} />
+            <Icon name="close-circle" size={16} color={theme.textMuted} />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -205,92 +293,5 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.97)',
-    borderRadius: 22,
-    paddingHorizontal: 12,
-    height: 44,
-    borderWidth: 1,
-    borderColor: appTheme.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  leadingIcon: {
-    marginRight: 6,
-  },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    color: appTheme.textPrimary,
-    paddingVertical: 0,
-  },
-  trailingIcon: {
-    marginLeft: 6,
-  },
-  resultsCard: {
-    marginTop: 6,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    maxHeight: 280,
-    borderWidth: 1,
-    borderColor: appTheme.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  resultRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  resultIconWrapper: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: appTheme.surfaceMuted,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  resultTexts: {
-    flex: 1,
-  },
-  resultTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: appTheme.textPrimary,
-  },
-  resultSubtitle: {
-    fontSize: 11,
-    color: appTheme.textSecondary,
-    marginTop: 2,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: appTheme.border,
-    marginHorizontal: 12,
-  },
-  emptyState: {
-    padding: 16,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 12,
-    color: appTheme.textSecondary,
-  },
-});
 
 export default MapSearchBar;

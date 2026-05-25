@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { BottomTabBar, BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { appTheme } from '../theme/appTheme';
+import { useThemedStyles } from '../theme/useThemedStyles';
 
 /**
  * Sadece üst çizgi / arka plan sarmalayıcı.
@@ -9,17 +9,17 @@ import { appTheme } from '../theme/appTheme';
  * manuel height + paddingBottom çift boşluk oluşturuyordu.
  */
 export const AppTabBar = (props: BottomTabBarProps) => {
+  const styles = useThemedStyles((theme) => ({
+    outer: {
+      backgroundColor: theme.background,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.hairlineBorder,
+    },
+  }));
+
   return (
     <View style={styles.outer}>
       <BottomTabBar {...props} />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  outer: {
-    backgroundColor: appTheme.background,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0, 0, 0, 0.08)',
-  },
-});

@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
-import { StyleProp, ViewStyle } from 'react-native';
-import Animated, {
+import { Platform, StyleProp, ViewStyle } from 'react-native';
+import {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
   withSpring,
 } from 'react-native-reanimated';
+import { ReanimatedView } from '../../../utils/reanimatedComponents';
 
 interface AuthAnimatedSectionProps {
   children: React.ReactNode;
@@ -32,9 +33,12 @@ const AuthAnimatedSection: React.FC<AuthAnimatedSectionProps> = ({
   }));
 
   return (
-    <Animated.View style={[animatedStyle, style]}>
+    <ReanimatedView
+      style={[animatedStyle, style]}
+      collapsable={Platform.OS === 'android' ? false : undefined}
+    >
       {children}
-    </Animated.View>
+    </ReanimatedView>
   );
 };
 

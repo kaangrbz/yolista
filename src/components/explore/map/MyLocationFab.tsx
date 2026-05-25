@@ -1,50 +1,52 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { appTheme } from '../../../theme/appTheme';
+import { useAppTheme } from '../../../context/AppThemeContext';
+import { useThemedStyles } from '../../../theme/useThemedStyles';
 
 interface MyLocationFabProps {
   onPress: () => void;
   loading?: boolean;
-  bottomOffset?: number;
+  topOffset?: number;
 }
 
 export const MyLocationFab: React.FC<MyLocationFabProps> = ({
   onPress,
   loading = false,
-  bottomOffset = 80,
+  topOffset = 80,
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    fab: {
+      position: 'absolute',
+      right: 14,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: t.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 3,
+    },
+  }));
+
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.85}
-      style={[styles.fab, { bottom: bottomOffset }]}
+      style={[styles.fab, { top: topOffset }]}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={appTheme.accent} />
+        <ActivityIndicator size="small" color={theme.accent} />
       ) : (
-        <Icon name="crosshairs-gps" size={22} color={appTheme.textPrimary} />
+        <Icon name="crosshairs-gps" size={22} color={theme.textPrimary} />
       )}
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({
-  fab: {
-    position: 'absolute',
-    right: 14,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-});
 
 export default MyLocationFab;

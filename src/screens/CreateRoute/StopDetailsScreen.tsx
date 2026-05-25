@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   SafeAreaView,
   Alert,
   Dimensions,
@@ -12,7 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import { ImageCarousel } from '../../components/route/ImageCarousel';
 import { StopForm } from '../../components/route/StopForm';
 import KeyboardAwareContainer from '../../components/common/KeyboardAwareContainer';
-import { appTheme } from '../../theme/appTheme';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 import { useCreateRouteFlowStore } from '../../store/createRouteFlowStore';
 import { useCreateFlowPreventRemove } from '../../hooks/useCreateFlowPreventRemove';
 import { useCreateFlowAndroidBack } from '../../hooks/useCreateFlowAndroidBack';
@@ -42,6 +41,94 @@ export const StopDetailsScreen = () => {
 
   useCreateFlowPreventRemove('stops');
   useCreateFlowAndroidBack('stops');
+
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    loadingText: {
+      marginTop: 24,
+      textAlign: 'center',
+      color: t.textSecondary,
+      fontSize: 16,
+    },
+    header: {
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: t.border,
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: t.textPrimary,
+      marginBottom: 6,
+    },
+    subtitle: {
+      fontSize: 15,
+      color: t.textSecondary,
+      lineHeight: 22,
+    },
+    keyboardContainer: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingBottom: 24,
+    },
+    carouselContainer: {
+      height: screenHeight * 0.36,
+      backgroundColor: '#000000',
+      marginHorizontal: 20,
+      marginTop: 16,
+      borderRadius: 16,
+      overflow: 'hidden',
+      marginBottom: 12,
+    },
+    formContainer: {
+      minHeight: 200,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      flex: 1,
+    },
+    footer: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderTopWidth: 1,
+      borderTopColor: t.border,
+      backgroundColor: t.background,
+    },
+    buttonRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    button: {
+      flex: 1,
+      paddingVertical: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    skipButton: {
+      backgroundColor: t.surfaceMuted,
+      borderWidth: 1,
+      borderColor: t.borderStrong,
+    },
+    continueButton: {
+      backgroundColor: t.accent,
+    },
+    buttonText: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    continueButtonText: {
+      color: t.background,
+    },
+    skipButtonText: {
+      color: t.textSecondary,
+    },
+  }));
 
   useEffect(() => {
     if (selectedPhotos.length === 0) {
@@ -179,91 +266,3 @@ export const StopDetailsScreen = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: appTheme.background,
-  },
-  loadingText: {
-    marginTop: 24,
-    textAlign: 'center',
-    color: appTheme.textSecondary,
-    fontSize: 16,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: appTheme.border,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: appTheme.textPrimary,
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: appTheme.textSecondary,
-    lineHeight: 22,
-  },
-  keyboardContainer: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 24,
-  },
-  carouselContainer: {
-    height: screenHeight * 0.36,
-    backgroundColor: '#000000',
-    marginHorizontal: 20,
-    marginTop: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  formContainer: {
-    minHeight: 200,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    flex: 1,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: appTheme.border,
-    backgroundColor: appTheme.background,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  skipButton: {
-    backgroundColor: appTheme.surfaceMuted,
-    borderWidth: 1,
-    borderColor: appTheme.borderStrong,
-  },
-  continueButton: {
-    backgroundColor: appTheme.accent,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  continueButtonText: {
-    color: appTheme.background,
-  },
-  skipButtonText: {
-    color: appTheme.textSecondary,
-  },
-});

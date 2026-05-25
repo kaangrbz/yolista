@@ -6,7 +6,6 @@ import {
   ScrollView,
   SafeAreaView,
   RefreshControl,
-  Alert,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
@@ -18,11 +17,13 @@ import { navigate, PageName } from '../types/navigation';
 import type { SocialUserListRouteParams } from '../types/socialUserList';
 import UserModel from '../model/user.model';
 import RouteModel, { RouteWithProfile } from '../model/routes.model';
-import { Profile } from '../model/profile.model';
+import { Profile, ProfileBadge } from '../model/profile.model';
+import { fetchBadgesForUser } from '../lib/profileBadges';
 import ProfileEditModal from '../components/profile/ProfileEditModal';
 import { deleteAccount } from '../services/AccountService';
 import ImageViewer from '../components/ImageViewer';
 import ShareModal from '../components/ShareModal';
+import { showConfirm } from '../components/common/ConfirmModal';
 import { ShareService } from '../services/ShareService';
 import { decodeProfileUsername } from '../utils/profileSlug';
 import {
@@ -123,6 +124,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     () => authUser?.id || routeParams.currentUserId || null,
   );
   const [user, setUser] = useState<Profile | null>(null);
+  const [badges, setBadges] = useState<ProfileBadge[]>([]);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
@@ -290,6 +292,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           setModalImageUri(null);
           setModalHeaderImageUri(null);
         }
+      }
+
+      if (targetUserId) {
+        void fetchBadgesForUser(targetUserId).then(setBadges);
+      } else {
+        setBadges([]);
       }
 
       if (targetUserId && targetUserId !== loggedInUserId) {
@@ -507,20 +515,24 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   };
 
   const handleDeleteAccountPress = () => {
-    Alert.alert(
-      'Hesabı sil',
-      'Hesabınız kalıcı olarak silinecek; profiliniz, gönderileriniz ve kayıtlarınız geri alınamaz. Devam etmek istiyor musunuz?',
-      [
-        { text: 'İptal', style: 'cancel' },
+    showConfirm({
+      title: 'Hesabı sil',
+      message:
+        'Hesabınız kalıcı olarak silinecek; profiliniz, gönderileriniz ve kayıtlarınız geri alınamaz. Devam etmek istiyor musunuz?',
+      icon: 'alert-octagon-outline',
+      iconColor: '#dc2626',
+      actions: [
+        { key: 'cancel', label: 'İptal', variant: 'ghost' },
         {
-          text: 'Hesabımı sil',
-          style: 'destructive',
+          key: 'delete-account',
+          label: 'Hesabımı sil',
+          variant: 'destructive',
           onPress: () => {
             void runDeleteAccount();
           },
         },
       ],
-    );
+    });
   };
 
   const runDeleteAccount = async () => {
@@ -748,7 +760,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           isFollowLoading={isFollowLoading}
           onEditPress={() => setIsEditModalVisible(true)}
           onFollowToggle={handleFollowToggle}
-          isEmailConfirmed={isEmailConfirmed}
+          badges={badges}
         />
 
         <ProfileStats

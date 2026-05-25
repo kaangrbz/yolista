@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, {
+import {
   Easing,
   useAnimatedStyle,
   useSharedValue,
@@ -8,9 +8,52 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { authTheme } from '../../../theme/authTheme';
+import { ReanimatedView } from '../../../utils/reanimatedComponents';
+import { useAuthThemedStyles } from '../../../theme/useAuthThemedStyles';
 
 const AuthFloatingBackground: React.FC = () => {
+  const styles = useAuthThemedStyles((t) => ({
+    container: {
+      ...StyleSheet.absoluteFill,
+    },
+    orbSlot: {
+      position: 'absolute',
+    },
+    orb: {
+      borderRadius: 999,
+    },
+    orbOneSlot: {
+      top: 48,
+      right: -72,
+    },
+    orbOne: {
+      width: 240,
+      height: 240,
+      backgroundColor: t.orb1,
+      opacity: 0.55,
+    },
+    orbTwoSlot: {
+      top: 220,
+      left: -56,
+    },
+    orbTwo: {
+      width: 180,
+      height: 180,
+      backgroundColor: t.orb2,
+      opacity: 0.45,
+    },
+    orbThreeSlot: {
+      bottom: 48,
+      right: -88,
+    },
+    orbThree: {
+      width: 300,
+      height: 300,
+      backgroundColor: t.orb3,
+      opacity: 0.5,
+    },
+  }));
+
   const orbOneY = useSharedValue(0);
   const orbTwoY = useSharedValue(0);
   const orbThreeScale = useSharedValue(1);
@@ -60,58 +103,17 @@ const AuthFloatingBackground: React.FC = () => {
 
   return (
     <View style={styles.container} pointerEvents="none">
-      <View style={styles.gradientBase} />
-      <View style={styles.topWash} />
-      <Animated.View style={[styles.orb, styles.orbOne, orbOneStyle]} />
-      <Animated.View style={[styles.orb, styles.orbTwo, orbTwoStyle]} />
-      <Animated.View style={[styles.orb, styles.orbThree, orbThreeStyle]} />
+      <ReanimatedView style={[styles.orbSlot, styles.orbOneSlot, orbOneStyle]}>
+        <View style={[styles.orb, styles.orbOne]} />
+      </ReanimatedView>
+      <ReanimatedView style={[styles.orbSlot, styles.orbTwoSlot, orbTwoStyle]}>
+        <View style={[styles.orb, styles.orbTwo]} />
+      </ReanimatedView>
+      <ReanimatedView style={[styles.orbSlot, styles.orbThreeSlot, orbThreeStyle]}>
+        <View style={[styles.orb, styles.orbThree]} />
+      </ReanimatedView>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
-  gradientBase: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: authTheme.backgroundBottom,
-  },
-  topWash: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '55%',
-    backgroundColor: authTheme.backgroundTop,
-    opacity: 0.85,
-  },
-  orb: {
-    position: 'absolute',
-    borderRadius: 999,
-  },
-  orbOne: {
-    width: 220,
-    height: 220,
-    top: -40,
-    right: -50,
-    backgroundColor: authTheme.orb1,
-  },
-  orbTwo: {
-    width: 160,
-    height: 160,
-    top: 120,
-    left: -40,
-    backgroundColor: authTheme.orb2,
-  },
-  orbThree: {
-    width: 280,
-    height: 280,
-    bottom: -80,
-    right: -60,
-    backgroundColor: authTheme.orb3,
-  },
-});
 
 export default AuthFloatingBackground;

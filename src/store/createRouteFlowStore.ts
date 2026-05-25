@@ -294,7 +294,7 @@ export const useCreateRouteFlowStore = create<CreateRouteFlowState>((set, get) =
         return photos.every((photo) => photo.uploadStatus === 'done');
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      await new Promise<void>((resolve) => setTimeout(() => resolve(), 400));
     }
 
     return false;

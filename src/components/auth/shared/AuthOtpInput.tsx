@@ -8,7 +8,8 @@ import {
   TextInputKeyPressEventData,
   View,
 } from 'react-native';
-import { authTheme } from '../../../theme/authTheme';
+import { AUTH_MOBILE } from '../../../shared/auth-messages';
+import { useAuthThemedStyles } from '../../../theme/useAuthThemedStyles';
 
 const OTP_LENGTH = 6;
 
@@ -18,6 +19,54 @@ interface AuthOtpInputProps {
 }
 
 const AuthOtpInput: React.FC<AuthOtpInputProps> = ({ value, onChange }) => {
+  const styles = useAuthThemedStyles((t) => ({
+    label: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: t.textSecondary,
+      marginBottom: 12,
+      marginLeft: 4,
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 8,
+      marginBottom: 8,
+    },
+    cell: {
+      flex: 1,
+      aspectRatio: 0.85,
+      maxWidth: 52,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: t.inputBorder,
+      backgroundColor: t.inputBg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cellFocused: {
+      borderColor: t.primary,
+      backgroundColor: t.inputFocusBg,
+      shadowColor: t.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    cellFilled: {
+      borderColor: t.primary,
+    },
+    cellInput: {
+      width: '100%',
+      height: '100%',
+      textAlign: 'center',
+      fontSize: 22,
+      fontWeight: '700',
+      color: t.textPrimary,
+      padding: 0,
+    },
+  }));
+
   const inputRefs = useRef<Array<TextInput | null>>([]);
   const [focusedIndex, setFocusedIndex] = useState(0);
 
@@ -88,7 +137,7 @@ const AuthOtpInput: React.FC<AuthOtpInputProps> = ({ value, onChange }) => {
 
   return (
     <View>
-      <Text style={styles.label}>Doğrulama kodu</Text>
+      <Text style={styles.label}>{AUTH_MOBILE.verify.otpInputLabel}</Text>
       <View style={styles.row}>
         {digits.map((digit, index) => {
           const isActive = focusedIndex === index;
@@ -127,53 +176,5 @@ const AuthOtpInput: React.FC<AuthOtpInputProps> = ({ value, onChange }) => {
 };
 
 export { OTP_LENGTH };
-
-const styles = StyleSheet.create({
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: authTheme.textSecondary,
-    marginBottom: 12,
-    marginLeft: 4,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 8,
-  },
-  cell: {
-    flex: 1,
-    aspectRatio: 0.85,
-    maxWidth: 52,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: authTheme.inputBorder,
-    backgroundColor: authTheme.inputBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cellFocused: {
-    borderColor: authTheme.primary,
-    backgroundColor: '#FFFFFF',
-    shadowColor: authTheme.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cellFilled: {
-    borderColor: authTheme.primary,
-  },
-  cellInput: {
-    width: '100%',
-    height: '100%',
-    textAlign: 'center',
-    fontSize: 22,
-    fontWeight: '700',
-    color: authTheme.textPrimary,
-    padding: 0,
-  },
-});
 
 export default AuthOtpInput;

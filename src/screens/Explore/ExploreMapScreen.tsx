@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -20,12 +19,12 @@ import MapView, {
   Region,
   UrlTile,
 } from 'react-native-maps';
-import ClusteredMapView from 'react-native-map-clustering';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { appTheme } from '../../theme/appTheme';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 import { useAuth } from '../../context/AuthContext';
 import RouteModel, { RouteWithProfile } from '../../model/routes.model';
 import CategoryModel from '../../model/category.model';
@@ -33,10 +32,9 @@ import { CategoryItem } from '../../types/category.types';
 import { requestLocation } from '../../permissions';
 import { useViewportRoutes } from '../../hooks/useViewportRoutes';
 import {
-  CLUSTER_MIN_POINTS,
-  CLUSTER_RADIUS,
-  DEFAULT_MAP_REGION,
   ROUTE_FOCUS_ZOOM_DELTA,
+  TURKEY_BOUNDS,
+  TURKEY_REGION,
   USER_LOCATION_ZOOM_DELTA,
 } from '../../constants/mapDefaults';
 import {
@@ -46,10 +44,10 @@ import {
 } from '../../constants/mapStyles';
 
 import MapFilterBar, { MapFilters } from '../../components/explore/map/MapFilterBar';
-import MapClusterMarker from '../../components/explore/map/MapClusterMarker';
 import MapRouteMarker from '../../components/explore/map/MapRouteMarker';
 import MapStyleToggle from '../../components/explore/map/MapStyleToggle';
 import MyLocationFab from '../../components/explore/map/MyLocationFab';
+import MapZoomControls from '../../components/explore/map/MapZoomControls';
 import MapSearchBar from '../../components/explore/map/MapSearchBar';
 import { GeocodingResult } from '../../services/GeocodingService';
 import MapBottomSheet, {
@@ -70,7 +68,7 @@ const ExploreMapScreen: React.FC = () => {
   const mapRef = useRef<MapView>(null);
   const sheetRef = useRef<MapBottomSheetHandle>(null);
 
-  const [region, setRegion] = useState<Region>(DEFAULT_MAP_REGION);
+  const [region, setRegion] = useState<Region>(TURKEY_REGION);
   const [filters, setFilters] = useState<MapFilters>(DEFAULT_FILTERS);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [userCoordinate, setUserCoordinate] = useState<LatLng | null>(null);
@@ -79,6 +77,87 @@ const ExploreMapScreen: React.FC = () => {
   const [polylineLoading, setPolylineLoading] = useState(false);
   const [mapStyleMode, setMapStyleMode] = useState<MapStyleMode>('light');
   const [locating, setLocating] = useState(false);
+  const [locationGranted, setLocationGranted] = useState(false);
+
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    map: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    topBar: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      paddingHorizontal: 8,
+    },
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingTop: 4,
+    },
+    backButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: t.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 8,
+      shadowColor: '#000',
+      shadowOpacity: 0.12,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 3,
+    },
+    searchBarWrapper: {
+      flex: 1,
+    },
+    filterBarRow: {
+      marginTop: 6,
+    },
+    loadingBadge: {
+      position: 'absolute',
+      alignSelf: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.background,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      shadowColor: '#000',
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 2,
+    },
+    loadingText: {
+      marginLeft: 8,
+      fontSize: 12,
+      color: t.textSecondary,
+      fontWeight: '500',
+    },
+    attribution: {
+      position: 'absolute',
+      alignSelf: 'center',
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      backgroundColor: t.background,
+      borderRadius: 4,
+    },
+    attributionText: {
+      fontSize: 9,
+      color: t.textSecondary,
+    },
+  }));
 
   const discoveryFilters = useMemo(() => {
     return {
@@ -135,18 +214,48 @@ const ExploreMapScreen: React.FC = () => {
     };
   }, []);
 
+  const fitTurkey = useCallback(() => {
+    mapRef.current?.fitToCoordinates(
+      [TURKEY_BOUNDS.northEast, TURKEY_BOUNDS.southWest],
+      {
+        edgePadding: { top: 80, right: 40, bottom: 220, left: 40 },
+        animated: true,
+      },
+    );
+  }, []);
+
   useEffect(() => {
     let isCancelled = false;
 
     const tryGetLocation = async () => {
-      const granted = await requestLocation();
+      try {
+        const granted = await requestLocation();
 
-      if (!granted || isCancelled) {
-        return;
+        if (isCancelled) {
+          return;
+        }
+
+        setLocationGranted(granted);
+
+        if (!granted) {
+          // Konum yoksa Türkiye'yi tam kapsayacak şekilde sığdır.
+          setTimeout(() => {
+            if (!isCancelled) {
+              fitTurkey();
+            }
+          }, 300);
+        }
+      } catch (err) {
+        console.warn('Location permission error:', err);
+
+        if (!isCancelled) {
+          setTimeout(() => {
+            if (!isCancelled) {
+              fitTurkey();
+            }
+          }, 300);
+        }
       }
-
-      // Konum, MapView'in onUserLocationChange event'i üzerinden de yakalanır.
-      // Burada extra bir şey yapmıyoruz, sadece izin alıyoruz.
     };
 
     void tryGetLocation();
@@ -154,7 +263,7 @@ const ExploreMapScreen: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [fitTurkey]);
 
   const handleRegionChangeComplete = useCallback((next: Region) => {
     setRegion(next);
@@ -263,6 +372,8 @@ const ExploreMapScreen: React.FC = () => {
     try {
       const granted = await requestLocation();
 
+      setLocationGranted(granted);
+
       if (!granted) {
         return;
       }
@@ -288,6 +399,29 @@ const ExploreMapScreen: React.FC = () => {
   const handleStyleToggle = useCallback(() => {
     setMapStyleMode((prev) => getNextMapStyle(prev));
   }, []);
+
+  const handleZoom = useCallback(
+    (factor: number) => {
+      const next: Region = {
+        latitude: region.latitude,
+        longitude: region.longitude,
+        latitudeDelta: Math.min(
+          Math.max(region.latitudeDelta * factor, 0.001),
+          180,
+        ),
+        longitudeDelta: Math.min(
+          Math.max(region.longitudeDelta * factor, 0.001),
+          180,
+        ),
+      };
+
+      mapRef.current?.animateToRegion(next, 250);
+    },
+    [region],
+  );
+
+  const handleZoomIn = useCallback(() => handleZoom(0.5), [handleZoom]);
+  const handleZoomOut = useCallback(() => handleZoom(2), [handleZoom]);
 
   const handleSearchResult = useCallback((result: GeocodingResult) => {
     if (result.boundingBox) {
@@ -321,37 +455,80 @@ const ExploreMapScreen: React.FC = () => {
     );
   }, []);
 
-  const renderMarker = useCallback(
-    (route: RouteWithProfile) => {
+  // Aynı koordinattaki (≈11m hassasiyet) rotaları grupla — iskambil-kart efekti için.
+  const routeGroups = useMemo(() => {
+    const groups = new Map<string, RouteWithProfile[]>();
+
+    routes.forEach((route) => {
       if (
         typeof route.latitude !== 'number' ||
         typeof route.longitude !== 'number'
       ) {
+        return;
+      }
+
+      const key = `${route.latitude.toFixed(4)}_${route.longitude.toFixed(4)}`;
+      const existing = groups.get(key);
+
+      if (existing) {
+        existing.push(route);
+      } else {
+        groups.set(key, [route]);
+      }
+    });
+
+    return Array.from(groups.values());
+  }, [routes]);
+
+  const renderGroupMarker = useCallback(
+    (group: RouteWithProfile[]) => {
+      const primary = group[0];
+
+      if (
+        !primary ||
+        typeof primary.latitude !== 'number' ||
+        typeof primary.longitude !== 'number'
+      ) {
         return null;
       }
 
-      const isSelected = route.id === selectedRouteId;
+      const isSelected = group.some((r) => r.id === selectedRouteId);
+      const key = primary.id
+        ? `group-${primary.id}`
+        : `group-${primary.latitude.toFixed(4)}-${primary.longitude.toFixed(4)}`;
+      // Resim async indiği için ilk render'da tracksViewChanges açık olmalı;
+      // Marker'ın kendi içindeki MapRouteMarker yüklenince native tarafa kopyalanacak.
+      // Performans için Marker bir kez ısıdıktan sonra false'a düşürmek istenirse
+      // ileride bu mantık imageReady state'iyle iyileştirilebilir.
+      const hasImage = !!primary.image_url;
 
       return (
         <Marker
-          key={route.id}
-          identifier={route.id || undefined}
+          key={key}
+          identifier={primary.id || undefined}
           coordinate={{
-            latitude: route.latitude,
-            longitude: route.longitude,
+            latitude: primary.latitude,
+            longitude: primary.longitude,
           }}
-          tracksViewChanges={false}
+          tracksViewChanges={hasImage}
           onPress={(event) => {
             event.stopPropagation();
-            handleMarkerPress(route);
+            handleMarkerPress(primary);
           }}
-          onCalloutPress={() => handleCalloutPress(route)}
-          title={route.title}
-          description={route.cities?.name}
+          onCalloutPress={() => handleCalloutPress(primary)}
+          title={
+            group.length > 1
+              ? `${group.length} rota`
+              : primary.title
+          }
+          description={primary.cities?.name}
         >
           <MapRouteMarker
-            iconName={route.categories?.icon_name}
+            imageUrl={primary.image_url || null}
+            userId={primary.user_id || null}
+            iconName={primary.categories?.icon_name}
             selected={isSelected}
+            stackCount={group.length}
           />
         </Marker>
       );
@@ -359,49 +536,23 @@ const ExploreMapScreen: React.FC = () => {
     [handleCalloutPress, handleMarkerPress, selectedRouteId],
   );
 
-  const renderClusterFn = useCallback((cluster: any) => {
-    const { id, geometry, properties, onPress } = cluster;
-    const points = properties.point_count;
-
-    return (
-      <Marker
-        key={`cluster-${id}`}
-        coordinate={{
-          longitude: geometry.coordinates[0],
-          latitude: geometry.coordinates[1],
-        }}
-        onPress={onPress}
-        tracksViewChanges={false}
-      >
-        <MapClusterMarker count={points} />
-      </Marker>
-    );
-  }, []);
-
   const showsTopOffset = insets.top + 6;
   const tileSource = getTileSource(mapStyleMode);
 
   return (
     <View style={styles.container}>
-      <ClusteredMapView
-        mapRef={((ref: MapView | null) => {
-          (mapRef as React.MutableRefObject<MapView | null>).current = ref;
-        }) as any}
+      <MapView
+        ref={mapRef}
         provider={PROVIDER_DEFAULT}
         mapType="none"
         style={styles.map}
-        initialRegion={DEFAULT_MAP_REGION}
+        initialRegion={TURKEY_REGION}
         onRegionChangeComplete={handleRegionChangeComplete}
-        showsUserLocation
+        showsUserLocation={locationGranted}
         showsMyLocationButton={false}
         showsCompass={false}
         toolbarEnabled={false}
-        onUserLocationChange={handleUserLocationChange}
-        clusterColor={appTheme.accent}
-        clusterTextColor="#fff"
-        radius={CLUSTER_RADIUS}
-        minPoints={CLUSTER_MIN_POINTS}
-        renderCluster={renderClusterFn}
+        onUserLocationChange={locationGranted ? handleUserLocationChange : undefined}
       >
         <UrlTile
           urlTemplate={tileSource.urlTemplate}
@@ -420,16 +571,16 @@ const ExploreMapScreen: React.FC = () => {
           />
         ) : null}
 
-        {routes.map(renderMarker)}
+        {routeGroups.map(renderGroupMarker)}
 
         {polylineCoords.length > 1 ? (
           <Polyline
             coordinates={polylineCoords}
-            strokeColor={appTheme.accent}
+            strokeColor={theme.accent}
             strokeWidth={4}
           />
         ) : null}
-      </ClusteredMapView>
+      </MapView>
 
       <View
         style={[styles.topBar, { paddingTop: showsTopOffset }]}
@@ -441,7 +592,7 @@ const ExploreMapScreen: React.FC = () => {
             onPress={() => navigation.goBack()}
             activeOpacity={0.85}
           >
-            <Icon name="arrow-left" size={20} color={appTheme.textPrimary} />
+            <Icon name="arrow-left" size={20} color={theme.textPrimary} />
           </TouchableOpacity>
 
           <View style={styles.searchBarWrapper}>
@@ -460,21 +611,27 @@ const ExploreMapScreen: React.FC = () => {
 
       {loading || polylineLoading ? (
         <View style={[styles.loadingBadge, { top: showsTopOffset + 110 }]}>
-          <ActivityIndicator size="small" color={appTheme.accent} />
+          <ActivityIndicator size="small" color={theme.accent} />
           <Text style={styles.loadingText}>Yükleniyor</Text>
         </View>
       ) : null}
 
-      <MapStyleToggle
-        mode={mapStyleMode}
-        onToggle={handleStyleToggle}
-        bottomOffset={insets.bottom + 320}
+      <MapZoomControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        topOffset={showsTopOffset + 120}
       />
 
       <MyLocationFab
         onPress={handleMyLocationPress}
         loading={locating}
-        bottomOffset={insets.bottom + 260}
+        topOffset={showsTopOffset + 120}
+      />
+
+      <MapStyleToggle
+        mode={mapStyleMode}
+        onToggle={handleStyleToggle}
+        topOffset={showsTopOffset + 172}
       />
 
       <View
@@ -490,84 +647,11 @@ const ExploreMapScreen: React.FC = () => {
         loading={loading}
         selectedRouteId={selectedRouteId}
         onSelectRoute={handleSelectRoute}
+        weatherLatitude={region.latitude}
+        weatherLongitude={region.longitude}
       />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: appTheme.background,
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 8,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 4,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  searchBarWrapper: {
-    flex: 1,
-  },
-  filterBarRow: {
-    marginTop: 6,
-  },
-  loadingBadge: {
-    position: 'absolute',
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  loadingText: {
-    marginLeft: 8,
-    fontSize: 12,
-    color: appTheme.textSecondary,
-    fontWeight: '500',
-  },
-  attribution: {
-    position: 'absolute',
-    alignSelf: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    borderRadius: 4,
-  },
-  attributionText: {
-    fontSize: 9,
-    color: appTheme.textSecondary,
-  },
-});
 
 export default ExploreMapScreen;

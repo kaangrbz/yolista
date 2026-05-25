@@ -7,6 +7,22 @@ export const DEFAULT_MAP_REGION: Region = {
   longitudeDelta: 0.4,
 };
 
+// Türkiye'yi tam kapsayan bbox (konum izni yokken kullanılır).
+// Köşeler: KB (Edirne) → GD (Hakkari) çevresi
+export const TURKEY_BOUNDS = {
+  northEast: { latitude: 42.2, longitude: 45.0 },
+  southWest: { latitude: 35.8, longitude: 25.8 },
+} as const;
+
+export const TURKEY_REGION: Region = {
+  latitude: (TURKEY_BOUNDS.northEast.latitude + TURKEY_BOUNDS.southWest.latitude) / 2,
+  longitude: (TURKEY_BOUNDS.northEast.longitude + TURKEY_BOUNDS.southWest.longitude) / 2,
+  latitudeDelta:
+    TURKEY_BOUNDS.northEast.latitude - TURKEY_BOUNDS.southWest.latitude,
+  longitudeDelta:
+    TURKEY_BOUNDS.northEast.longitude - TURKEY_BOUNDS.southWest.longitude,
+};
+
 export const USER_LOCATION_ZOOM_DELTA = 0.05;
 export const ROUTE_FOCUS_ZOOM_DELTA = 0.02;
 

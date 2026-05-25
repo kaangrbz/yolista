@@ -1,12 +1,32 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { appTheme } from '../../../theme/appTheme';
+import { Text, View } from 'react-native';
+import { useThemedStyles } from '../../../theme/useThemedStyles';
 
 interface MapClusterMarkerProps {
   count: number;
 }
 
 export const MapClusterMarker: React.FC<MapClusterMarkerProps> = ({ count }) => {
+  const styles = useThemedStyles((theme) => ({
+    outer: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.overlayDark,
+    },
+    inner: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.accent,
+      borderWidth: 2,
+      borderColor: theme.background,
+    },
+    text: {
+      color: theme.background,
+      fontWeight: '700',
+      fontSize: 14,
+    },
+  }));
+
   const size = count > 50 ? 56 : count > 20 ? 48 : count > 10 ? 42 : 36;
 
   return (
@@ -17,25 +37,5 @@ export const MapClusterMarker: React.FC<MapClusterMarkerProps> = ({ count }) => 
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  outer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(18, 18, 18, 0.2)',
-  },
-  inner: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: appTheme.accent,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  text: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-});
 
 export default MapClusterMarker;

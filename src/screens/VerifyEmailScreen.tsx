@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { showToast } from '../utils/alert';
+import { AUTH_MOBILE } from '../shared/auth-messages';
 import {
   AuthAnimatedSection,
   AuthErrorBanner,
@@ -12,7 +13,7 @@ import {
   AuthTextInput,
   OTP_LENGTH,
 } from '../components/auth/shared';
-import { authTheme } from '../theme/authTheme';
+import { useAuthThemedStyles } from '../theme/useAuthThemedStyles';
 
 type VerifyEmailRouteParams = {
   VerifyEmail: {
@@ -22,6 +23,31 @@ type VerifyEmailRouteParams = {
 };
 
 export const VerifyEmailScreen = () => {
+  const styles = useAuthThemedStyles((t) => ({
+    hintBox: {
+      backgroundColor: t.primaryLight,
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: t.cardBorder,
+    },
+    hintText: {
+      fontSize: 14,
+      color: t.textSecondary,
+      lineHeight: 20,
+    },
+    linkContainer: {
+      alignItems: 'center',
+      marginTop: 20,
+    },
+    linkText: {
+      fontSize: 15,
+      color: t.primary,
+      fontWeight: '600',
+    },
+  }));
+
   const navigation = useNavigation();
   const route = useRoute<RouteProp<VerifyEmailRouteParams, 'VerifyEmail'>>();
   const {
@@ -54,18 +80,18 @@ export const VerifyEmailScreen = () => {
       return;
     }
 
-    showToast('success', 'E-postan zaten doğrulandı.');
+    showToast('success', AUTH_MOBILE.verify.alreadyVerifiedToast);
     navigation.goBack();
   }, [verifiedFromLink, isEmailConfirmed, navigation]);
 
   const handleVerify = async () => {
     if (otp.length !== OTP_LENGTH) {
-      setError('6 haneli doğrulama kodunu girin');
+      setError(AUTH_MOBILE.errors.otpRequired);
       return;
     }
 
     if (!email.trim()) {
-      setError('E-posta adresi gerekli');
+      setError(AUTH_MOBILE.errors.emailRequired);
       return;
     }
 
@@ -73,7 +99,7 @@ export const VerifyEmailScreen = () => {
       setIsLoading(true);
       setError('');
       await verifyEmailOtp(email.trim(), otp);
-      showToast('success', 'E-postan doğrulandı!');
+      showToast('success', AUTH_MOBILE.verify.verifySuccessToast);
 
       if (isAuthenticated) {
         navigation.goBack();
@@ -84,7 +110,7 @@ export const VerifyEmailScreen = () => {
       const message =
         verifyError instanceof Error
           ? verifyError.message
-          : 'Doğrulama sırasında bir hata oluştu';
+          : AUTH_MOBILE.errors.verifyFailed;
 
       setError(message);
     } finally {
@@ -94,7 +120,7 @@ export const VerifyEmailScreen = () => {
 
   const handleResend = async () => {
     if (!email.trim()) {
-      setError('Önce e-posta adresini girin');
+      setError(AUTH_MOBILE.errors.emailRequiredForResend);
       return;
     }
 
@@ -102,12 +128,12 @@ export const VerifyEmailScreen = () => {
       setIsResending(true);
       setError('');
       await resendSignupConfirmation(email.trim());
-      showToast('success', 'Doğrulama kodu tekrar gönderildi');
+      showToast('success', AUTH_MOBILE.verify.resendSuccessToast);
     } catch (resendError: unknown) {
       const message =
         resendError instanceof Error
           ? resendError.message
-          : 'Kod gönderilirken bir hata oluştu';
+          : AUTH_MOBILE.errors.resendSendFailed;
 
       setError(message);
     } finally {
@@ -126,7 +152,7 @@ export const VerifyEmailScreen = () => {
       <AuthAnimatedSection delay={60}>
         <View style={styles.hintBox}>
           <Text style={styles.hintText}>
-            Kayıt veya giriş sonrası e-postana gelen 6 haneli kodu aşağıya gir.
+            {AUTH_MOBILE.verify.hint}
           </Text>
         </View>
       </AuthAnimatedSection>
@@ -150,7 +176,7 @@ export const VerifyEmailScreen = () => {
 
       <AuthAnimatedSection delay={220}>
         <AuthPrimaryButton
-          label="Doğrula"
+          label={AUTH_MOBILE.verify.submitButton}
           onPress={handleVerify}
           loading={isLoading}
           disabled={otp.length !== OTP_LENGTH || email.length === 0}
@@ -166,37 +192,14 @@ export const VerifyEmailScreen = () => {
           disabled={isResending}
         >
           <Text style={styles.linkText}>
-            {isResending ? 'Gönderiliyor...' : 'Kodu tekrar gönder'}
+            {isResending
+              ? AUTH_MOBILE.verify.resendSending
+              : AUTH_MOBILE.verify.resendLink}
           </Text>
         </TouchableOpacity>
       </AuthAnimatedSection>
     </AuthScreenLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  hintBox: {
-    backgroundColor: authTheme.primaryLight,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: authTheme.cardBorder,
-  },
-  hintText: {
-    fontSize: 14,
-    color: authTheme.textSecondary,
-    lineHeight: 20,
-  },
-  linkContainer: {
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  linkText: {
-    fontSize: 15,
-    color: authTheme.primary,
-    fontWeight: '600',
-  },
-});
 
 export default VerifyEmailScreen;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AUTH_MOBILE } from '../../shared/auth-messages';
 
 interface ProfileEmailVerificationProps {
   email?: string;
@@ -26,7 +27,7 @@ const ProfileEmailVerification: React.FC<ProfileEmailVerificationProps> = ({
       <View style={[styles.confirmedCard, isCompact && styles.confirmedCardCompact]}>
         <Icon name="email-check-outline" size={18} color="#16A34A" />
         <Text style={styles.confirmedText}>
-          E-posta adresin doğrulandı.
+          {AUTH_MOBILE.profile.confirmed}
         </Text>
       </View>
     );
@@ -38,13 +39,13 @@ const ProfileEmailVerification: React.FC<ProfileEmailVerificationProps> = ({
       onPress={onVerifyPress}
       activeOpacity={0.85}
       accessibilityRole="button"
-      accessibilityLabel="E-postayı doğrula"
+      accessibilityLabel={AUTH_MOBILE.profile.accessibilityLabel}
     >
       <Icon name="email-alert-outline" size={20} color="#1DA1F2" />
       <View style={styles.pendingTextBlock}>
-        <Text style={styles.pendingTitle}>E-postanı doğrula</Text>
+        <Text style={styles.pendingTitle}>{AUTH_MOBILE.profile.pendingTitle}</Text>
         <Text style={styles.pendingSubtitle} numberOfLines={2}>
-          Doğrulama kodu veya bağlantısı için devam et.
+          {AUTH_MOBILE.profile.pendingSubtitle}
         </Text>
       </View>
       <Icon name="chevron-right" size={20} color="#1DA1F2" />

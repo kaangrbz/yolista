@@ -14,7 +14,7 @@ import {
   validateName,
 } from '../../../utils/validationUtils';
 import UserModel from '../../../model/user.model';
-import { authTheme } from '../../../theme/authTheme';
+import { useAuthThemedStyles } from '../../../theme/useAuthThemedStyles';
 
 interface RegisterFormProps {
   onRegister: (
@@ -30,6 +30,40 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   onRegister,
   onNavigateToLogin,
 }) => {
+  const styles = useAuthThemedStyles((t) => ({
+    container: {
+      width: '100%',
+    },
+    dividerContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 20,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: t.inputBorder,
+    },
+    dividerText: {
+      color: t.textMuted,
+      fontSize: 13,
+      marginHorizontal: 14,
+      fontWeight: '500',
+    },
+    linkContainer: {
+      alignItems: 'center',
+      paddingVertical: 4,
+    },
+    linkText: {
+      fontSize: 15,
+      color: t.textSecondary,
+    },
+    linkHighlight: {
+      color: t.primary,
+      fontWeight: '700',
+    },
+  }));
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -191,39 +225,5 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: authTheme.inputBorder,
-  },
-  dividerText: {
-    color: authTheme.textMuted,
-    fontSize: 13,
-    marginHorizontal: 14,
-    fontWeight: '500',
-  },
-  linkContainer: {
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  linkText: {
-    fontSize: 15,
-    color: authTheme.textSecondary,
-  },
-  linkHighlight: {
-    color: authTheme.primary,
-    fontWeight: '700',
-  },
-});
 
 export default RegisterForm;

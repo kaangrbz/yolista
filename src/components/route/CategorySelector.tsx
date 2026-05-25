@@ -3,14 +3,14 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Category } from '../../screens/CreateRoute/CategorySelectionScreen';
 import CategoryModel from '../../model/category.model';
-import { appTheme } from '../../theme/appTheme';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface CategorySelectorProps {
   selectedCategory: Category | null;
@@ -21,6 +21,80 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   selectedCategory,
   onCategorySelect,
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      marginBottom: 4,
+    },
+    loadingContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 24,
+    },
+    loadingText: {
+      fontSize: 14,
+      color: t.textSecondary,
+      marginLeft: 8,
+    },
+    emptyContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 28,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: t.textMuted,
+      marginTop: 8,
+    },
+    clearRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      marginBottom: 10,
+      gap: 6,
+    },
+    clearRowText: {
+      fontSize: 13,
+      color: t.textSecondary,
+      fontWeight: '500',
+    },
+    chipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'nowrap',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 2,
+      paddingRight: 4,
+    },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 20,
+      backgroundColor: t.surfaceMuted,
+      borderWidth: 1,
+      borderColor: t.border,
+      maxWidth: 200,
+    },
+    chipSelected: {
+      backgroundColor: t.accent,
+      borderColor: t.accent,
+    },
+    chipLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: t.textPrimary,
+      flexShrink: 1,
+    },
+    chipLabelSelected: {
+      color: t.background,
+      fontWeight: '600',
+    },
+  }));
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -56,7 +130,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="small" color={appTheme.textSecondary} />
+        <ActivityIndicator size="small" color={theme.textSecondary} />
         <Text style={styles.loadingText}>Kategoriler yükleniyor…</Text>
       </View>
     );
@@ -65,7 +139,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   if (categories.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Icon name="tag-off" size={28} color={appTheme.borderStrong} />
+        <Icon name="tag-off" size={28} color={theme.borderStrong} />
         <Text style={styles.emptyText}>Kategori bulunamadı</Text>
       </View>
     );
@@ -78,7 +152,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
           style={styles.clearRow}
           onPress={() => onCategorySelect(null)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Icon name="close-circle-outline" size={18} color={appTheme.textSecondary} />
+          <Icon name="close-circle-outline" size={18} color={theme.textSecondary} />
           <Text style={styles.clearRowText}>Seçimi kaldır</Text>
         </TouchableOpacity>
       ) : null}
@@ -103,7 +177,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
               <Icon
                 name={category.icon_name}
                 size={18}
-                color={isSelected ? appTheme.background : appTheme.textSecondary}
+                color={isSelected ? theme.background : theme.textSecondary}
               />
               <Text
                 style={[
@@ -120,76 +194,3 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 4,
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 24,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: appTheme.textSecondary,
-    marginLeft: 8,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 28,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: appTheme.textMuted,
-    marginTop: 8,
-  },
-  clearRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginBottom: 10,
-    gap: 6,
-  },
-  clearRowText: {
-    fontSize: 13,
-    color: appTheme.textSecondary,
-    fontWeight: '500',
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'nowrap',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 2,
-    paddingRight: 4,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    backgroundColor: appTheme.surfaceMuted,
-    borderWidth: 1,
-    borderColor: appTheme.border,
-    maxWidth: 200,
-  },
-  chipSelected: {
-    backgroundColor: appTheme.accent,
-    borderColor: appTheme.accent,
-  },
-  chipLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: appTheme.textPrimary,
-    flexShrink: 1,
-  },
-  chipLabelSelected: {
-    color: appTheme.background,
-    fontWeight: '600',
-  },
-});

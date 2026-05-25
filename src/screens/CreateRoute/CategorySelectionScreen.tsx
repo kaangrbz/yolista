@@ -1,21 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { CategorySelector } from '../../components/route/CategorySelector';
 import { CitySelector } from '../../components/route/CitySelector';
-import { appTheme } from '../../theme/appTheme';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 import { publishRouteFromCreateFlow } from '../../utils/createFlowPublish';
 import { useCreateRouteFlowStore } from '../../store/createRouteFlowStore';
-import { saveWizardDraft } from '../../services/routeWizardDraftStorage';
 import { showToast } from '../../utils/alert';
 import { useCreateFlowPreventRemove } from '../../hooks/useCreateFlowPreventRemove';
 import { useCreateFlowAndroidBack } from '../../hooks/useCreateFlowAndroidBack';
@@ -40,38 +41,235 @@ export const CategorySelectionScreen = () => {
   const storeCategory = useCreateRouteFlowStore((state) => state.selectedCategory);
   const storeCity = useCreateRouteFlowStore((state) => state.selectedCity);
   const setCategoryCity = useCreateRouteFlowStore((state) => state.setCategoryCity);
-  const completeFlow = useCreateRouteFlowStore((state) => state.completeFlow);
-  const getSnapshotForDraft = useCreateRouteFlowStore((state) => state.getSnapshotForDraft);
-  const waitUntilUploadsSettled = useCreateRouteFlowStore((state) => state.waitUntilUploadsSettled);
-  const anyUploadInProgress = useCreateRouteFlowStore((state) => state.anyUploadInProgress);
+  const waitUntilUploadsSettled = useCreateRouteFlowStore(
+    (state) => state.waitUntilUploadsSettled,
+  );
+  const anyUploadInProgress = useCreateRouteFlowStore(
+    (state) => state.anyUploadInProgress,
+  );
   const setWizardStep = useCreateRouteFlowStore((state) => state.setWizardStep);
 
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(storeCategory);
   const [selectedCity, setSelectedCity] = useState<City | null>(storeCity);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   useCreateFlowPreventRemove('category');
   useCreateFlowAndroidBack('category');
 
-  const syncMetaToStore = (category: Category | null, city: City | null) => {
-    setCategoryCity(category, city);
-  };
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    header: {
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 20,
+    },
+    eyebrow: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: t.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 1.2,
+      marginBottom: 6,
+    },
+    title: {
+      fontSize: 26,
+      fontWeight: '800',
+      color: t.textPrimary,
+      letterSpacing: -0.4,
+      marginBottom: 6,
+    },
+    subtitle: {
+      fontSize: 15,
+      color: t.textSecondary,
+      lineHeight: 22,
+    },
+    uploadBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 12,
+      alignSelf: 'flex-start',
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 999,
+      backgroundColor: t.surfaceMuted,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    uploadBadgeText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: t.textSecondary,
+    },
+    content: {
+      flex: 1,
+    },
+    contentInner: {
+      paddingHorizontal: 20,
+      paddingBottom: 24,
+    },
+    summaryCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.surfaceMuted,
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    summaryItem: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    summaryItemText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: t.textPrimary,
+    },
+    summaryDivider: {
+      width: 1,
+      height: 18,
+      backgroundColor: t.borderStrong,
+      marginHorizontal: 12,
+    },
+    section: {
+      marginTop: 24,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 4,
+    },
+    sectionTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    sectionTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: t.textPrimary,
+    },
+    optional: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: t.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
+    sectionHint: {
+      fontSize: 13,
+      color: t.textSecondary,
+      lineHeight: 19,
+      marginBottom: 14,
+    },
+    sectionBody: {
+      backgroundColor: t.background,
+    },
+    previewCard: {
+      marginTop: 24,
+      padding: 14,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: t.border,
+      backgroundColor: t.surfaceMuted,
+    },
+    previewLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: t.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+      marginBottom: 10,
+    },
+    previewRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    previewChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      backgroundColor: t.accent,
+    },
+    previewChipText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: t.background,
+    },
+    footer: {
+      flexDirection: 'row',
+      gap: 12,
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 16,
+      borderTopWidth: 1,
+      borderTopColor: t.border,
+      backgroundColor: t.background,
+    },
+    button: {
+      flex: 1,
+      paddingVertical: 15,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 8,
+    },
+    buttonDisabled: {
+      opacity: 0.7,
+    },
+    primaryButton: {
+      backgroundColor: t.accent,
+      flex: 1.4,
+    },
+    primaryButtonText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: t.background,
+    },
+  }));
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const handleCategorySelect = (category: Category | null) => {
     setSelectedCategory(category);
-    syncMetaToStore(category, selectedCity);
+    setCategoryCity(category, selectedCity);
   };
 
   const handleCitySelect = (city: City | null) => {
     setSelectedCity(city);
-    syncMetaToStore(selectedCategory, city);
+    setCategoryCity(selectedCategory, city);
   };
 
   const runPublish = async (category: Category | null, city: City | null) => {
     setIsPublishing(true);
     setWizardStep('category');
-    syncMetaToStore(category, city);
+    setCategoryCity(category, city);
 
     try {
       if (anyUploadInProgress()) {
@@ -97,260 +295,135 @@ export const CategorySelectionScreen = () => {
     }
   };
 
-  const handlePublish = () => {
-    runPublish(selectedCategory, selectedCity);
-  };
+  const handlePublish = () => runPublish(selectedCategory, selectedCity);
 
-  const handleSkip = () => {
-    runPublish(null, null);
-  };
-
-  const handleSaveDraft = async () => {
-    setIsSavingDraft(true);
-    setWizardStep('category');
-    syncMetaToStore(selectedCategory, selectedCity);
-
-    try {
-      const snapshot = getSnapshotForDraft();
-
-      if (!snapshot) {
-        showToast('error', 'Kaydedilecek taslak bulunamadı');
-        return;
-      }
-
-      const saved = await saveWizardDraft(snapshot, 'category');
-
-      if (!saved) {
-        showToast('error', 'Taslak kaydedilemedi');
-        return;
-      }
-
-      completeFlow();
-      showToast('success', 'Taslak kaydedildi', 'Kaydedildi');
-
-      (navigation as { navigate: (n: string, p?: object) => void }).navigate('HomeStack', {
-        screen: 'HomeMain',
-      });
-    } finally {
-      setIsSavingDraft(false);
-    }
-  };
-
-  const uploadHint = anyUploadInProgress()
-    ? 'Fotoğraflar arka planda yükleniyor…'
-    : null;
-
-  const isBusy = isPublishing || isSavingDraft;
+  const uploadInProgress = anyUploadInProgress();
+  const photoCount = photos.length;
+  const stopCount = routeStops.length;
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Rota bilgileri</Text>
+        <Text style={styles.eyebrow}>Son adım</Text>
+        <Text style={styles.title}>Rotanı etiketle</Text>
         <Text style={styles.subtitle}>
-          İstersen kategori ve şehir ekle; yayınlamadan önce son adım.
+          Kategori ve şehir seçmek zorunlu değil. İstediğin zaman atlayabilirsin.
         </Text>
-        {uploadHint ? (
-          <Text style={styles.uploadHint}>{uploadHint}</Text>
+
+        {uploadInProgress ? (
+          <View style={styles.uploadBadge}>
+            <ActivityIndicator size="small" color={theme.accent} />
+            <Text style={styles.uploadBadgeText}>
+              Fotoğraflar arka planda yükleniyor…
+            </Text>
+          </View>
         ) : null}
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Icon name="tag" size={20} color={appTheme.textPrimary} />
-            <Text style={styles.sectionTitle}>Kategori</Text>
-            <Text style={styles.optional}>opsiyonel</Text>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentInner}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryItem}>
+            <Icon name="image-multiple-outline" size={18} color={theme.textSecondary} />
+            <Text style={styles.summaryItemText}>{photoCount} fotoğraf</Text>
           </View>
-
-          <CategorySelector
-            selectedCategory={selectedCategory}
-            onCategorySelect={handleCategorySelect}
-          />
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Icon name="map-marker-path" size={18} color={theme.textSecondary} />
+            <Text style={styles.summaryItemText}>{stopCount} durak</Text>
+          </View>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Icon name="city" size={20} color={appTheme.textPrimary} />
-            <Text style={styles.sectionTitle}>Şehir</Text>
+            <View style={styles.sectionTitleRow}>
+              <Icon name="tag-outline" size={18} color={theme.textPrimary} />
+              <Text style={styles.sectionTitle}>Kategori</Text>
+            </View>
             <Text style={styles.optional}>opsiyonel</Text>
           </View>
-
-          <CitySelector
-            selectedCity={selectedCity}
-            onCitySelect={handleCitySelect}
-          />
-        </View>
-
-        <View style={styles.summaryStrip}>
-          <Text style={styles.summaryText}>
-            {photos.length} fotoğraf
-            {selectedCategory ? ` · ${selectedCategory.name}` : ''}
-            {selectedCity ? ` · ${selectedCity.name}` : ''}
+          <Text style={styles.sectionHint}>
+            Rotana en yakın konuyu seç; insanlar daha kolay keşfetsin.
           </Text>
+
+          <View style={styles.sectionBody}>
+            <CategorySelector
+              selectedCategory={selectedCategory}
+              onCategorySelect={handleCategorySelect}
+            />
+          </View>
         </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
+              <Icon name="city-variant-outline" size={18} color={theme.textPrimary} />
+              <Text style={styles.sectionTitle}>Şehir</Text>
+            </View>
+            <Text style={styles.optional}>opsiyonel</Text>
+          </View>
+          <Text style={styles.sectionHint}>
+            Rotanın geçtiği şehri ekle; şehir bazlı keşifte öne çıksın.
+          </Text>
+
+          <View style={styles.sectionBody}>
+            <CitySelector
+              selectedCity={selectedCity}
+              onCitySelect={handleCitySelect}
+            />
+          </View>
+        </View>
+
+        {selectedCategory || selectedCity ? (
+          <View style={styles.previewCard}>
+            <Text style={styles.previewLabel}>Şu an seçili</Text>
+            <View style={styles.previewRow}>
+              {selectedCategory ? (
+                <View style={styles.previewChip}>
+                  <Icon
+                    name={selectedCategory.icon_name || 'tag'}
+                    size={14}
+                    color={theme.background}
+                  />
+                  <Text style={styles.previewChipText}>{selectedCategory.name}</Text>
+                </View>
+              ) : null}
+              {selectedCity ? (
+                <View style={styles.previewChip}>
+                  <Icon name="city" size={14} color={theme.background} />
+                  <Text style={styles.previewChipText}>{selectedCity.name}</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.button, styles.outlineButton]}
-          onPress={handleSaveDraft}
-          disabled={isBusy}>
-          {isSavingDraft ? (
-            <ActivityIndicator size="small" color={appTheme.accent} />
-          ) : (
-            <>
-              <Icon name="content-save-outline" size={18} color={appTheme.accent} />
-              <Text style={styles.outlineButtonText}>Taslağa ekle</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.buttonRow}>
+      {isKeyboardVisible ? null : (
+        <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.button, styles.secondaryButton]}
-            onPress={handleSkip}
-            disabled={isBusy}>
-            <Text style={styles.secondaryButtonText}>Atla</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, styles.primaryButton]}
+            style={[
+              styles.button,
+              styles.primaryButton,
+              isPublishing && styles.buttonDisabled,
+            ]}
             onPress={handlePublish}
-            disabled={isBusy}>
+            disabled={isPublishing}
+            activeOpacity={0.85}>
             {isPublishing ? (
-              <ActivityIndicator size="small" color={appTheme.background} />
+              <ActivityIndicator size="small" color={theme.background} />
             ) : (
               <>
-                <Icon name="send" size={18} color={appTheme.background} />
+                <Icon name="send" size={18} color={theme.background} />
                 <Text style={styles.primaryButtonText}>Yayınla</Text>
               </>
             )}
           </TouchableOpacity>
         </View>
-      </View>
+      )}
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: appTheme.background,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: appTheme.border,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: appTheme.textPrimary,
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: appTheme.textSecondary,
-    lineHeight: 22,
-  },
-  uploadHint: {
-    marginTop: 8,
-    fontSize: 13,
-    color: appTheme.accent,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  section: {
-    marginTop: 20,
-    marginBottom: 8,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: appTheme.textPrimary,
-    marginLeft: 8,
-  },
-  optional: {
-    fontSize: 12,
-    color: appTheme.textMuted,
-    marginLeft: 8,
-    textTransform: 'lowercase',
-  },
-  summaryStrip: {
-    marginTop: 24,
-    marginBottom: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: appTheme.surfaceMuted,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: appTheme.border,
-  },
-  summaryText: {
-    fontSize: 14,
-    color: appTheme.textSecondary,
-    lineHeight: 20,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: appTheme.border,
-    backgroundColor: appTheme.background,
-    gap: 12,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  outlineButton: {
-    flex: undefined,
-    width: '100%',
-    borderWidth: 1,
-    borderColor: appTheme.accent,
-    backgroundColor: 'transparent',
-    gap: 8,
-  },
-  outlineButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: appTheme.accent,
-    marginLeft: 4,
-  },
-  secondaryButton: {
-    backgroundColor: appTheme.surfaceMuted,
-    borderWidth: 1,
-    borderColor: appTheme.borderStrong,
-  },
-  primaryButton: {
-    backgroundColor: appTheme.accent,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: appTheme.background,
-    marginLeft: 8,
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: appTheme.textSecondary,
-  },
-});

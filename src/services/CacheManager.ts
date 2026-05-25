@@ -23,9 +23,10 @@ export class CacheManager {
   static readonly MAX_CACHE_BYTES = 150 * 1024 * 1024;
 
   private static async sha256Hex(message: string): Promise<string> {
-    if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.subtle) {
+    const subtle = globalThis.crypto?.subtle;
+    if (subtle) {
       const buffer = new TextEncoder().encode(message);
-      const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', buffer);
+      const hashBuffer = await subtle.digest('SHA-256', buffer);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
 
       return hashArray.map((byte) => byte.toString(16).padStart(2, '0')).join('');

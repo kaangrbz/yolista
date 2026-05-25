@@ -10,10 +10,10 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import { appTheme } from '../../theme/appTheme';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 import { NotificationBellButton } from './NotificationBellButton';
 
-// components/headers/BaseHeader.tsx
 type HeaderProps = {
   title?: string;
   leftComponent?: React.ReactNode;
@@ -22,37 +22,91 @@ type HeaderProps = {
   style?: StyleProp<ViewStyle>;
 };
 
+const useHeaderStyles = () =>
+  useThemedStyles((theme) => ({
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 14,
+      backgroundColor: theme.background,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.hairlineBorder,
+    },
+    backHit: {
+      padding: 8,
+    },
+    searchButton: {
+      padding: 8,
+    },
+    homepageHeader: {
+      textAlign: 'center',
+      width: '100%',
+      fontSize: 18,
+    },
+    sideSlot: {
+      width: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    titleFlex: {
+      flex: 1,
+    },
+    title: {
+      flex: 1,
+      fontSize: 20,
+      fontWeight: '700',
+      color: theme.textPrimary,
+      letterSpacing: -0.35,
+    },
+    titleCentered: {
+      textAlign: 'center',
+    },
+    titleStart: {
+      textAlign: 'left',
+    },
+    headerSideSpacer: {
+      width: 40,
+      height: 40,
+    },
+  }));
+
 export const BaseHeader = ({
   title,
   leftComponent,
   rightComponent,
   centerTitle = false,
   style = {},
-}: HeaderProps) => (
-  <View style={[styles.header, style]}>
-    <View style={styles.sideSlot}>
-      {leftComponent ?? <View style={styles.headerSideSpacer} />}
-    </View>
+}: HeaderProps) => {
+  const styles = useHeaderStyles();
 
-    {title ? (
-      <Text
-        style={[
-          styles.title,
-          centerTitle ? styles.titleCentered : styles.titleStart,
-        ]}
-        numberOfLines={1}
-      >
-        {title}
-      </Text>
-    ) : (
-      <View style={styles.titleFlex} />
-    )}
+  return (
+    <View style={[styles.header, style]}>
+      <View style={styles.sideSlot}>
+        {leftComponent ?? <View style={styles.headerSideSpacer} />}
+      </View>
 
-    <View style={styles.sideSlot}>
-      {rightComponent ?? <View style={styles.headerSideSpacer} />}
+      {title ? (
+        <Text
+          style={[
+            styles.title,
+            centerTitle ? styles.titleCentered : styles.titleStart,
+          ]}
+          numberOfLines={1}
+        >
+          {title}
+        </Text>
+      ) : (
+        <View style={styles.titleFlex} />
+      )}
+
+      <View style={styles.sideSlot}>
+        {rightComponent ?? <View style={styles.headerSideSpacer} />}
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 const useNotificationsNavigation = () => {
   const navigation = useNavigation<any>();
@@ -65,7 +119,6 @@ const useNotificationsNavigation = () => {
   return { unreadNotificationCount, openNotifications };
 };
 
-// components/headers/HomeHeader.tsx
 export const HomeHeader = () => {
   const { unreadNotificationCount, openNotifications } = useNotificationsNavigation();
 
@@ -83,20 +136,22 @@ export const HomeHeader = () => {
   );
 };
 
-// components/headers/RouteDetailHeader.tsx
-export const RouteDetailHeader = ({navigation}: {navigation?: any}) => (
-  <BaseHeader
-    title="Rota Detayı"
-    style={{justifyContent: 'space-between'}}
-    leftComponent={
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Icon name="arrow-left" size={24} color="#000" />
-      </TouchableOpacity>
-    }
-  />
-);
+export const RouteDetailHeader = ({ navigation }: { navigation?: any }) => {
+  const theme = useAppTheme();
 
-// components/headers/ExploreHeader.tsx
+  return (
+    <BaseHeader
+      title="Rota Detayı"
+      style={{ justifyContent: 'space-between' }}
+      leftComponent={
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Icon name="arrow-left" size={24} color={theme.textPrimary} />
+        </TouchableOpacity>
+      }
+    />
+  );
+};
+
 export const ExploreHeader = () => {
   const { unreadNotificationCount, openNotifications } = useNotificationsNavigation();
 
@@ -118,8 +173,10 @@ export const CreateRouteHeader = () => {
 };
 
 export const NotificationsHeader = ({ navigation }: { navigation?: { goBack: () => void } }) => {
+  const theme = useAppTheme();
   const fallbackNavigation = useNavigation<any>();
   const nav = navigation ?? fallbackNavigation;
+  const styles = useHeaderStyles();
 
   return (
     <BaseHeader
@@ -131,7 +188,7 @@ export const NotificationsHeader = ({ navigation }: { navigation?: { goBack: () 
           accessibilityRole="button"
           accessibilityLabel="Geri"
         >
-          <Icon name="arrow-left" size={22} color={appTheme.textPrimary} />
+          <Icon name="arrow-left" size={22} color={theme.textPrimary} />
         </TouchableOpacity>
       }
     />
@@ -145,17 +202,42 @@ export const SocialListHeader = ({
   navigation: any;
   title: string;
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    wrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 14,
+      backgroundColor: t.background,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.hairlineBorder,
+      gap: 4,
+    },
+    backHit: {
+      padding: 8,
+      marginRight: 4,
+    },
+    screenTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: t.textPrimary,
+      letterSpacing: -0.35,
+      flex: 1,
+    },
+  }));
+
   return (
-    <View style={socialListHeaderStyles.wrap}>
+    <View style={styles.wrap}>
       <TouchableOpacity
         onPress={() => navigation.goBack()}
-        style={socialListHeaderStyles.backHit}
+        style={styles.backHit}
         accessibilityRole="button"
         accessibilityLabel="Geri"
       >
-        <Icon name="arrow-left" size={22} color="#121212" />
+        <Icon name="arrow-left" size={22} color={theme.textPrimary} />
       </TouchableOpacity>
-      <Text style={socialListHeaderStyles.screenTitle}>{title}</Text>
+      <Text style={styles.screenTitle}>{title}</Text>
     </View>
   );
 };
@@ -167,76 +249,3 @@ export const FollowersHeader = ({ navigation }: { navigation: any }) => {
 export const FollowingHeader = ({ navigation }: { navigation: any }) => {
   return <SocialListHeader navigation={navigation} title="Takip Edilenler" />;
 };
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    backgroundColor: appTheme.background,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
-  },
-  backHit: {
-    padding: 8,
-  },
-  searchButton: {
-    padding: 8,
-  },
-  homepageHeader: {
-    textAlign: 'center',
-    width: '100%',
-    fontSize: 18,
-  },
-  sideSlot: {
-    width: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titleFlex: {
-    flex: 1,
-  },
-  title: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: '700',
-    color: appTheme.textPrimary,
-    letterSpacing: -0.35,
-  },
-  titleCentered: {
-    textAlign: 'center',
-  },
-  titleStart: {
-    textAlign: 'left',
-  },
-  headerSideSpacer: {
-    width: 40,
-    height: 40,
-  },
-});
-
-const socialListHeaderStyles = StyleSheet.create({
-  wrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.08)',
-    gap: 4,
-  },
-  backHit: {
-    padding: 8,
-    marginRight: 4,
-  },
-  screenTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#121212',
-    letterSpacing: -0.35,
-    flex: 1,
-  },
-});

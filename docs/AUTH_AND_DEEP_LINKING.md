@@ -19,7 +19,7 @@ Paylaşılan UI: `src/components/auth/shared/` (`AuthScreenLayout`, `AuthTextInp
 - `signIn`, `signUp`, `logout`
 - `resetPasswordForEmail` — redirect: `https://yolista.roulista.com/auth/mobile?flow=recovery`
 - `verifyEmailOtp`, `verifyRecoveryOtp`, `updatePassword`
-- `resendSignupConfirmation`
+- `resendSignupConfirmation` — `emailRedirectTo: .../auth/mobile?flow=signup` ile yeniden gönderim
 - `isEmailConfirmed`, `refreshAuthSession`
 
 ### Profilde e-posta doğrulama
@@ -83,6 +83,19 @@ yolista://reset-password
 ```
 
 SMTP açık olmalı; şifre sıfırlama ve e-posta doğrulama mailleri için.
+
+### E-posta şablonları
+
+Kaynak: `supabase/templates/` (`confirmation.html`, `recovery.html`, `invite.html`)  
+Metin kaynağı: `../shared/auth-messages.ts`  
+Detaylı matris ve Dashboard checklist: `../docs/AUTH_MESSAGES.md`
+
+Local: `supabase/config.toml` → `[auth.email.template.*]`  
+Production: Supabase Dashboard → Authentication → Email Templates (HTML + subject repo ile eşleştirilmeli)
+
+- Gönderen: `Yolista` / `noreply@yolista.app`
+- Destek linki (şablon): `mailto:yolistaapp@gmail.com`
+- Logo: `https://yolista.roulista.com/logo-email.png`
 
 ### Test
 

@@ -1,49 +1,51 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { getTileSource, MapStyleMode } from '../../../constants/mapStyles';
-import { appTheme } from '../../../theme/appTheme';
+import { useAppTheme } from '../../../context/AppThemeContext';
+import { useThemedStyles } from '../../../theme/useThemedStyles';
 
 interface MapStyleToggleProps {
   mode: MapStyleMode;
   onToggle: () => void;
-  bottomOffset?: number;
+  topOffset?: number;
 }
 
 export const MapStyleToggle: React.FC<MapStyleToggleProps> = ({
   mode,
   onToggle,
-  bottomOffset = 24,
+  topOffset = 24,
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    fab: {
+      position: 'absolute',
+      right: 14,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: t.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 3,
+    },
+  }));
+
   const source = getTileSource(mode);
 
   return (
     <TouchableOpacity
       onPress={onToggle}
       activeOpacity={0.85}
-      style={[styles.fab, { bottom: bottomOffset }]}
+      style={[styles.fab, { top: topOffset }]}
     >
-      <Icon name={source.iconName} size={20} color={appTheme.textPrimary} />
+      <Icon name={source.iconName} size={20} color={theme.textPrimary} />
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({
-  fab: {
-    position: 'absolute',
-    right: 14,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-});
 
 export default MapStyleToggle;

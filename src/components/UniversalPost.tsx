@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Pressable,
 } from 'react-native';
+import { showConfirm } from './common/ConfirmModal';
 import { useNavigation } from '@react-navigation/native';
 import { usePost } from '../hooks/usePost';
 import { usePostActions } from '../hooks/usePostActions';
@@ -201,11 +201,12 @@ const UniversalPost: React.FC<PostProps> = ({
   };
 
   const handleEditPost = () => {
-    Alert.alert(
-      'Düzenle',
-      'Bu özellik yakında eklenecek',
-      [{ text: 'Tamam' }],
-    );
+    showConfirm({
+      title: 'Düzenle',
+      message: 'Bu özellik yakında eklenecek',
+      icon: 'information-outline',
+      actions: [{ key: 'ok', label: 'Tamam', variant: 'primary' }],
+    });
   };
 
   const handleDeletePost = async () => {
@@ -213,14 +214,17 @@ const UniversalPost: React.FC<PostProps> = ({
       return;
     }
 
-    Alert.alert(
-      'Gönderiyi Sil',
-      'Bu gönderiyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
-      [
-        { text: 'İptal', style: 'cancel' },
+    showConfirm({
+      title: 'Gönderiyi Sil',
+      message: 'Bu gönderiyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+      icon: 'trash-can-outline',
+      iconColor: '#dc2626',
+      actions: [
+        { key: 'cancel', label: 'İptal', variant: 'ghost' },
         {
-          text: 'Sil',
-          style: 'destructive',
+          key: 'delete',
+          label: 'Sil',
+          variant: 'destructive',
           onPress: async () => {
             try {
               const { error: deleteError } = await RouteModel.deleteRoute(postId);
@@ -245,24 +249,27 @@ const UniversalPost: React.FC<PostProps> = ({
           },
         },
       ],
-    );
+    });
   };
 
   const handleReportPost = () => {
-    Alert.alert(
-      'Şikayet Et',
-      'Bu gönderiyi şikayet etmek istediğinizden emin misiniz?',
-      [
-        { text: 'İptal', style: 'cancel' },
+    showConfirm({
+      title: 'Şikayet Et',
+      message: 'Bu gönderiyi şikayet etmek istediğinizden emin misiniz?',
+      icon: 'flag-outline',
+      iconColor: '#dc2626',
+      actions: [
+        { key: 'cancel', label: 'İptal', variant: 'ghost' },
         {
-          text: 'Şikayet Et',
-          style: 'destructive',
+          key: 'report',
+          label: 'Şikayet Et',
+          variant: 'destructive',
           onPress: () => {
             console.log('Post reported:', postId);
           },
         },
       ],
-    );
+    });
   };
 
   const handleBlockUser = () => {
@@ -270,20 +277,23 @@ const UniversalPost: React.FC<PostProps> = ({
       return;
     }
 
-    Alert.alert(
-      'Engelle',
-      `${post.profiles?.username || 'Bu kullanıcıyı'} engellemek istediğinizden emin misiniz?`,
-      [
-        { text: 'İptal', style: 'cancel' },
+    showConfirm({
+      title: 'Engelle',
+      message: `${post.profiles?.username || 'Bu kullanıcıyı'} engellemek istediğinizden emin misiniz?`,
+      icon: 'block-helper',
+      iconColor: '#dc2626',
+      actions: [
+        { key: 'cancel', label: 'İptal', variant: 'ghost' },
         {
-          text: 'Engelle',
-          style: 'destructive',
+          key: 'block',
+          label: 'Engelle',
+          variant: 'destructive',
           onPress: () => {
             console.log('User blocked:', post.user_id);
           },
         },
       ],
-    );
+    });
   };
 
   const handleFollowUser = () => {
@@ -291,7 +301,7 @@ const UniversalPost: React.FC<PostProps> = ({
       return;
     }
 
-    Alert.alert('Takip Edildi', `${post.profiles?.username || 'Kullanıcı'} takip edildi`);
+    showAlert(`${post.profiles?.username || 'Kullanıcı'} takip edildi`);
   };
 
   const handleUnfollowUser = () => {
@@ -299,20 +309,22 @@ const UniversalPost: React.FC<PostProps> = ({
       return;
     }
 
-    Alert.alert(
-      'Takibi Bırak',
-      `${post.profiles?.username || 'Bu kullanıcının'} takibini bırakmak istediğinizden emin misiniz?`,
-      [
-        { text: 'İptal', style: 'cancel' },
+    showConfirm({
+      title: 'Takibi Bırak',
+      message: `${post.profiles?.username || 'Bu kullanıcının'} takibini bırakmak istediğinizden emin misiniz?`,
+      icon: 'account-remove-outline',
+      actions: [
+        { key: 'cancel', label: 'İptal', variant: 'ghost' },
         {
-          text: 'Takibi Bırak',
-          style: 'destructive',
+          key: 'unfollow',
+          label: 'Takibi Bırak',
+          variant: 'destructive',
           onPress: () => {
             console.log('Unfollowed user:', post.user_id);
           },
         },
       ],
-    );
+    });
   };
 
   const handleCopyLink = async () => {
@@ -354,6 +366,7 @@ const UniversalPost: React.FC<PostProps> = ({
         onProfilePress={handleProfilePress}
         isOwnPost={post.user_id === userId}
         isFollowing={false}
+        isVerified={!!post.profiles?.is_verified}
         onMorePress={handleEditPost}
         onReportPress={handleReportPost}
         onBlockPress={handleBlockUser}

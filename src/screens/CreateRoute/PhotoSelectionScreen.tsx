@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   SafeAreaView,
   Alert,
 } from 'react-native';
@@ -11,7 +10,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { PhotoGrid } from '../../components/route/PhotoGrid';
 import { RouteWizardDraftsSheet } from '../../components/route/RouteWizardDraftsSheet';
-import { appTheme } from '../../theme/appTheme';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 import { useCreateRouteFlowStore } from '../../store/createRouteFlowStore';
 import { useCreateFlowPreventRemove } from '../../hooks/useCreateFlowPreventRemove';
 import { useCreateFlowAndroidBack } from '../../hooks/useCreateFlowAndroidBack';
@@ -46,6 +46,95 @@ export const PhotoSelectionScreen = () => {
 
   useCreateFlowPreventRemove('photo');
   useCreateFlowAndroidBack('photo');
+
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    header: {
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: t.border,
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: t.textPrimary,
+      marginBottom: 6,
+    },
+    subtitle: {
+      fontSize: 15,
+      color: t.textSecondary,
+      lineHeight: 22,
+    },
+    content: {
+      flex: 1,
+      paddingHorizontal: 20,
+      paddingTop: 16,
+    },
+    footer: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderTopWidth: 1,
+      borderTopColor: t.border,
+      backgroundColor: t.background,
+      gap: 12,
+    },
+    countText: {
+      fontSize: 14,
+      color: t.textSecondary,
+      textAlign: 'center',
+    },
+    continueButton: {
+      backgroundColor: t.accent,
+      paddingVertical: 16,
+      paddingHorizontal: 32,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    continueButtonText: {
+      color: t.background,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    draftsButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: t.accent,
+      backgroundColor: 'transparent',
+      gap: 8,
+    },
+    draftsButtonWithContinue: {
+      paddingVertical: 14,
+    },
+    draftsButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: t.accent,
+    },
+    draftsBadge: {
+      minWidth: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: t.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 6,
+    },
+    draftsBadgeText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: t.background,
+    },
+  }));
 
   const refreshDrafts = useCallback(() => {
     listWizardDrafts().then((items) => {
@@ -151,7 +240,7 @@ export const PhotoSelectionScreen = () => {
               canContinue && styles.draftsButtonWithContinue,
             ]}
             onPress={handleOpenDrafts}>
-            <Icon name="content-save-outline" size={18} color={appTheme.accent} />
+            <Icon name="content-save-outline" size={18} color={theme.accent} />
             <Text style={styles.draftsButtonText}>Taslaklar</Text>
             <View style={styles.draftsBadge}>
               <Text style={styles.draftsBadgeText}>{drafts.length}</Text>
@@ -170,91 +259,3 @@ export const PhotoSelectionScreen = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: appTheme.background,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: appTheme.border,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: appTheme.textPrimary,
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: appTheme.textSecondary,
-    lineHeight: 22,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: appTheme.border,
-    backgroundColor: appTheme.background,
-    gap: 12,
-  },
-  countText: {
-    fontSize: 14,
-    color: appTheme.textSecondary,
-    textAlign: 'center',
-  },
-  continueButton: {
-    backgroundColor: appTheme.accent,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  continueButtonText: {
-    color: appTheme.background,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  draftsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: appTheme.accent,
-    backgroundColor: 'transparent',
-    gap: 8,
-  },
-  draftsButtonWithContinue: {
-    paddingVertical: 14,
-  },
-  draftsButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: appTheme.accent,
-  },
-  draftsBadge: {
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: appTheme.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-  },
-  draftsBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: appTheme.background,
-  },
-});

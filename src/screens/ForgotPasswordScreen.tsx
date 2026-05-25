@@ -5,15 +5,50 @@ import { useAuth } from '../context/AuthContext';
 import { showToast } from '../utils/alert';
 import { validateEmail } from '../utils/validationUtils';
 import {
+  AUTH_MOBILE,
+  formatForgotSuccessBody,
+} from '../shared/auth-messages';
+import {
   AuthAnimatedSection,
   AuthErrorBanner,
   AuthPrimaryButton,
   AuthScreenLayout,
   AuthTextInput,
 } from '../components/auth/shared';
-import { authTheme } from '../theme/authTheme';
+import { useAuthThemedStyles } from '../theme/useAuthThemedStyles';
 
 export const ForgotPasswordScreen = () => {
+  const styles = useAuthThemedStyles((t) => ({
+    successBox: {
+      backgroundColor: t.primaryLight,
+      borderRadius: 16,
+      padding: 18,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: t.cardBorder,
+    },
+    successTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: t.textPrimary,
+      marginBottom: 8,
+    },
+    successText: {
+      fontSize: 14,
+      color: t.textSecondary,
+      lineHeight: 21,
+    },
+    linkContainer: {
+      alignItems: 'center',
+      marginTop: 20,
+    },
+    linkText: {
+      fontSize: 15,
+      color: t.primary,
+      fontWeight: '600',
+    },
+  }));
+
   const navigation = useNavigation();
   const { resetPasswordForEmail } = useAuth();
   const [email, setEmail] = useState('');
@@ -23,7 +58,7 @@ export const ForgotPasswordScreen = () => {
 
   const handleSend = async () => {
     if (!validateEmail(email)) {
-      setError('Geçerli bir e-posta adresi girin');
+      setError(AUTH_MOBILE.errors.invalidEmail);
       return;
     }
 
@@ -32,12 +67,12 @@ export const ForgotPasswordScreen = () => {
       setError('');
       await resetPasswordForEmail(email.trim());
       setIsSent(true);
-      showToast('success', 'Doğrulama kodu e-postana gönderildi');
+      showToast('success', AUTH_MOBILE.forgot.sendSuccessToast);
     } catch (sendError: unknown) {
       const message =
         sendError instanceof Error
           ? sendError.message
-          : 'E-posta gönderilirken bir hata oluştu';
+          : AUTH_MOBILE.errors.sendEmailFailed;
 
       setError(message);
     } finally {
@@ -60,14 +95,13 @@ export const ForgotPasswordScreen = () => {
       {isSent ? (
         <AuthAnimatedSection delay={80}>
           <View style={styles.successBox}>
-            <Text style={styles.successTitle}>E-postanı kontrol et</Text>
+            <Text style={styles.successTitle}>{AUTH_MOBILE.forgot.successTitle}</Text>
             <Text style={styles.successText}>
-              {email} adresine 6 haneli bir kod gönderdik. Kodu girerek yeni şifreni
-              belirleyebilirsin.
+              {formatForgotSuccessBody(email)}
             </Text>
           </View>
           <AuthPrimaryButton
-            label="Kodu Gir"
+            label={AUTH_MOBILE.forgot.continueButton}
             onPress={handleContinueToReset}
             icon="key-variant"
           />
@@ -90,7 +124,7 @@ export const ForgotPasswordScreen = () => {
 
           <AuthAnimatedSection delay={140}>
             <AuthPrimaryButton
-              label="Kod Gönder"
+              label={AUTH_MOBILE.forgot.sendButton}
               onPress={handleSend}
               loading={isLoading}
               disabled={email.length === 0}
@@ -107,43 +141,12 @@ export const ForgotPasswordScreen = () => {
           activeOpacity={0.7}
         >
           <Text style={styles.linkText}>
-            Girişe dön
+            {AUTH_MOBILE.forgot.backToLogin}
           </Text>
         </TouchableOpacity>
       </AuthAnimatedSection>
     </AuthScreenLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  successBox: {
-    backgroundColor: authTheme.primaryLight,
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: authTheme.cardBorder,
-  },
-  successTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: authTheme.textPrimary,
-    marginBottom: 8,
-  },
-  successText: {
-    fontSize: 14,
-    color: authTheme.textSecondary,
-    lineHeight: 21,
-  },
-  linkContainer: {
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  linkText: {
-    fontSize: 15,
-    color: authTheme.primary,
-    fontWeight: '600',
-  },
-});
 
 export default ForgotPasswordScreen;

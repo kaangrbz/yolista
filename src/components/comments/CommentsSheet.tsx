@@ -13,8 +13,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Pressable,
-  Alert,
 } from 'react-native';
+import { showConfirm } from '../common/ConfirmModal';
 import {
   BottomSheetBackdrop,
   BottomSheetFlatList,
@@ -398,14 +398,17 @@ const CommentsSheet: React.FC<CommentsSheetProps> = ({
         return;
       }
 
-      Alert.alert(
-        'Yorumu Sil',
-        'Bu yorumu silmek istediğinizden emin misiniz?',
-        [
-          { text: 'İptal', style: 'cancel' },
+      showConfirm({
+        title: 'Yorumu Sil',
+        message: 'Bu yorumu silmek istediğinizden emin misiniz?',
+        icon: 'trash-can-outline',
+        iconColor: '#dc2626',
+        actions: [
+          { key: 'cancel', label: 'İptal', variant: 'ghost' },
           {
-            text: 'Sil',
-            style: 'destructive',
+            key: 'delete',
+            label: 'Sil',
+            variant: 'destructive',
             onPress: () => {
               void (async () => {
                 setDeletingCommentId(commentId);
@@ -438,7 +441,7 @@ const CommentsSheet: React.FC<CommentsSheetProps> = ({
             },
           },
         ],
-      );
+      });
     },
     [comments, publishCommentCount, routeId, user?.id],
   );

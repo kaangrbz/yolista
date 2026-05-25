@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -9,7 +8,8 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { CategoryItem } from '../../../types/category.types';
 import { MAP_FILTER_DISTANCE_OPTIONS_KM } from '../../../constants/mapDefaults';
-import { appTheme } from '../../../theme/appTheme';
+import { useAppTheme } from '../../../context/AppThemeContext';
+import { useThemedStyles } from '../../../theme/useThemedStyles';
 
 export interface MapFilters {
   categoryId: number;
@@ -29,6 +29,41 @@ const Chip: React.FC<{
   onPress: () => void;
   iconName?: string;
 }> = ({ label, active, onPress, iconName }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.background,
+      borderRadius: 20,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginRight: 6,
+      borderWidth: 1,
+      borderColor: t.border,
+      shadowColor: '#000',
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 2,
+    },
+    chipActive: {
+      backgroundColor: t.accent,
+      borderColor: t.accent,
+    },
+    chipIcon: {
+      marginRight: 4,
+    },
+    chipText: {
+      fontSize: 12,
+      color: t.textSecondary,
+      fontWeight: '500',
+    },
+    chipTextActive: {
+      color: t.background,
+    },
+  }));
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -39,7 +74,7 @@ const Chip: React.FC<{
         <Icon
           name={iconName}
           size={14}
-          color={active ? '#fff' : appTheme.textSecondary}
+          color={active ? theme.background : theme.textSecondary}
           style={styles.chipIcon}
         />
       ) : null}
@@ -55,6 +90,23 @@ export const MapFilterBar: React.FC<MapFilterBarProps> = ({
   filters,
   onFiltersChange,
 }) => {
+  const styles = useThemedStyles((t) => ({
+    container: {
+      width: '100%',
+    },
+    scrollContent: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      alignItems: 'center',
+    },
+    divider: {
+      width: 1,
+      height: 18,
+      backgroundColor: t.borderStrong,
+      marginHorizontal: 8,
+    },
+  }));
+
   const handleCategoryPress = (categoryId: number) => {
     onFiltersChange({ ...filters, categoryId });
   };
@@ -107,53 +159,5 @@ export const MapFilterBar: React.FC<MapFilterBarProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-  },
-  scrollContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignItems: 'center',
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 6,
-    borderWidth: 1,
-    borderColor: appTheme.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  chipActive: {
-    backgroundColor: appTheme.accent,
-    borderColor: appTheme.accent,
-  },
-  chipIcon: {
-    marginRight: 4,
-  },
-  chipText: {
-    fontSize: 12,
-    color: appTheme.textSecondary,
-    fontWeight: '500',
-  },
-  chipTextActive: {
-    color: '#fff',
-  },
-  divider: {
-    width: 1,
-    height: 18,
-    backgroundColor: appTheme.borderStrong,
-    marginHorizontal: 8,
-  },
-});
 
 export default MapFilterBar;

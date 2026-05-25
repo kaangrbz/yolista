@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Photo } from '../../screens/CreateRoute/PhotoSelectionScreen';
+import ImageViewer from '../ImageViewer';
 
 interface ImageCarouselProps {
   photos: Photo[];
@@ -25,6 +26,18 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
   onSwipe,
 }) => {
   const scrollViewRef = useRef<ScrollView>(null);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
+  const viewerImages = useMemo(
+    () => photos.map((p) => ({ uri: p.uri })),
+    [photos],
+  );
+
+  const openViewer = (index: number) => {
+    setViewerIndex(index);
+    setViewerVisible(true);
+  };
 
   // Auto scroll to current index when it changes
   useEffect(() => {
@@ -66,7 +79,11 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
         onMomentumScrollEnd={handleMomentumScrollEnd}
         style={styles.scrollView}>
         {photos.map((photo, index) => (
-          <View key={photo.id} style={styles.imageContainer}>
+          <TouchableOpacity
+            key={photo.id}
+            style={styles.imageContainer}
+            activeOpacity={0.95}
+            onPress={() => openViewer(index)}>
             <Image source={{ uri: photo.uri }} style={styles.image} />
 
             <View style={styles.overlay}>
@@ -75,10 +92,21 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
                   {index + 1} / {photos.length}
                 </Text>
               </View>
+
+              <View style={styles.expandHint}>
+                <Icon name="arrow-expand" size={14} color="#fff" />
+              </View>
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
+
+      <ImageViewer
+        images={viewerImages}
+        visible={viewerVisible}
+        initialIndex={viewerIndex}
+        onRequestClose={() => setViewerVisible(false)}
+      />
 
       {/* Navigation Arrows */}
       {currentIndex > 0 && (
@@ -159,9 +187,19 @@ const styles = StyleSheet.create({
   overlay: {
     position: 'absolute',
     top: 14,
-    left: 0,
-    right: 0,
+    left: 14,
+    right: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  expandHint: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pageChip: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { getAuthMobileCallbackUrl } from '../constants/appLinks';
 import { translateSupabaseError } from '../utils/supabaseErrorMessages';
+import { markLoggedInBefore } from '../utils/welcome';
+import { AUTH_MOBILE } from '../shared/auth-messages';
 
 interface Profile {
   id: string;
@@ -153,6 +155,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     setIsAuthenticated(true);
     userIdRef.current = session.user.id;
+
+    await markLoggedInBefore();
 
     const profileData = await ensureProfile(session.user);
 
@@ -344,7 +348,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (error) {
       console.error('Reset password email error:', error);
       throw new Error(
-        translateSupabaseError(error, 'Şifre sıfırlama e-postası gönderilemedi.'),
+        translateSupabaseError(error, AUTH_MOBILE.context.resetEmailFailed),
       );
     }
   };
@@ -366,7 +370,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       await applySession(session);
     } catch (error) {
       console.error('Verify email OTP error:', error);
-      throw new Error(translateSupabaseError(error, 'E-posta doğrulanamadı.'));
+      throw new Error(translateSupabaseError(error, AUTH_MOBILE.context.verifyEmailFailed));
     }
   };
 
@@ -383,7 +387,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (error) {
       console.error('Verify recovery OTP error:', error);
-      throw new Error(translateSupabaseError(error, 'Doğrulama kodu geçersiz.'));
+      throw new Error(translateSupabaseError(error, AUTH_MOBILE.context.invalidOtp));
     }
   };
 
@@ -396,7 +400,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (error) {
       console.error('Update password error:', error);
-      throw new Error(translateSupabaseError(error, 'Şifre güncellenemedi.'));
+      throw new Error(translateSupabaseError(error, AUTH_MOBILE.context.updatePasswordFailed));
     }
   };
 
@@ -417,6 +421,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email,
+        options: {
+          emailRedirectTo: getAuthMobileCallbackUrl('signup'),
+        },
       });
 
       if (error) {
@@ -425,7 +432,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (error) {
       console.error('Resend signup confirmation error:', error);
       throw new Error(
-        translateSupabaseError(error, 'Doğrulama kodu tekrar gönderilemedi.'),
+        translateSupabaseError(error, AUTH_MOBILE.context.resendFailed),
       );
     }
   };

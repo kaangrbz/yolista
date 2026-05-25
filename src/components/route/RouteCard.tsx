@@ -181,11 +181,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
       {showConnectingLine && (
         <View style={[styles.connectingLine, isLastItem && styles.connectingLineLast]} />
       )}
-      <TouchableOpacity
-        style={styles.routeCard}
-        onPress={() => navigation.navigate('RouteDetail', { routeId: route.id || '' })}
-        disabled={!isMainRoute}
-      >
+      <View style={styles.routeCard}>
         {showAuthorHeader && (
           <AuthorInfo
             fullName={safeFullName}
@@ -231,7 +227,14 @@ const RouteCard: React.FC<RouteCardProps> = ({
         </TouchableOpacity>
 
         <View style={styles.routeInfo}>
-          <View style={{ padding: 16 }}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={{ padding: 16 }}
+            onPress={() => {
+              if (!isMainRoute) return;
+              navigation.navigate('RouteDetail', { routeId: route.id || '' });
+            }}
+            disabled={!isMainRoute}>
             <Text style={styles.routeTitle}>{route.title}</Text>
 
             {/* Category and city should be hidden for not main routes */}
@@ -336,7 +339,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
                 <Icon name="share-variant" size={18} color="#121" />
               </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
           <KeyboardAwareContainer
             enableScrollView={false}
             style={styles.commentInputContainer}
@@ -355,7 +358,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
             </TouchableOpacity>
           </KeyboardAwareContainer>
         </View>
-      </TouchableOpacity>
+      </View>
 
       <ImageViewer
         images={imageUri ? [{ uri: imageUri }] : []}

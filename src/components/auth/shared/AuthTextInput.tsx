@@ -10,15 +10,15 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Animated, {
+import {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { authTheme } from '../../../theme/authTheme';
-
-const AnimatedView = Animated.createAnimatedComponent(View);
+import { useAuthTheme } from '../../../context/AppThemeContext';
+import { useAuthThemedStyles } from '../../../theme/useAuthThemedStyles';
+import { ReanimatedAnimatedView } from '../../../utils/reanimatedComponents';
 
 interface AuthTextInputProps extends TextInputProps {
   icon: string;
@@ -33,6 +33,41 @@ const AuthTextInput: React.FC<AuthTextInputProps> = ({
   secureTextEntry,
   ...textInputProps
 }) => {
+  const theme = useAuthTheme();
+  const styles = useAuthThemedStyles((t) => ({
+    container: {
+      marginBottom: 14,
+    },
+    label: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: t.textSecondary,
+      marginBottom: 8,
+      marginLeft: 4,
+    },
+    inputWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderRadius: 16,
+      borderWidth: 1.5,
+      paddingHorizontal: 16,
+      paddingVertical: Platform.OS === 'ios' ? 16 : 14,
+    },
+    icon: {
+      marginRight: 12,
+    },
+    input: {
+      flex: 1,
+      fontSize: 16,
+      color: t.textPrimary,
+      padding: 0,
+    },
+    toggle: {
+      padding: 4,
+      marginLeft: 8,
+    },
+  }));
+
   const [isFocused, setIsFocused] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const focusProgress = useSharedValue(0);
@@ -47,18 +82,21 @@ const AuthTextInput: React.FC<AuthTextInputProps> = ({
     focusProgress.value = withTiming(0, { duration: 200 });
   };
 
-  const wrapperAnimatedStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(
-      focusProgress.value,
-      [0, 1],
-      [authTheme.inputBorder, authTheme.inputBorderFocus],
-    ),
-    backgroundColor: interpolateColor(
-      focusProgress.value,
-      [0, 1],
-      [authTheme.inputBg, '#FFFFFF'],
-    ),
-  }));
+  const wrapperAnimatedStyle = useAnimatedStyle(
+    () => ({
+      borderColor: interpolateColor(
+        focusProgress.value,
+        [0, 1],
+        [theme.inputBorder, theme.inputBorderFocus],
+      ),
+      backgroundColor: interpolateColor(
+        focusProgress.value,
+        [0, 1],
+        [theme.inputBg, theme.inputFocusBg],
+      ),
+    }),
+    [theme.inputBorder, theme.inputBorderFocus, theme.inputBg, theme.inputFocusBg],
+  );
 
   const isPasswordField = showToggle || secureTextEntry === true;
   const isHidden = isPasswordField && !isPasswordVisible;
@@ -71,17 +109,17 @@ const AuthTextInput: React.FC<AuthTextInputProps> = ({
   return (
     <View style={styles.container}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <AnimatedView style={[styles.inputWrapper, wrapperAnimatedStyle]}>
+      <ReanimatedAnimatedView style={[styles.inputWrapper, wrapperAnimatedStyle]}>
         <Icon
           name={icon}
           size={22}
-          color={isFocused ? authTheme.primary : authTheme.textMuted}
+          color={isFocused ? theme.primary : theme.textMuted}
           style={styles.icon}
         />
         <TextInput
           {...textInputProps}
           style={[styles.input, textInputProps.style]}
-          placeholderTextColor={authTheme.textMuted}
+          placeholderTextColor={theme.textMuted}
           textContentType={resolvedTextContentType}
           secureTextEntry={isHidden}
           onFocus={(event) => {
@@ -102,47 +140,13 @@ const AuthTextInput: React.FC<AuthTextInputProps> = ({
             <Icon
               name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
               size={22}
-              color={authTheme.textMuted}
+              color={theme.textMuted}
             />
           </TouchableOpacity>
         ) : null}
-      </AnimatedView>
+      </ReanimatedAnimatedView>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 14,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: authTheme.textSecondary,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 16,
-    borderWidth: 1.5,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 16 : 14,
-  },
-  icon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: authTheme.textPrimary,
-    padding: 0,
-  },
-  toggle: {
-    padding: 4,
-    marginLeft: 8,
-  },
-});
 
 export default AuthTextInput;

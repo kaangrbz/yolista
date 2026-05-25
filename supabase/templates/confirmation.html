@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yolista — E-posta adresinizi doğrulayın</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F8FAFC;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#FFFFFF;border-radius:16px;border:1px solid rgba(29,161,242,0.12);overflow:hidden;">
+          <tr>
+            <td align="center" style="padding:32px 32px 16px;">
+              <img src="https://yolista.roulista.com/logo-email.png" alt="Yolista" width="48" height="48" style="display:block;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 32px 8px;">
+              {{ if .Data.full_name }}
+              <p style="margin:0 0 8px;font-size:15px;color:#64748B;">Sayın {{ .Data.full_name }},</p>
+              {{ else }}
+              <p style="margin:0 0 8px;font-size:15px;color:#64748B;">Merhaba,</p>
+              {{ end }}
+              <h1 style="margin:0;font-size:22px;line-height:1.3;color:#0F172A;font-weight:700;">E-posta adresinizi doğrulayın</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 32px 0;">
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#64748B;">
+                <strong style="color:#0F172A;">{{ .Email }}</strong> adresine kayıtlı Yolista hesabınızı tamamlamak için aşağıdaki 6 haneli doğrulama kodunu kullanın veya uygulamada devam edin.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:24px 32px 8px;">
+              <p style="margin:0 0 8px;font-size:13px;color:#64748B;text-transform:uppercase;letter-spacing:0.05em;">Doğrulama kodunuz</p>
+              <p style="margin:0;font-size:36px;font-weight:700;letter-spacing:10px;color:#0F172A;font-family:ui-monospace,monospace;">{{ .Token }}</p>
+              <p style="margin:12px 0 0;font-size:13px;color:#94A3B8;">Kod geçerlilik süresi: 1 saat.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:16px 32px 24px;">
+              <a href="{{ .ConfirmationURL }}" style="display:inline-block;background-color:#1DA1F2;color:#FFFFFF;text-decoration:none;font-size:15px;font-weight:600;padding:14px 28px;border-radius:10px;">Uygulamada devam et</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 32px 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC;border-radius:12px;border:1px solid #E2E8F0;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#0F172A;">Bu kaydı siz yapmadınız mı?</p>
+                    <p style="margin:0 0 10px;font-size:13px;line-height:1.5;color:#64748B;">
+                      Hesabınızı korumak için şifrenizi sıfırlayın veya destek ekibimizle iletişime geçin.
+                    </p>
+                    <p style="margin:0;font-size:13px;line-height:1.6;">
+                      <a href="https://yolista.roulista.com/reset-password" style="color:#1DA1F2;font-weight:600;text-decoration:none;">Şifrenizi sıfırlayın</a>
+                      <span style="color:#94A3B8;"> · </span>
+                      <a href="mailto:yolistaapp@gmail.com" style="color:#1DA1F2;font-weight:600;text-decoration:none;">Destek ile iletişime geçin</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:24px 0 0;font-size:12px;color:#94A3B8;text-align:center;">© Yolista</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

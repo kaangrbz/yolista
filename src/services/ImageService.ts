@@ -219,7 +219,9 @@ export class ImageService {
           retryCount: retryCount + 1,
         });
 
-        await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY * (retryCount + 1)));
+        await new Promise<void>((resolve) =>
+          setTimeout(() => resolve(), this.RETRY_DELAY * (retryCount + 1)),
+        );
 
         return this.loadImageWithRetry(imageUrl, bucketName, userId, cacheKey, onStateChange, retryCount + 1);
       }

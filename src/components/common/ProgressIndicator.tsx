@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { appTheme } from '../../theme/appTheme';
+import { View, Text } from 'react-native';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface ProgressIndicatorProps {
   currentStep: number;
@@ -13,11 +13,77 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   totalSteps,
   stepLabels = ['Fotoğraflar', 'Duraklar', 'Kategori', 'Filtreler'],
 }) => {
+  const styles = useThemedStyles((theme) => ({
+    container: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      backgroundColor: theme.background,
+    },
+    progressBarContainer: {
+      marginBottom: 16,
+    },
+    progressBarBackground: {
+      height: 4,
+      backgroundColor: theme.border,
+      borderRadius: 2,
+      overflow: 'hidden',
+    },
+    progressBarFill: {
+      height: '100%',
+      backgroundColor: theme.accent,
+      borderRadius: 2,
+    },
+    stepLabelsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    stepLabel: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    stepCircle: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: theme.border,
+      borderWidth: 2,
+      borderColor: theme.borderStrong,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    stepCircleActive: {
+      backgroundColor: theme.accent,
+      borderColor: theme.accent,
+    },
+    stepCircleCompleted: {
+      backgroundColor: theme.accentPositive,
+      borderColor: theme.accentPositive,
+    },
+    stepNumber: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.textMuted,
+    },
+    stepNumberActive: {
+      color: theme.background,
+    },
+    stepText: {
+      fontSize: 12,
+      color: theme.textSecondary,
+      textAlign: 'center',
+    },
+    stepTextActive: {
+      color: theme.accent,
+      fontWeight: '600',
+    },
+  }));
+
   const progressPercentage = (currentStep / totalSteps) * 100;
 
   return (
     <View style={styles.container}>
-      {/* Progress Bar */}
       <View style={styles.progressBarContainer}>
         <View style={styles.progressBarBackground}>
           <View
@@ -29,7 +95,6 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
         </View>
       </View>
 
-      {/* Step Labels */}
       <View style={styles.stepLabelsContainer}>
         {stepLabels.map((label, index) => {
           const stepNumber = index + 1;
@@ -66,70 +131,3 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: appTheme.background,
-  },
-  progressBarContainer: {
-    marginBottom: 16,
-  },
-  progressBarBackground: {
-    height: 4,
-    backgroundColor: appTheme.border,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: appTheme.accent,
-    borderRadius: 2,
-  },
-  stepLabelsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  stepLabel: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  stepCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: appTheme.border,
-    borderWidth: 2,
-    borderColor: appTheme.borderStrong,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  stepCircleActive: {
-    backgroundColor: appTheme.accent,
-    borderColor: appTheme.accent,
-  },
-  stepCircleCompleted: {
-    backgroundColor: appTheme.accentPositive,
-    borderColor: appTheme.accentPositive,
-  },
-  stepNumber: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: appTheme.textMuted,
-  },
-  stepNumberActive: {
-    color: '#fff',
-  },
-  stepText: {
-    fontSize: 12,
-    color: appTheme.textSecondary,
-    textAlign: 'center',
-  },
-  stepTextActive: {
-    color: appTheme.accent,
-    fontWeight: '600',
-  },
-});

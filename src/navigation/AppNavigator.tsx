@@ -16,19 +16,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DeepLinkingService from '../services/DeepLinkingService';
 import AuthLinkingService from '../services/AuthLinkingService';
 import { CommentsSheetProvider } from '../context/CommentsSheetContext';
+import { useAppTheme } from '../context/AppThemeContext';
 
 const Stack = createNativeStackNavigator();
 
-const LightTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: '#ffffff',
-    text: '#000000',
-  },
-};
-
 export const AppNavigator = () => {
+  const theme = useAppTheme();
+  const navigationTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: theme.background,
+      card: theme.background,
+      text: theme.textPrimary,
+      border: theme.border,
+      primary: theme.accent,
+    },
+  };
   const { isAuthenticated, isLoading, user, reloadAuth } = useAuth();
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
@@ -84,7 +88,7 @@ export const AppNavigator = () => {
     reloadAuth(); // Reload auth context
     await AsyncStorage.clear(); // Clear AsyncStorage data
     // Force a longer delay to ensure complete reset
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise<void>((resolve) => setTimeout(() => resolve(), 2000));
     checkAppVersion();
   };
 
@@ -233,7 +237,7 @@ export const AppNavigator = () => {
   return (
     <NavigationContainer
       ref={navigationRef}
-      theme={LightTheme}
+      theme={navigationTheme}
       onReady={() => {
         console.log('🔗 Navigation container ready');
         if (navigationRef.current) {
@@ -248,7 +252,7 @@ export const AppNavigator = () => {
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
-          contentStyle: { backgroundColor: '#FFFFFF' },
+          contentStyle: { backgroundColor: theme.background },
         }}
       >
         {isAuthenticated && user ? (

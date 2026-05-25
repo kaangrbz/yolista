@@ -14,7 +14,8 @@ import { Profile } from '../../model/profile.model';
 import { DefaultAvatar } from '../../assets';
 import CachedImage from '../common/CachedImage';
 import ProfileInfoSkeleton from './ProfileInfoSkeleton';
-import ProfileVerificationBadges from './ProfileVerificationBadges';
+import ProfileBadges from './ProfileBadges';
+import type { ProfileBadge } from '../../model/profile.model';
 import ModalSheetSafeArea from '../common/ModalSheetSafeArea';
 import { parseWebsiteInput } from '../../utils/websiteUtils';
 
@@ -29,7 +30,7 @@ interface ProfileInfoProps {
   isFollowLoading: boolean;
   onEditPress: () => void;
   onFollowToggle: () => void;
-  isEmailConfirmed?: boolean;
+  badges?: ProfileBadge[];
 }
 
 const ProfileInfo: React.FC<ProfileInfoProps> = ({
@@ -43,7 +44,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = ({
   isFollowLoading,
   onEditPress,
   onFollowToggle,
-  isEmailConfirmed = false,
+  badges,
 }) => {
   const [isWebsitesModalVisible, setIsWebsitesModalVisible] = useState(false);
 
@@ -93,11 +94,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = ({
             <Text style={styles.fullName} numberOfLines={2}>
               {user.full_name || 'Kullanıcı'}
             </Text>
-            <ProfileVerificationBadges
-              isVerified={!!user.is_verified}
-              isEmailConfirmed={isEmailConfirmed}
-              showEmailBadge={isCurrentUserProfile}
-            />
+            <ProfileBadges badges={badges ?? []} />
           </View>
           <Text style={styles.username} numberOfLines={1}>
             @{user.username || 'kullanici'}

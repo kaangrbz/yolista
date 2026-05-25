@@ -5,15 +5,25 @@ import React, {
   useMemo,
   useRef,
 } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import BottomSheet, {
   BottomSheetFlatList,
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../../model/routes.model';
 import { BOTTOM_SHEET_SNAP_POINTS } from '../../../constants/mapDefaults';
-import { appTheme } from '../../../theme/appTheme';
-import MapRouteListItem from './MapRouteListItem';
+import { useAppTheme } from '../../../context/AppThemeContext';
+import { useThemedStyles } from '../../../theme/useThemedStyles';
+import MapRouteCard from './MapRouteCard';
+import MapRouteRow from './MapRouteRow';
+import MapWeatherBadge from './MapWeatherBadge';
 
 export type BottomSheetSnap = 'small' | 'medium' | 'large';
 
@@ -28,6 +38,9 @@ interface MapBottomSheetProps {
   selectedRouteId: string | null;
   onSelectRoute: (route: RouteWithProfile) => void;
   onSnapChange?: (snap: BottomSheetSnap) => void;
+  /** Hava durumu rozeti için aktif konum (genelde haritanın merkezi). */
+  weatherLatitude?: number | null;
+  weatherLongitude?: number | null;
 }
 
 const snapIndexFromName = (snap: BottomSheetSnap): number => {
@@ -62,9 +75,120 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       selectedRouteId,
       onSelectRoute,
       onSnapChange,
+      weatherLatitude,
+      weatherLongitude,
     },
     ref,
   ) => {
+    const theme = useAppTheme();
+    const styles = useThemedStyles((t) => ({
+      background: {
+        backgroundColor: t.background,
+        borderTopLeftRadius: 22,
+        borderTopRightRadius: 22,
+        shadowColor: '#000',
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: -4 },
+      },
+      handle: {
+        paddingTop: 10,
+        paddingBottom: 6,
+      },
+      indicator: {
+        backgroundColor: t.borderStrong,
+        width: 42,
+        height: 4,
+        borderRadius: 2,
+      },
+      header: {
+        paddingHorizontal: 18,
+        paddingTop: 4,
+        paddingBottom: 12,
+      },
+      headerTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      },
+      headerTitleWrapper: {
+        flex: 1,
+        paddingRight: 12,
+      },
+      headerTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: t.textPrimary,
+        letterSpacing: -0.2,
+      },
+      headerSubtitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 3,
+      },
+      headerHint: {
+        fontSize: 12,
+        color: t.textSecondary,
+        marginLeft: 4,
+      },
+      horizontalWrapper: {
+        paddingVertical: 10,
+      },
+      horizontalContent: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+      },
+      sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+        paddingHorizontal: 18,
+        paddingTop: 6,
+        paddingBottom: 6,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: t.border,
+      },
+      sectionHeaderTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: t.textPrimary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.6,
+      },
+      sectionHeaderHint: {
+        fontSize: 11,
+        color: t.textMuted,
+        fontWeight: '600',
+      },
+      verticalContent: {
+        paddingTop: 4,
+        paddingBottom: 80,
+      },
+      rowDivider: {
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: t.border,
+        marginLeft: 92,
+      },
+      emptyState: {
+        paddingHorizontal: 36,
+        paddingVertical: 48,
+        alignItems: 'center',
+      },
+      emptyTitle: {
+        marginTop: 12,
+        fontSize: 14,
+        fontWeight: '700',
+        color: t.textPrimary,
+      },
+      emptyText: {
+        marginTop: 6,
+        fontSize: 12,
+        color: t.textSecondary,
+        textAlign: 'center',
+        lineHeight: 18,
+      },
+    }));
+
     const sheetRef = useRef<BottomSheet>(null);
     const horizontalListRef = useRef<FlatList<RouteWithProfile>>(null);
 
@@ -109,9 +233,8 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
     const renderHorizontalItem = useCallback(
       ({ item }: { item: RouteWithProfile }) => {
         return (
-          <MapRouteListItem
+          <MapRouteCard
             route={item}
-            variant="horizontal"
             selected={item.id === selectedRouteId}
             onPress={() => onSelectRoute(item)}
           />
@@ -123,9 +246,8 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
     const renderVerticalItem = useCallback(
       ({ item }: { item: RouteWithProfile }) => {
         return (
-          <MapRouteListItem
+          <MapRouteRow
             route={item}
-            variant="vertical"
             selected={item.id === selectedRouteId}
             onPress={() => onSelectRoute(item)}
           />
@@ -134,7 +256,12 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       [onSelectRoute, selectedRouteId],
     );
 
-    const keyExtractor = useCallback((item: RouteWithProfile) => String(item.id), []);
+    const keyExtractor = useCallback(
+      (item: RouteWithProfile) => String(item.id),
+      [],
+    );
+
+    const renderRowSeparator = useCallback(() => <View style={styles.rowDivider} />, [styles.rowDivider]);
 
     return (
       <BottomSheet
@@ -144,43 +271,83 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
         onChange={handleSheetChange}
         enablePanDownToClose={false}
         handleIndicatorStyle={styles.indicator}
+        handleStyle={styles.handle}
         backgroundStyle={styles.background}
       >
         <BottomSheetView style={styles.header}>
-          <Text style={styles.headerTitle}>
-            {loading ? 'Yükleniyor...' : `${routes.length} rota`}
-          </Text>
-          <Text style={styles.headerHint}>
-            Bu bölgedeki rotalar
-          </Text>
+          <View style={styles.headerTopRow}>
+            <View style={styles.headerTitleWrapper}>
+              <Text style={styles.headerTitle}>Paylaşılan Rotalar</Text>
+              <View style={styles.headerSubtitleRow}>
+                <Icon
+                  name="map-search-outline"
+                  size={12}
+                  color={theme.textSecondary}
+                />
+                <Text style={styles.headerHint}>
+                  {loading
+                    ? 'Bu bölge yükleniyor...'
+                    : `Bu bölgede ${routes.length} rota`}
+                </Text>
+              </View>
+            </View>
+
+            <MapWeatherBadge
+              latitude={weatherLatitude}
+              longitude={weatherLongitude}
+            />
+          </View>
         </BottomSheetView>
 
-        <View style={styles.horizontalWrapper}>
-          <FlatList
-            ref={horizontalListRef}
-            data={routes}
-            keyExtractor={keyExtractor}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalContent}
-            renderItem={renderHorizontalItem}
-            onScrollToIndexFailed={() => undefined}
-          />
+        {routes.length > 0 ? (
+          <View style={styles.horizontalWrapper}>
+            <FlatList
+              ref={horizontalListRef}
+              data={routes}
+              keyExtractor={keyExtractor}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalContent}
+              renderItem={renderHorizontalItem}
+              onScrollToIndexFailed={() => undefined}
+            />
+          </View>
+        ) : null}
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionHeaderTitle}>Tüm rotalar</Text>
+          {routes.length > 0 ? (
+            <Text style={styles.sectionHeaderHint}>
+              {routes.length} sonuç
+            </Text>
+          ) : null}
         </View>
 
         <BottomSheetFlatList
           data={routes}
           keyExtractor={keyExtractor}
           renderItem={renderVerticalItem}
+          ItemSeparatorComponent={renderRowSeparator}
           contentContainerStyle={styles.verticalContent}
           ListEmptyComponent={
-            !loading ? (
+            loading ? (
               <View style={styles.emptyState}>
+                <ActivityIndicator size="small" color={theme.textSecondary} />
+                <Text style={styles.emptyText}>Rotalar yükleniyor...</Text>
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Icon
+                  name="map-marker-off-outline"
+                  size={36}
+                  color={theme.textMuted}
+                />
+                <Text style={styles.emptyTitle}>Bu bölgede rota yok</Text>
                 <Text style={styles.emptyText}>
-                  Bu bölgede henüz rota yok. Haritayı kaydırarak başka bölgelere bak.
+                  Haritayı kaydırarak veya uzaklaştırarak başka bölgelere bak.
                 </Text>
               </View>
-            ) : null
+            )
           }
         />
       </BottomSheet>
@@ -189,53 +356,5 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
 );
 
 MapBottomSheet.displayName = 'MapBottomSheet';
-
-const styles = StyleSheet.create({
-  background: {
-    backgroundColor: '#fff',
-  },
-  indicator: {
-    backgroundColor: appTheme.borderStrong,
-    width: 48,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: appTheme.border,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: appTheme.textPrimary,
-  },
-  headerHint: {
-    fontSize: 12,
-    color: appTheme.textSecondary,
-    marginTop: 2,
-  },
-  horizontalWrapper: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: appTheme.border,
-  },
-  horizontalContent: {
-    paddingHorizontal: 6,
-  },
-  verticalContent: {
-    paddingVertical: 8,
-    paddingBottom: 80,
-  },
-  emptyState: {
-    padding: 32,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 13,
-    color: appTheme.textSecondary,
-    textAlign: 'center',
-  },
-});
 
 export default MapBottomSheet;
