@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
 import { ImageService } from '../services/ImageService';
+import {
+  getSyncMapPreviewUri,
+  loadMapPreviewImage,
+  subscribeMapPreviewCache,
+  type LoadMapPreviewOptions,
+} from '../utils/mapPreviewImageCache';
 
 interface ImageDownloadState {
   imageUri: string | null;
@@ -59,31 +65,21 @@ const postImageMemoryCache = new Map<string, string>();
 const getPostImageCacheKey = (imageUrl: string, userId: string) =>
   `${userId}:${imageUrl}`;
 
-// Post image download hook — prefers preview when provided (harita / küçük thumb).
+// Post image download hook — prefers preview when provided; falls back to full image.
 export const usePostImageDownload = (
   imageUrl: string | undefined,
   userId: string,
   imagePreviewUrl?: string | undefined,
 ) => {
-  const storageKey =
-    imagePreviewUrl || imageUrl;
-
-  const cacheKey =
-    storageKey && userId ? getPostImageCacheKey(storageKey, userId) : null;
-
-  const [state, setState] = useState<ImageDownloadState>(() => {
-    const cachedUri = cacheKey ? postImageMemoryCache.get(cacheKey) ?? null : null;
-
-    return {
-      imageUri: cachedUri,
-      loading: Boolean(storageKey && userId && !cachedUri),
-      error: null,
-      retryCount: 0,
-    };
+  const [state, setState] = useState<ImageDownloadState>({
+    imageUri: null,
+    loading: false,
+    error: null,
+    retryCount: 0,
   });
 
   useEffect(() => {
-    if (!storageKey || !userId) {
+    if (!userId || (!imagePreviewUrl && !imageUrl)) {
       setState({
         imageUri: null,
         loading: false,
@@ -93,12 +89,135 @@ export const usePostImageDownload = (
       return;
     }
 
-    const memoryKey = getPostImageCacheKey(storageKey, userId);
-    const cachedUri = postImageMemoryCache.get(memoryKey);
+    let cancelled = false;
 
-    if (cachedUri) {
+    const loadFromCacheOrNetwork = async (storageKey: string): Promise<string | null> => {
+      const memoryKey = getPostImageCacheKey(storageKey, userId);
+      const cachedUri = postImageMemoryCache.get(memoryKey);
+
+      if (cachedUri) {
+        return cachedUri;
+      }
+
+      const fileUri = await ImageService.loadImageWithCache(
+        storageKey,
+        'routes',
+        userId,
+      );
+
+      if (fileUri) {
+        postImageMemoryCache.set(memoryKey, fileUri);
+      }
+
+      return fileUri;
+    };
+
+    const downloadImage = async () => {
+      setState((previous) => ({
+        ...previous,
+        loading: true,
+        error: null,
+      }));
+
+      try {
+        if (imagePreviewUrl) {
+          const previewUri = await loadFromCacheOrNetwork(imagePreviewUrl);
+
+          if (cancelled) {
+            return;
+          }
+
+          if (previewUri) {
+            setState({
+              imageUri: previewUri,
+              loading: false,
+              error: null,
+              retryCount: 0,
+            });
+            return;
+          }
+        }
+
+        if (imageUrl) {
+          const fullUri = await loadFromCacheOrNetwork(imageUrl);
+
+          if (cancelled) {
+            return;
+          }
+
+          setState({
+            imageUri: fullUri,
+            loading: false,
+            error: fullUri ? null : 'Failed to load image',
+            retryCount: 0,
+          });
+          return;
+        }
+
+        setState({
+          imageUri: null,
+          loading: false,
+          error: null,
+          retryCount: 0,
+        });
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+
+        const message = err instanceof Error ? err.message : 'Failed to load image';
+
+        setState({
+          imageUri: null,
+          loading: false,
+          error: message,
+          retryCount: 0,
+        });
+      }
+    };
+
+    void downloadImage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUrl, imagePreviewUrl, userId]);
+
+  return state;
+};
+
+/** Harita 128×128 preview — bellek + disk önbelleği; bottom sheet için cacheOnly/previewOnly. */
+export const useMapPreviewImageDownload = (
+  imageUrl: string | undefined,
+  userId: string,
+  imagePreviewUrl?: string | undefined,
+  options: LoadMapPreviewOptions = {},
+) => {
+  const { cacheOnly = false, previewOnly = false } = options;
+  const optionsKey = `${cacheOnly}:${previewOnly}`;
+
+  const [cacheTick, setCacheTick] = useState(0);
+
+  useEffect(() => subscribeMapPreviewCache(() => setCacheTick((value) => value + 1)), []);
+
+  const [state, setState] = useState<ImageDownloadState>(() => {
+    const cachedUri =
+      userId && (imagePreviewUrl || imageUrl)
+        ? getSyncMapPreviewUri(userId, imagePreviewUrl, imageUrl)
+        : null;
+
+    return {
+      imageUri: cachedUri,
+      loading: Boolean(userId && (imagePreviewUrl || imageUrl) && !cachedUri),
+      error: null,
+      retryCount: 0,
+    };
+  });
+
+  useEffect(() => {
+    if (!userId || (!imagePreviewUrl && !imageUrl)) {
       setState({
-        imageUri: cachedUri,
+        imageUri: null,
         loading: false,
         error: null,
         retryCount: 0,
@@ -106,27 +225,67 @@ export const usePostImageDownload = (
       return;
     }
 
-    const downloadImage = async () => {
-      await ImageService.downloadPostImage(
-        storageKey,
-        userId,
-        (downloadState) => {
-          if (downloadState.imageUri) {
-            postImageMemoryCache.set(memoryKey, downloadState.imageUri);
-          }
+    const syncUri = getSyncMapPreviewUri(userId, imagePreviewUrl, imageUrl);
 
-          setState({
-            imageUri: downloadState.imageUri,
-            loading: downloadState.loading,
-            error: downloadState.error,
-            retryCount: downloadState.retryCount,
-          });
+    if (syncUri) {
+      setState({
+        imageUri: syncUri,
+        loading: false,
+        error: null,
+        retryCount: 0,
+      });
+      return;
+    }
+
+    let cancelled = false;
+
+    const resolveImage = async () => {
+      setState((previous) => ({
+        ...previous,
+        loading: !previous.imageUri,
+        error: null,
+      }));
+
+      try {
+        const fileUri = await loadMapPreviewImage(
+          userId,
+          imagePreviewUrl,
+          imageUrl,
+          { cacheOnly, previewOnly },
+        );
+
+        if (cancelled) {
+          return;
         }
-      );
+
+        setState({
+          imageUri: fileUri,
+          loading: false,
+          error: fileUri ? null : 'Failed to load preview',
+          retryCount: 0,
+        });
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+
+        const message = err instanceof Error ? err.message : 'Failed to load preview';
+
+        setState({
+          imageUri: null,
+          loading: false,
+          error: message,
+          retryCount: 0,
+        });
+      }
     };
 
-    void downloadImage();
-  }, [storageKey, userId]);
+    void resolveImage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cacheOnly, cacheTick, imagePreviewUrl, imageUrl, optionsKey, previewOnly, userId]);
 
   return state;
 };

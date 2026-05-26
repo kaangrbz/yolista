@@ -1,5 +1,6 @@
 import React from 'react';
 import { Marker } from 'react-native-maps';
+import { getMapMarkerAnchorProps } from '../../../constants/mapMarkerLayout';
 import MapClusterMarker from './MapClusterMarker';
 
 interface MapClusterMarkerWrapperProps {
@@ -22,6 +23,7 @@ export const MapClusterMarkerWrapper: React.FC<MapClusterMarkerWrapperProps> = (
       key={`cluster-${clusterId}`}
       identifier={`cluster-${clusterId}`}
       coordinate={{ latitude, longitude }}
+      {...getMapMarkerAnchorProps()}
       tracksViewChanges={false}
       onPress={(event) => {
         event.stopPropagation();

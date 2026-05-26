@@ -15,7 +15,7 @@ import {
   getRouteLocationSource,
 } from '../../../utils/routeLocationLabel';
 import {
-  usePostImageDownload,
+  useMapPreviewImageDownload,
   useProfileImageDownload,
 } from '../../../hooks/useImageDownload';
 import { MAP_ACTIVE_ROUTE_BORDER } from '../../../constants/mapDefaults';
@@ -195,7 +195,7 @@ export const MapRouteCard: React.FC<MapRouteCardProps> = ({
     },
   }));
 
-  const { imageUri } = usePostImageDownload(
+  const { imageUri } = useMapPreviewImageDownload(
     route.image_url,
     route.user_id || '',
     route.image_preview_url || undefined,

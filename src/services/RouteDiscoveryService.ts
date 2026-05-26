@@ -1,6 +1,10 @@
 import { supabase } from '../lib/supabase';
 import { RouteWithProfile } from '../model/routes.model';
-import { getCityCenter, getCityIdsInBbox } from '../data/cityCenters';
+import { getCityIdsInBbox } from '../data/cityCenters';
+import {
+  applyRouteLocationMetadata,
+  mergeRoutesById,
+} from '../utils/applyRouteLocationMetadata';
 
 export interface BoundingBox {
   minLat: number;
@@ -35,7 +39,11 @@ const cache = new Map<string, CacheEntry>();
 const buildCacheKey = (params: FetchRoutesInBboxParams): string => {
   const { bbox, filters, limit } = params;
   const bboxKey = `${bbox.minLat.toFixed(3)}_${bbox.maxLat.toFixed(3)}_${bbox.minLng.toFixed(3)}_${bbox.maxLng.toFixed(3)}`;
-  const filterKey = `${filters?.categoryId ?? 'all'}_${filters?.maxDistanceKm ?? 'inf'}`;
+  const filterKey = `${filters?.categoryId ?? 'all'}_${filters?.maxDistanceKm ?? 'inf'}_${
+    filters?.userCoordinate
+      ? `${filters.userCoordinate.latitude.toFixed(3)}_${filters.userCoordinate.longitude.toFixed(3)}`
+      : 'none'
+  }`;
 
   return `${bboxKey}|${filterKey}|${limit ?? 200}`;
 };
@@ -96,37 +104,47 @@ const enrichRoutes = async (
   })) as RouteWithProfile[];
 };
 
+const ROUTE_SELECT = `
+  *,
+  profiles (*),
+  cities (*),
+  categories (*)
+`;
 
-const applyLocationMetadata = (row: any): RouteWithProfile => {
-  const hasGps =
-    typeof row.latitude === 'number' && typeof row.longitude === 'number';
+const fetchLegacyCityCenterRoutesInBbox = async (
+  bbox: BoundingBox,
+  categoryId?: number,
+  limit = 200,
+): Promise<any[]> => {
+  const cityIdsInBbox = getCityIdsInBbox(bbox);
 
-  if (hasGps) {
-    return {
-      ...row,
-      location_source: 'gps' as const,
-    };
+  if (cityIdsInBbox.length === 0) {
+    return [];
   }
 
-  if (row.city_id != null) {
-    const cityCenter = getCityCenter(row.city_id);
+  let query = supabase
+    .from('routes')
+    .select(ROUTE_SELECT)
+    .eq('is_deleted', false)
+    .eq('is_hidden', false)
+    .eq('order_index', 0)
+    .is('latitude', null)
+    .in('city_id', cityIdsInBbox)
+    .order('created_at', { ascending: false })
+    .limit(limit);
 
-    if (cityCenter) {
-      return {
-        ...row,
-        latitude: cityCenter.latitude,
-        longitude: cityCenter.longitude,
-        location_source: 'city_center' as const,
-      };
-    }
+  if (categoryId && categoryId !== 0) {
+    query = query.eq('category_id', categoryId);
   }
 
-  return {
-    ...row,
-    latitude: undefined,
-    longitude: undefined,
-    location_source: 'none' as const,
-  };
+  const { data, error } = await query;
+
+  if (error) {
+    console.warn('RouteDiscoveryService legacy city-center fetch:', error);
+    return [];
+  }
+
+  return data || [];
 };
 
 const fetchViaRpc = async (
@@ -162,12 +180,7 @@ const fetchViaRpc = async (
 
   const { data: enriched, error: enrichError } = await supabase
     .from('routes')
-    .select(`
-      *,
-      profiles (*),
-      cities (*),
-      categories (*)
-    `)
+    .select(ROUTE_SELECT)
     .in('id', ids)
     .order('created_at', { ascending: false });
 
@@ -177,6 +190,46 @@ const fetchViaRpc = async (
   }
 
   return enriched || [];
+};
+
+const fetchClientRoutesInBbox = async (
+  bbox: BoundingBox,
+  categoryId?: number,
+  limit = 200,
+): Promise<any[]> => {
+  const cityIdsInBbox = getCityIdsInBbox(bbox);
+  const orFilters: string[] = [
+    `and(latitude.gte.${bbox.minLat},latitude.lte.${bbox.maxLat},longitude.gte.${bbox.minLng},longitude.lte.${bbox.maxLng})`,
+  ];
+
+  if (cityIdsInBbox.length > 0) {
+    orFilters.push(
+      `and(latitude.is.null,city_id.in.(${cityIdsInBbox.join(',')}))`,
+    );
+  }
+
+  let query = supabase
+    .from('routes')
+    .select(ROUTE_SELECT)
+    .eq('is_deleted', false)
+    .eq('is_hidden', false)
+    .eq('order_index', 0)
+    .or(orFilters.join(','))
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (categoryId && categoryId !== 0) {
+    query = query.eq('category_id', categoryId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('RouteDiscoveryService.fetchClientRoutesInBbox:', error);
+    throw new Error(`Failed to fetch routes in viewport: ${error.message}`);
+  }
+
+  return data || [];
 };
 
 export const RouteDiscoveryService = {
@@ -199,57 +252,30 @@ export const RouteDiscoveryService = {
       return cached.data;
     }
 
-    const cityIdsInBbox = getCityIdsInBbox(bbox);
-
-    let rows: any[] | null = null;
+    let rows: any[] = [];
 
     try {
-      rows = await fetchViaRpc(bbox, filters?.categoryId, limit);
-    } catch (rpcError) {
-      console.warn('RouteDiscoveryService RPC unavailable, using client query:', rpcError);
-    }
+      const rpcRows = await fetchViaRpc(bbox, filters?.categoryId, limit);
 
-    if (rows === null) {
-      const orFilters: string[] = [
-        `and(latitude.gte.${bbox.minLat},latitude.lte.${bbox.maxLat},longitude.gte.${bbox.minLng},longitude.lte.${bbox.maxLng})`,
-      ];
-
-      if (cityIdsInBbox.length > 0) {
-        orFilters.push(
-          `and(latitude.is.null,city_id.in.(${cityIdsInBbox.join(',')}))`,
+      if (rpcRows !== null) {
+        const legacyRows = await fetchLegacyCityCenterRoutesInBbox(
+          bbox,
+          filters?.categoryId,
+          limit,
         );
+        rows = mergeRoutesById(rpcRows, legacyRows);
+      } else {
+        rows = await fetchClientRoutesInBbox(bbox, filters?.categoryId, limit);
       }
-
-      let query = supabase
-        .from('routes')
-        .select(`
-          *,
-          profiles (*),
-          cities (*),
-          categories (*)
-        `)
-        .eq('is_deleted', false)
-        .eq('is_hidden', false)
-        .eq('order_index', 0)
-        .or(orFilters.join(','))
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (filters?.categoryId && filters.categoryId !== 0) {
-        query = query.eq('category_id', filters.categoryId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('RouteDiscoveryService.fetchRoutesInBoundingBox:', error);
-        throw new Error(`Failed to fetch routes in viewport: ${error.message}`);
-      }
-
-      rows = data || [];
+    } catch (rpcError) {
+      console.warn(
+        'RouteDiscoveryService RPC unavailable, using client query:',
+        rpcError,
+      );
+      rows = await fetchClientRoutesInBbox(bbox, filters?.categoryId, limit);
     }
 
-    rows = rows.map(applyLocationMetadata);
+    rows = rows.map((row) => applyRouteLocationMetadata(row));
 
     if (
       filters?.maxDistanceKm &&

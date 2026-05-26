@@ -54,6 +54,8 @@ interface CreateRouteFlowState {
     location: { latitude: number; longitude: number; address?: string },
   ) => void;
   clearStopLocation: (stopId: string) => void;
+  /** Seçili durağın konumunu tüm duraklara kopyalar. */
+  applyLocationToAllStops: (sourceStopId: string) => boolean;
   setCategoryCity: (category: Category | null, city: City | null) => void;
   setWizardStep: (step: WizardStep) => void;
   markDirty: () => void;
@@ -199,6 +201,32 @@ export const useCreateRouteFlowStore = create<CreateRouteFlowState>((set, get) =
       ),
       isDirty: true,
     }));
+  },
+
+  applyLocationToAllStops: (sourceStopId) => {
+    const source = get().routeStops.find((stop) => stop.id === sourceStopId);
+
+    if (
+      !source?.coordinate ||
+      typeof source.coordinate.latitude !== 'number' ||
+      typeof source.coordinate.longitude !== 'number'
+    ) {
+      return false;
+    }
+
+    set((state) => ({
+      routeStops: state.routeStops.map((stop) => ({
+        ...stop,
+        coordinate: {
+          latitude: source.coordinate!.latitude,
+          longitude: source.coordinate!.longitude,
+        },
+        address: source.address,
+      })),
+      isDirty: true,
+    }));
+
+    return true;
   },
 
   setCategoryCity: (category, city) => {

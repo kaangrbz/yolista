@@ -9,8 +9,9 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../../model/routes.model';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
-import { usePostImageDownload } from '../../../hooks/useImageDownload';
+import { useMapPreviewImageDownload } from '../../../hooks/useImageDownload';
 import { MAP_ACTIVE_ROUTE_BORDER } from '../../../constants/mapDefaults';
+import { getStopPhotoHintLabel } from '../../../utils/getStopPhotoHintLabel';
 
 interface MapRouteStopCardProps {
   stop: RouteWithProfile;
@@ -106,13 +107,15 @@ export const MapRouteStopCard: React.FC<MapRouteStopCardProps> = ({
     },
   }));
 
-  const { imageUri } = usePostImageDownload(
+  const { imageUri } = useMapPreviewImageDownload(
     stop.image_url,
     stop.user_id || '',
     stop.image_preview_url || undefined,
+    { cacheOnly: true, previewOnly: true },
   );
 
   const description = stop.description?.trim() || '';
+  const hasStopLabel = Boolean(stopLabel);
 
   return (
     <TouchableOpacity
@@ -136,14 +139,20 @@ export const MapRouteStopCard: React.FC<MapRouteStopCardProps> = ({
             size={11}
             color={theme.id === 'light' ? '#fff' : theme.textPrimary}
           />
-          <Text style={styles.stopBadgeText}>{stopLabel}</Text>
+          {hasStopLabel ? (
+            <Text numberOfLines={1} style={styles.stopBadgeText}>
+              {stopLabel}
+            </Text>
+          ) : null}
         </View>
       </View>
 
       <View style={styles.content}>
-        <Text numberOfLines={2} style={styles.title}>
-          {stopLabel}
-        </Text>
+        {hasStopLabel ? (
+          <Text numberOfLines={2} style={styles.title}>
+            {stopLabel}
+          </Text>
+        ) : null}
         {description ? (
           <Text numberOfLines={3} style={styles.description}>
             {description}
@@ -159,11 +168,7 @@ export function getMapStopKey(stop: RouteWithProfile): string {
 }
 
 export function getMapStopLabel(stop: RouteWithProfile): string {
-  if (stop.order_index === 0) {
-    return 'Başlangıç';
-  }
-
-  return `Durak ${stop.order_index}`;
+  return getStopPhotoHintLabel(stop);
 }
 
 export default MapRouteStopCard;

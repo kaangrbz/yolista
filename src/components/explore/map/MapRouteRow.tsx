@@ -15,7 +15,7 @@ import {
   getRouteLocationSource,
 } from '../../../utils/routeLocationLabel';
 import {
-  usePostImageDownload,
+  useMapPreviewImageDownload,
   useProfileImageDownload,
 } from '../../../hooks/useImageDownload';
 import { MAP_ACTIVE_ROUTE_BORDER } from '../../../constants/mapDefaults';
@@ -23,16 +23,17 @@ import { MAP_ACTIVE_ROUTE_BORDER } from '../../../constants/mapDefaults';
 interface MapRouteRowProps {
   route: RouteWithProfile;
   selected?: boolean;
+  distanceLabel?: string | null;
   onPress: () => void;
 }
 
 /**
- * Bottom sheet'in dikey listesinde gözüken satır — Google Maps'in
- * arama sonuçları satırına benzer: solda kare fotoğraf, sağda metin yığını.
+ * Bottom sheet'in dikey listesinde gözüken satır — Google Maps arama sonucu satırına benzer.
  */
 export const MapRouteRow: React.FC<MapRouteRowProps> = ({
   route,
   selected = false,
+  distanceLabel = null,
   onPress,
 }) => {
   const theme = useAppTheme();
@@ -141,10 +142,11 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
     },
   }));
 
-  const { imageUri } = usePostImageDownload(
+  const { imageUri } = useMapPreviewImageDownload(
     route.image_url,
     route.user_id || '',
     route.image_preview_url || undefined,
+    { cacheOnly: true, previewOnly: true },
   );
 
   const { imageUri: avatarUri } = useProfileImageDownload(
@@ -159,7 +161,9 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.85}
+      disabled={selected}
+      activeOpacity={selected ? 1 : 0.85}
+      accessibilityState={{ selected }}
       style={[styles.row, selected && styles.rowSelected]}
     >
       <View style={[styles.imageWrapper, selected && styles.imageWrapperSelected]}>
@@ -239,6 +243,20 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
           />
           <Text style={styles.metaText}>{route.like_count || 0}</Text>
 
+          {distanceLabel ? (
+            <>
+              <View style={styles.dot} />
+              <Icon
+                name="map-marker-distance"
+                size={12}
+                color={theme.textSecondary}
+              />
+              <Text numberOfLines={1} style={styles.metaText}>
+                {distanceLabel}
+              </Text>
+            </>
+          ) : null}
+
           {route.categories?.name ? (
             <View style={styles.chip}>
               <Icon
@@ -254,12 +272,14 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
         </View>
       </View>
 
-      <Icon
-        name="chevron-right"
-        size={20}
-        color={theme.textMuted}
-        style={styles.chevron}
-      />
+      {!selected ? (
+        <Icon
+          name="chevron-right"
+          size={20}
+          color={theme.textMuted}
+          style={styles.chevron}
+        />
+      ) : null}
     </TouchableOpacity>
   );
 };

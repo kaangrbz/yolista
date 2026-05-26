@@ -1,16 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Platform } from 'react-native';
 import { Marker } from 'react-native-maps';
 import { RouteWithProfile } from '../../../model/routes.model';
+import { getMapMarkerAnchorProps } from '../../../constants/mapMarkerLayout';
 import { getRouteDisplayLabel } from '../../../utils/getRouteDisplayLabel';
-import {
-  getMarkerImageKey,
-  isMarkerImageReady,
-  markMarkerImageReady,
-} from '../../../utils/mapMarkerImageReady';
+import { useMapMarkerViewTracking } from '../../../hooks/useMapMarkerViewTracking';
 import MapRouteMarker from './MapRouteMarker';
-
-const TRACKING_SETTLE_MS = 400;
 
 interface MapRouteGroupMarkerProps {
   group: RouteWithProfile[];
@@ -19,11 +14,6 @@ interface MapRouteGroupMarkerProps {
   onCalloutPress: (route: RouteWithProfile) => void;
 }
 
-/**
- * Custom map marker with route thumbnail preview.
- * tracksViewChanges must be toggled: stay true while the image loads, then false
- * so react-native-maps snapshots the view (permanent true often renders blank on Android).
- */
 export const MapRouteGroupMarker: React.FC<MapRouteGroupMarkerProps> = ({
   group,
   selectedRouteId,
@@ -31,54 +21,11 @@ export const MapRouteGroupMarker: React.FC<MapRouteGroupMarkerProps> = ({
   onCalloutPress,
 }) => {
   const primary = group[0];
-  const imageKey = getMarkerImageKey(
-    primary?.user_id,
-    primary?.image_url,
-    primary?.image_preview_url,
-  );
-  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [tracksViewChanges, setTracksViewChanges] = useState(
-    () =>
-      (!!primary?.image_url || !!primary?.image_preview_url) &&
-      !isMarkerImageReady(imageKey),
-  );
-
-  const clearSettleTimer = useCallback(() => {
-    if (settleTimerRef.current) {
-      clearTimeout(settleTimerRef.current);
-      settleTimerRef.current = null;
-    }
-  }, []);
-
-  const scheduleTrackingOff = useCallback(() => {
-    clearSettleTimer();
-    markMarkerImageReady(imageKey);
-    setTracksViewChanges(true);
-    settleTimerRef.current = setTimeout(() => {
-      setTracksViewChanges(false);
-      settleTimerRef.current = null;
-    }, TRACKING_SETTLE_MS);
-  }, [clearSettleTimer, imageKey]);
-
-  useEffect(() => {
-    clearSettleTimer();
-
-    if (!primary?.image_url && !primary?.image_preview_url) {
-      setTracksViewChanges(false);
-      return;
-    }
-
-    if (isMarkerImageReady(imageKey)) {
-      setTracksViewChanges(false);
-      return;
-    }
-
-    setTracksViewChanges(true);
-
-    return clearSettleTimer;
-  }, [primary?.id, primary?.image_url, primary?.image_preview_url, imageKey, clearSettleTimer]);
-
-  useEffect(() => () => clearSettleTimer(), [clearSettleTimer]);
+  const { tracksViewChanges, handleMarkerReady } = useMapMarkerViewTracking({
+    userId: primary?.user_id,
+    imageUrl: primary?.image_url,
+    imagePreviewUrl: primary?.image_preview_url,
+  });
 
   if (
     !primary ||
@@ -89,18 +36,15 @@ export const MapRouteGroupMarker: React.FC<MapRouteGroupMarkerProps> = ({
   }
 
   const isSelected = group.some((route) => route.id === selectedRouteId);
-  const markerKey = primary.id
-    ? `group-${primary.id}`
-    : `group-${primary.latitude.toFixed(4)}-${primary.longitude.toFixed(4)}`;
 
   return (
     <Marker
-      key={markerKey}
       identifier={primary.id || undefined}
       coordinate={{
         latitude: primary.latitude,
         longitude: primary.longitude,
       }}
+      {...getMapMarkerAnchorProps()}
       tracksViewChanges={tracksViewChanges}
       onPress={(event) => {
         event.stopPropagation();
@@ -119,8 +63,15 @@ export const MapRouteGroupMarker: React.FC<MapRouteGroupMarkerProps> = ({
         iconName={primary.categories?.icon_name}
         selected={isSelected}
         stackCount={group.length}
+        stackItems={group.slice(0, 5).map((route) => ({
+          imageUrl: route.image_url || null,
+          imagePreviewUrl: route.image_preview_url || null,
+          userId: route.user_id || null,
+          iconName: route.categories?.icon_name,
+          estimatedLocation: route.location_source === 'city_center',
+        }))}
         estimatedLocation={primary.location_source === 'city_center'}
-        onImageReady={scheduleTrackingOff}
+        onImageReady={handleMarkerReady}
         collapsable={Platform.OS === 'android' ? false : undefined}
       />
     </Marker>

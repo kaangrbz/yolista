@@ -16,6 +16,7 @@ import {
 } from '../../constants/mapViewConfig';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteStop } from '../../screens/CreateRoute/StopDetailsScreen';
+import { getStopPhotoHintLabel } from '../../utils/getStopPhotoHintLabel';
 
 interface RouteMapProps {
   stops: RouteStop[];
@@ -130,12 +131,17 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         {/* Stop Markers */}
         {stopsWithCoordinates.map((stop, index) => {
           const originalIndex = stops.findIndex(s => s.id === stop.id);
+          const markerTitle = getStopPhotoHintLabel({
+            title: stop.title,
+            order_index: originalIndex,
+          });
+
           return (
             <Marker
               key={stop.id}
               coordinate={stop.coordinate!}
               pinColor={getMarkerColor(originalIndex)}
-              title={stop.title?.trim() || `Durak ${originalIndex + 1}`}
+              title={markerTitle || undefined}
               description={stop.description?.trim() || undefined}
             />
           );

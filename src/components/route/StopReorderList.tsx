@@ -6,6 +6,7 @@ import DraggableFlatList, {
 } from 'react-native-draggable-flatlist';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { CreateFlowPhoto } from '../../types/createRouteFlowTypes';
+import { getStopPhotoHintLabel } from '../../utils/getStopPhotoHintLabel';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useThemedStyles } from '../../theme/useThemedStyles';
 
@@ -17,11 +18,13 @@ interface StopReorderItem {
 
 interface StopReorderListProps {
   photos: CreateFlowPhoto[];
+  stopTitles?: string[];
   onReorder: (fromIndex: number, toIndex: number) => void;
 }
 
 export const StopReorderList: React.FC<StopReorderListProps> = ({
   photos,
+  stopTitles = [],
   onReorder,
 }) => {
   const theme = useAppTheme();
@@ -74,7 +77,13 @@ export const StopReorderList: React.FC<StopReorderListProps> = ({
   }));
 
   const renderItem = useCallback(
-    ({ item, drag, isActive }: RenderItemParams<StopReorderItem>) => (
+    ({ item, drag, isActive }: RenderItemParams<StopReorderItem>) => {
+      const label = getStopPhotoHintLabel({
+        title: stopTitles[item.index],
+        order_index: item.index,
+      });
+
+      return (
       <ScaleDecorator>
         <View style={[styles.row, isActive && styles.rowActive]}>
           <Image
@@ -82,7 +91,11 @@ export const StopReorderList: React.FC<StopReorderListProps> = ({
             style={styles.thumb}
           />
           <View style={styles.meta}>
-            <Text style={styles.title}>Fotoğraf {item.index + 1}</Text>
+            {label ? (
+              <Text style={styles.title} numberOfLines={2}>
+                {label}
+              </Text>
+            ) : null}
             <Text style={styles.subtitle} numberOfLines={1}>
               Sürükleyerek sırayı değiştir
             </Text>
@@ -96,8 +109,9 @@ export const StopReorderList: React.FC<StopReorderListProps> = ({
           </TouchableOpacity>
         </View>
       </ScaleDecorator>
-    ),
-    [styles, theme.textMuted],
+      );
+    },
+    [stopTitles, styles, theme.textMuted],
   );
 
   return (

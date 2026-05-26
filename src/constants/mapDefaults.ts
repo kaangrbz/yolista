@@ -58,5 +58,11 @@ export const CLUSTER_MIN_POINTS = 2;
 export const MAP_FILTER_DEFAULT_DISTANCE_KM = 15;
 export const MAP_FILTER_DISTANCE_OPTIONS_KM = [5, 15] as const;
 
+/** Yakınım / km filtresi için harita zoom delta (yarıçap + padding). */
+export const regionDeltaForDistanceKm = (distanceKm: number): number => {
+  const diameterKm = distanceKm * 2 * 1.25;
+  return Math.max(diameterKm / 111, 0.012);
+};
+
 /** Keşif haritası — seçili / aktif rota önizleme çerçevesi */
 export const MAP_ACTIVE_ROUTE_BORDER = '#2563eb';

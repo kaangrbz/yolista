@@ -13,6 +13,8 @@ import { StopForm } from '../../components/route/StopForm';
 import { RouteEditorMap } from '../../components/route/RouteEditorMap';
 import { StopPhotoStrip } from '../../components/route/StopPhotoStrip';
 import { LocationProgressChip } from '../../components/route/LocationProgressChip';
+import { RouteDistanceChip } from '../../components/route/RouteDistanceChip';
+import { RoutePreviewModal } from '../../components/route/RoutePreviewModal';
 import { StopReorderSheet } from '../../components/route/StopReorderSheet';
 import { WizardStepIndicator } from '../../components/createFlow/WizardStepIndicator';
 import KeyboardAwareContainer from '../../components/common/KeyboardAwareContainer';
@@ -50,12 +52,16 @@ export const StopDetailsScreen = () => {
   const setRouteStops = useCreateRouteFlowStore((state) => state.setRouteStops);
   const setStopLocation = useCreateRouteFlowStore((state) => state.setStopLocation);
   const clearStopLocation = useCreateRouteFlowStore((state) => state.clearStopLocation);
+  const applyLocationToAllStops = useCreateRouteFlowStore(
+    (state) => state.applyLocationToAllStops,
+  );
   const reorderPhotos = useCreateRouteFlowStore((state) => state.reorderPhotos);
   const setWizardStep = useCreateRouteFlowStore((state) => state.setWizardStep);
 
   const [currentStopIndex, setCurrentStopIndex] = useState<number | null>(null);
   const [detailsMode, setDetailsMode] = useState<DetailsMode>('locate');
   const [isReorderVisible, setIsReorderVisible] = useState(false);
+  const [isPreviewVisible, setIsPreviewVisible] = useState(false);
 
   useCreateFlowPreventRemove('stops');
   useCreateFlowAndroidBack('stops');
@@ -109,6 +115,9 @@ export const StopDetailsScreen = () => {
       borderWidth: 1,
       borderColor: t.border,
     },
+    iconButtonDisabled: {
+      opacity: 0.45,
+    },
     title: {
       fontSize: 22,
       fontWeight: '700',
@@ -119,6 +128,12 @@ export const StopDetailsScreen = () => {
       color: t.textSecondary,
       lineHeight: 20,
       marginTop: 4,
+    },
+    chipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 8,
     },
     modeToggle: {
       flexDirection: 'row',
@@ -340,6 +355,44 @@ export const StopDetailsScreen = () => {
     navigation.navigate('LocationPicker', { stopId });
   }, [navigation]);
 
+  const handleApplyRegionToAll = useCallback(() => {
+    const sourceStop =
+      (currentStop?.coordinate ? currentStop : null) ??
+      routeStops.find(
+        (stop) =>
+          typeof stop.coordinate?.latitude === 'number' &&
+          typeof stop.coordinate?.longitude === 'number',
+      );
+
+    if (!sourceStop?.coordinate) {
+      Alert.alert(
+        'Konum yok',
+        'Önce en az bir durağa konum at veya seçili durağı konumlandır.',
+      );
+      return;
+    }
+
+    const locationLabel = sourceStop.address?.trim() || 'Seçili konum';
+
+    Alert.alert(
+      'Hepsine aynı bölgeyi ata',
+      `${routeStops.length} durağa "${locationLabel}" uygulanacak. Devam edilsin mi?`,
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Uygula',
+          onPress: () => {
+            const applied = applyLocationToAllStops(sourceStop.id);
+
+            if (!applied) {
+              Alert.alert('Hata', 'Konum uygulanamadı.');
+            }
+          },
+        },
+      ],
+    );
+  }, [applyLocationToAllStops, currentStop, routeStops]);
+
   const handleContinue = () => {
     if (selectedPhotos.length === 0) {
       Alert.alert('Hata', 'En az bir fotoğraf gereklidir.');
@@ -367,21 +420,45 @@ export const StopDetailsScreen = () => {
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
+              style={[
+                styles.iconButton,
+                locatedCount === 0 && styles.iconButtonDisabled,
+              ]}
+              onPress={() => setIsPreviewVisible(true)}
+              disabled={locatedCount === 0}
+              accessibilityLabel="Rotayı önizle"
+            >
+              <Icon name="map-outline" size={18} color={theme.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleApplyRegionToAll}
+              accessibilityLabel="Hepsine aynı bölgeyi ata"
+            >
+              <Icon name="map-marker-multiple" size={18} color={theme.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
               style={styles.iconButton}
               onPress={() => setIsReorderVisible(true)}
+              accessibilityLabel="Sıralamayı düzenle"
             >
               <Icon name="sort" size={18} color={theme.textSecondary} />
             </TouchableOpacity>
-            <LocationProgressChip
-              locatedCount={locatedCount}
-              totalCount={routeStops.length}
-            />
           </View>
         </View>
         <Text style={styles.subtitle}>
           Her fotoğrafa isteğe bağlı konum ve metin ekle. Rota çizgisi sonra belirlenir.
         </Text>
         <WizardStepIndicator currentStep="stops" />
+        <View style={styles.chipRow}>
+          <LocationProgressChip
+            locatedCount={locatedCount}
+            totalCount={routeStops.length}
+          />
+          <RouteDistanceChip
+            points={routeStops.map((stop) => stop.coordinate ?? {})}
+          />
+        </View>
       </View>
 
       <View style={styles.modeToggle}>
@@ -497,8 +574,15 @@ export const StopDetailsScreen = () => {
       <StopReorderSheet
         visible={isReorderVisible}
         photos={selectedPhotos}
+        stopTitles={routeStops.map((stop) => stop.title)}
         onClose={() => setIsReorderVisible(false)}
         onReorder={handleReorderPhotos}
+      />
+
+      <RoutePreviewModal
+        visible={isPreviewVisible}
+        stops={routeStops}
+        onClose={() => setIsPreviewVisible(false)}
       />
     </SafeAreaView>
   );

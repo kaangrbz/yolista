@@ -17,6 +17,7 @@ import BottomSheet, {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../../model/routes.model';
 import { BOTTOM_SHEET_SNAP_POINTS } from '../../../constants/mapDefaults';
+import { getRouteDistanceLabel } from '../../../utils/routeDistance';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
 import MapRouteRow from './MapRouteRow';
@@ -270,7 +271,7 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       },
       verticalContent: {
         paddingTop: 4,
-        paddingBottom: 80,
+        paddingBottom: 30,
       },
       rowDivider: {
         height: StyleSheet.hairlineWidth,
@@ -279,7 +280,7 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       },
       emptyState: {
         paddingHorizontal: 36,
-        paddingVertical: 48,
+        paddingVertical: 12,
         alignItems: 'center',
       },
       emptyTitle: {
@@ -339,17 +340,31 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       [onSnapChange],
     );
 
+    const selectedRouteDistanceLabel = useMemo(
+      () => getRouteDistanceLabel(selectedRouteStops),
+      [selectedRouteStops],
+    );
+
     const renderVerticalItem = useCallback(
       ({ item }: { item: RouteWithProfile }) => {
+        const isSelected = item.id === selectedRouteId;
+
         return (
           <MapRouteRow
             route={item}
-            selected={item.id === selectedRouteId}
-            onPress={() => onSelectRoute(item)}
+            selected={isSelected}
+            distanceLabel={isSelected ? selectedRouteDistanceLabel : null}
+            onPress={() => {
+              if (isSelected) {
+                return;
+              }
+
+              onSelectRoute(item);
+            }}
           />
         );
       },
-      [onSelectRoute, selectedRouteId],
+      [onSelectRoute, selectedRouteDistanceLabel, selectedRouteId],
     );
 
     const keyExtractor = useCallback(

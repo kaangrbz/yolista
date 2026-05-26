@@ -1,7 +1,7 @@
 # Faz 2 — Rota Oluşturma & Konum UX (Mobil)
 
-> **Durum:** 🟡 Devam ediyor — harita editörü + konum atama UX  
-> **Bağımlılık:** Faz 0 ✅ | Faz 1 keşif haritası koordinat verisi için Faz 2 publish şart
+> **Durum:** 🟡 Kapanış — QA kaldı (~%95)  
+> **Bağımlılık:** Faz 0 ✅ | Faz 1 ✅
 
 ## Henüz yapılmayan / bilinen eksikler (Mayıs 2026)
 
@@ -10,7 +10,9 @@
 | 1 | `LocationPickerScreen` | ✅ Modal route — crosshair harita, adres arama, konumumu kullan |
 | 2 | Harita zoom davranışı | ✅ Konum atarken mevcut zoom korunur (`ROUTE_ASSIGN_PRESERVE_ZOOM_MAX_DELTA` üstüne çıkılmaz; çok zoom-out ise `ROUTE_FOCUS_ZOOM_DELTA`'ya yakınlaştırılır). |
 | 3 | Maks durak sayısı | ✅ `MAX_ROUTE_STOPS = 20` (`routeContentLimits.ts`). |
-| — | EXIF otomasyonu | Bilinçli olarak kaldırıldı; ileride `includeExtra` veya ayrı servis ile değerlendirilecek. |
+| — | EXIF otomasyonu | Bilinçli olarak kaldırıldı; ileride değerlendirilecek. |
+| 4 | 128×128 preview upload | ✅ `image_preview_url`, center crop, `RoutePhotoUploadService` |
+| 5 | Hepsine aynı bölgeyi ata | ✅ Header aksiyonu — seçili veya ilk konumlu duraktan tümüne kopyala |
 
 ## 0. Domain notu (ürün gerçeği)
 
@@ -107,6 +109,7 @@ Uygulamanın asıl amacı **rota**. Her fotoğraf bir durağı temsil etmeli; ku
 
 - [x] `RoutePublishWorker`: `stop.coordinate` → `RoutePoint.latitude/longitude`.
 - [x] `location_label` kolonu migration (`20260530130000_route_stop_locations.sql`); `stop.address` publish'te yazılır.
+- [x] `image_preview_url` migration (`20260530140000_route_image_preview_url.sql`); 128×128 center crop upload.
 - [x] `createRouteFlowStore`:
   - `setStopLocation(stopId, { latitude, longitude, address? })`
   - `clearStopLocation(stopId)`
@@ -141,7 +144,7 @@ Uygulamanın asıl amacı **rota**. Her fotoğraf bir durağı temsil etmeli; ku
   - Konumlandır / Detaylar toggle.
   - Seçili fotoğrafa haritadan dokunarak konum atama (placementMode kaldırıldı).
   - [x] "Sıralamayı düzenle" → bottom sheet + `StopReorderList`.
-  - [ ] "Hepsine aynı bölgeyi ata" hızlı işlem (bottom sheet).
+  - [x] "Hepsine aynı bölgeyi ata" — header `map-marker-multiple` + onay dialogu.
 - [x] `StopForm.tsx`:
   - Uzun açıklama (opsiyonel) + `StopAdvancedOptions` accordion (fotoğraf ipucu, remiks stub).
   - Boş durum: belirgin "Konum ekle" CTA.
@@ -166,8 +169,10 @@ Uygulamanın asıl amacı **rota**. Her fotoğraf bir durağı temsil etmeli; ku
 
 ## 4. Faz 2.5 (hemen sonrası, aynı epic)
 
-- [ ] Mesafe özeti chip: "Toplam ~X km" (haversine, publish öncesi preview).
-- [ ] "Tüm rotayı önizle" mini harita fullscreen.
+- [x] Harita 128×128 preview cache (`mapPreviewImageCache.ts`, LRU bellek + disk).
+- [x] Bottom sheet / pin preview — önbellekten; harita prefetch ısıtması.
+- [x] Mesafe özeti chip: "Toplam ~X km" (haversine, publish öncesi preview).
+- [x] "Tüm rotayı önizle" mini harita fullscreen (`RoutePreviewModal`).
 - [ ] Video durağı, sesli not, maliyet/süre alanları — ayrı mini-faz.
 
 ## 5. Dışarıda kalanlar
@@ -178,16 +183,19 @@ Uygulamanın asıl amacı **rota**. Her fotoğraf bir durağı temsil etmeli; ku
 
 ## 6. Özet tablo
 
-| Konu | Şimdi | Faz 2 hedef |
-| --- | --- | --- |
-| Konum UI | Yok (sadece koordinat metni) | Harita + foto şeridi |
-| Harita bileşeni | `RouteMap` orphan | `StopDetails` entegre |
-| Publish lat/lng | Yazılmıyor | Her durak DB'ye |
-| Geocoding | Forward (keşif only) | Forward + reverse |
-| EXIF | Yok (ertelendi) | Otomatik prefill (gelecek) |
-| Maks durak | 20 | `MAX_ROUTE_STOPS` |
-| Sıralama | Foto seçim sırası | Sürükle-bırak |
-| Step indicator | Yok | 3–4 adım görsel ✅ |
+| Konu | Durum |
+| --- | --- |
+| Konum UI | ✅ Harita + foto şeridi + LocationPicker |
+| Publish lat/lng | ✅ Her durak DB'ye |
+| Preview 128×128 | ✅ Upload + harita cache |
+| Geocoding | ✅ Forward + reverse |
+| EXIF | ⏸ Ertelendi |
+| Maks durak | ✅ 20 |
+| Sıralama | ✅ Sürükle-bırak |
+| Hepsine bölge ata | ✅ |
+| Mesafe chip + önizleme | ✅ |
+| Step indicator | ✅ |
+| QA checklist | ⏳ Bkz. §3.5 |
 
 ## 7. Uygulama sırası önerisi
 

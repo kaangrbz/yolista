@@ -84,6 +84,7 @@ export const useViewportRoutes = ({
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRegionRef = useRef<Region | null>(null);
+  const lastFiltersKeyRef = useRef<string>('');
   const requestIdRef = useRef(0);
 
   const filtersKey = useMemo(() => JSON.stringify(filters || {}), [filters]);
@@ -134,7 +135,10 @@ export const useViewportRoutes = ({
       return;
     }
 
-    if (shouldSkipUpdate(lastRegionRef.current, region)) {
+    const filtersChanged = lastFiltersKeyRef.current !== filtersKey;
+    lastFiltersKeyRef.current = filtersKey;
+
+    if (!filtersChanged && shouldSkipUpdate(lastRegionRef.current, region)) {
       return;
     }
 

@@ -11,6 +11,7 @@ import { RouteWithProfile } from '../../../model/routes.model';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
 import { getRouteDisplayLabel } from '../../../utils/getRouteDisplayLabel';
+import { getRouteDistanceLabel } from '../../../utils/routeDistance';
 import MapRouteStopCard, {
   getMapStopKey,
   getMapStopLabel,
@@ -97,7 +98,18 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
   const ownerUserId =
     selectedRoute?.user_id || selectedRoute?.profiles?.id || '';
 
+  const canScrollStops = displayStops.length > 1;
+
+  const distanceLabel = useMemo(
+    () => getRouteDistanceLabel(displayStops),
+    [displayStops],
+  );
+
   useEffect(() => {
+    if (!canScrollStops) {
+      return;
+    }
+
     if (!activeStopId || loading || displayStops.length === 0) {
       return;
     }
@@ -114,7 +126,7 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
       x: Math.max(0, index * MAP_ROUTE_STOP_CARD_STEP - 10),
       animated: true,
     });
-  }, [activeStopId, displayStops, loading]);
+  }, [activeStopId, canScrollStops, displayStops, loading]);
 
   const renderStopCard = useCallback(
     (item: RouteWithProfile) => {
@@ -135,6 +147,24 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
     [activeStopId, onStopPress, ownerUserId],
   );
 
+  const routeLabel = selectedRoute
+    ? getRouteDisplayLabel(selectedRoute)
+    : 'Seçili rota';
+
+  const headerMeta = useMemo(() => {
+    if (loading || displayStops.length === 0) {
+      return null;
+    }
+
+    const parts = [`${displayStops.length} durak`];
+
+    if (distanceLabel) {
+      parts.push(distanceLabel);
+    }
+
+    return parts.join(' · ');
+  }, [displayStops.length, distanceLabel, loading]);
+
   if (!loading && displayStops.length === 0) {
     return null;
   }
@@ -143,20 +173,14 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
     return null;
   }
 
-  const routeLabel = selectedRoute
-    ? getRouteDisplayLabel(selectedRoute)
-    : 'Seçili rota';
-
   return (
     <View style={styles.wrapper}>
       <View style={styles.headerRow}>
         <Text numberOfLines={1} style={styles.headerTitle}>
           {routeLabel}
         </Text>
-        {!loading && displayStops.length > 0 ? (
-          <Text style={styles.headerMeta}>
-            {displayStops.length} durak
-          </Text>
+        {!loading && headerMeta ? (
+          <Text style={styles.headerMeta}>{headerMeta}</Text>
         ) : null}
         {onClearSelection ? (
           <TouchableOpacity
@@ -175,17 +199,18 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
           <ActivityIndicator size="small" color={theme.accent} />
           <Text style={styles.loadingText}>Duraklar yükleniyor...</Text>
         </View>
-      ) : (
+      ) :
         <ScrollView
           ref={scrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.horizontalContent}
           nestedScrollEnabled
+          scrollEnabled={canScrollStops}
           directionalLockEnabled>
           {displayStops.map((stop) => renderStopCard(stop))}
         </ScrollView>
-      )}
+        }
     </View>
   );
 };

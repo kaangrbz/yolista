@@ -1,16 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Platform } from 'react-native';
 import { Marker } from 'react-native-maps';
 import { RouteWithProfile } from '../../../model/routes.model';
+import { getMapMarkerAnchorProps } from '../../../constants/mapMarkerLayout';
+import { useMapMarkerViewTracking } from '../../../hooks/useMapMarkerViewTracking';
 import { getMapStopLabel } from './MapRouteStopCard';
 import MapRouteMarker from './MapRouteMarker';
-import {
-  getMarkerImageKey,
-  isMarkerImageReady,
-  markMarkerImageReady,
-} from '../../../utils/mapMarkerImageReady';
-
-const TRACKING_SETTLE_MS = 400;
 
 interface MapRouteStopMarkerProps {
   stop: RouteWithProfile;
@@ -23,65 +18,11 @@ export const MapRouteStopMarker: React.FC<MapRouteStopMarkerProps> = ({
   selected = false,
   onPress,
 }) => {
-  const imageKey = getMarkerImageKey(
-    stop.user_id,
-    stop.image_url,
-    stop.image_preview_url,
-  );
-  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [tracksViewChanges, setTracksViewChanges] = useState(
-    () =>
-      (!!stop.image_url || !!stop.image_preview_url) &&
-      !isMarkerImageReady(imageKey),
-  );
-
-  const clearSettleTimer = useCallback(() => {
-    if (settleTimerRef.current) {
-      clearTimeout(settleTimerRef.current);
-      settleTimerRef.current = null;
-    }
-  }, []);
-
-  const scheduleTrackingOff = useCallback(() => {
-    clearSettleTimer();
-    markMarkerImageReady(imageKey);
-    setTracksViewChanges(true);
-    settleTimerRef.current = setTimeout(() => {
-      setTracksViewChanges(false);
-      settleTimerRef.current = null;
-    }, TRACKING_SETTLE_MS);
-  }, [clearSettleTimer, imageKey]);
-
-  useEffect(() => {
-    clearSettleTimer();
-
-    if (!stop.image_url && !stop.image_preview_url) {
-      setTracksViewChanges(false);
-      return;
-    }
-
-    if (isMarkerImageReady(imageKey)) {
-      setTracksViewChanges(false);
-      return;
-    }
-
-    setTracksViewChanges(true);
-
-    return clearSettleTimer;
-  }, [stop.id, stop.image_url, stop.image_preview_url, imageKey, clearSettleTimer]);
-
-  useEffect(() => () => clearSettleTimer(), [clearSettleTimer]);
-
-  useEffect(() => {
-    clearSettleTimer();
-    setTracksViewChanges(true);
-    settleTimerRef.current = setTimeout(() => {
-      setTracksViewChanges(false);
-      settleTimerRef.current = null;
-    }, TRACKING_SETTLE_MS);
-
-    return clearSettleTimer;
-  }, [clearSettleTimer, selected]);
+  const { tracksViewChanges, handleMarkerReady } = useMapMarkerViewTracking({
+    userId: stop.user_id,
+    imageUrl: stop.image_url,
+    imagePreviewUrl: stop.image_preview_url,
+  });
 
   if (
     typeof stop.latitude !== 'number' ||
@@ -99,13 +40,14 @@ export const MapRouteStopMarker: React.FC<MapRouteStopMarkerProps> = ({
         latitude: stop.latitude,
         longitude: stop.longitude,
       }}
+      {...getMapMarkerAnchorProps()}
       zIndex={selected ? 21 : 20}
       tracksViewChanges={tracksViewChanges}
       onPress={(event) => {
         event.stopPropagation();
         onPress?.(stop);
       }}
-      title={stopLabel}
+      title={stopLabel || undefined}
       description={stop.description?.trim() || stop.location_label || undefined}
     >
       <MapRouteMarker
@@ -115,7 +57,7 @@ export const MapRouteStopMarker: React.FC<MapRouteStopMarkerProps> = ({
         iconName={stop.categories?.icon_name}
         selected={selected}
         orderLabel={String((stop.order_index ?? 0) + 1)}
-        onImageReady={scheduleTrackingOff}
+        onImageReady={handleMarkerReady}
         collapsable={Platform.OS === 'android' ? false : undefined}
       />
     </Marker>

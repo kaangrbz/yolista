@@ -13,7 +13,6 @@
     "test": "jest",
     "release": "cd android && ./gradlew assembleRelease",
     "release:clean": "cd android && ./gradlew clean assembleRelease",
-    "release:install": "DEVICE_ID=\"$(yarn -s device:physical)\"; APK_PATH=\"$(ls android/app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)\"; if [ -z \"$APK_PATH\" ]; then echo 'Release APK bulunamadi' >&2; exit 1; fi; if [ -n \"$DEVICE_ID\" ]; then adb -s \"$DEVICE_ID\" uninstall com.yolista || true; adb -s \"$DEVICE_ID\" install -r \"$APK_PATH\"; adb -s \"$DEVICE_ID\" shell am start -n com.yolista/.MainActivity; else echo 'Fiziksel cihaz bulunamadi, APK: android/app/build/outputs/apk/release/' >&2; fi",
     "uninstall": "DEVICE_ID=\"$(yarn -s device:physical)\"; if [ -n \"$DEVICE_ID\" ]; then adb -s \"$DEVICE_ID\" uninstall com.yolista || true; else echo 'Fiziksel cihaz bulunamadi, uninstall atlandi' >&2; fi",
     "open:release": "yarn release && open android/app/build/outputs/apk/release/",
     "install:release": "yarn release && yarn release:install",

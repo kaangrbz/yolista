@@ -11,6 +11,7 @@ import { useThemedStyles } from '../../theme/useThemedStyles';
 interface StopReorderSheetProps {
   visible: boolean;
   photos: CreateFlowPhoto[];
+  stopTitles?: string[];
   onClose: () => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
 }
@@ -18,6 +19,7 @@ interface StopReorderSheetProps {
 export const StopReorderSheet: React.FC<StopReorderSheetProps> = ({
   visible,
   photos,
+  stopTitles,
   onClose,
   onReorder,
 }) => {
@@ -98,7 +100,11 @@ export const StopReorderSheet: React.FC<StopReorderSheetProps> = ({
               Fotoğrafları sürükleyerek carousel sırasını değiştir.
             </Text>
             <GestureHandlerRootView style={{ flexGrow: 1 }}>
-              <StopReorderList photos={photos} onReorder={onReorder} />
+              <StopReorderList
+                photos={photos}
+                stopTitles={stopTitles}
+                onReorder={onReorder}
+              />
             </GestureHandlerRootView>
             <TouchableOpacity style={styles.doneButton} onPress={onClose}>
               <Text style={styles.doneButtonText}>Tamam</Text>

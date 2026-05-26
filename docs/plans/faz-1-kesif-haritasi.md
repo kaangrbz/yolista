@@ -18,10 +18,11 @@ Kullanıcılar rotaları sadece liste/grid olarak görüyordu; coğrafi keşif y
 | `RouteDiscoveryService.ts` | ✅ Bbox + kategori + mesafe (client haversine) |
 | `useViewportRoutes.ts` | ✅ Debounce'lu viewport sorgu |
 | `GeocodingService.ts` | ✅ Forward search (Nominatim) — keşif search bar |
-| `MapBottomSheet` | ✅ 3 snap point (small/medium/large) |
-| `MapFilterBar` | ✅ Kategori + etrafımdakiler |
-| `MapRouteGroupMarker` | ✅ Aynı koordinattaki rotaları stack'ler |
-| `MapSelectedRouteStops` | ✅ Seçili rotanın durakları yatay carousel |
+| `MapBottomSheet` | ✅ Durak şeridi + rota listesi (orta kart kaldırıldı) |
+| `MapFilterBar` | ✅ Kategori + Yakınım / 5 km / 15 km (GPS + zoom) |
+| `MapRouteGroupMarker` | ✅ Preview cache + Android snapshot fix |
+| `MapSelectedRouteStops` | ✅ Seçili rotanın durakları; X → sadece ana pin |
+| Preview cache | ✅ `mapPreviewImageCache.ts` — pin + bottom sheet |
 | Polyline (seçili rota) | ✅ `fetchRouteDetails` → durak lat/lng |
 | `MapStyleToggle`, `MyLocationFab`, `MapZoomControls` | ✅ |
 | `MapWeatherBadge` | ✅ Bottom sheet'te hava rozeti |

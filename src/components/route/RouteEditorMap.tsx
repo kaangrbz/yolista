@@ -17,6 +17,7 @@ import {
 } from '../../constants/mapStyles';
 import MapStyleToggle from '../explore/map/MapStyleToggle';
 import { useThemedStyles } from '../../theme/useThemedStyles';
+import { getRouteDistanceLabel } from '../../utils/routeDistance';
 
 interface RouteEditorMapProps {
   stops: RouteStop[];
@@ -170,6 +171,14 @@ export const RouteEditorMap: React.FC<RouteEditorMapProps> = ({
     [stops],
   );
 
+  const distanceLabel = useMemo(
+    () =>
+      getRouteDistanceLabel(
+        stops.map((stop) => stop.coordinate ?? {}),
+      ),
+    [stops],
+  );
+
   const activeStop =
     activeStopIndex === null ? undefined : stops[activeStopIndex];
 
@@ -265,6 +274,7 @@ export const RouteEditorMap: React.FC<RouteEditorMapProps> = ({
           <Text style={styles.toolbarTitle}>Konumlar</Text>
           <Text style={styles.toolbarHint}>
             {locatedCount}/{stops.length} fotoğrafa konum atandı
+            {distanceLabel ? ` · Toplam ${distanceLabel}` : ''}
           </Text>
         </View>
       </View>

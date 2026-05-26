@@ -31,9 +31,9 @@ import { useRouteMapClusters } from '../../hooks/useRouteMapClusters';
 import {
   ROUTE_FOCUS_ZOOM_DELTA,
   regionForStopFocus,
+  regionDeltaForDistanceKm,
   TURKEY_BOUNDS,
   TURKEY_REGION,
-  USER_LOCATION_ZOOM_DELTA,
   MAP_FILTER_DEFAULT_DISTANCE_KM,
 } from '../../constants/mapDefaults';
 import {
@@ -58,6 +58,8 @@ import { GeocodingResult } from '../../services/GeocodingService';
 import MapBottomSheet, {
   MapBottomSheetHandle,
 } from '../../components/explore/map/MapBottomSheet';
+import { showToast } from '../../utils/alert';
+import { prefetchMapPreviewImages } from '../../utils/mapPreviewImageCache';
 
 const DEFAULT_FILTERS: MapFilters = {
   categoryId: 0,
@@ -72,7 +74,8 @@ const ExploreMapScreen: React.FC = () => {
 
   const mapRef = useRef<MapView>(null);
   const sheetRef = useRef<MapBottomSheetHandle>(null);
-
+  const userCoordinateRef = useRef<LatLng | null>(null);
+  const locationWaitersRef = useRef<Array<(coordinate: LatLng) => void>>([]);
   const [region, setRegion] = useState<Region>(TURKEY_REGION);
   const [filters, setFilters] = useState<MapFilters>(DEFAULT_FILTERS);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
@@ -161,6 +164,14 @@ const ExploreMapScreen: React.FC = () => {
 
   const mapClusters = useRouteMapClusters(routes, region);
 
+  useEffect(() => {
+    prefetchMapPreviewImages(routes);
+  }, [routes]);
+
+  useEffect(() => {
+    prefetchMapPreviewImages(selectedRouteStops);
+  }, [selectedRouteStops]);
+
   const selectedStopsWithCoords = useMemo(
     () =>
       selectedRouteStops.filter(
@@ -214,6 +225,18 @@ const ExploreMapScreen: React.FC = () => {
       selectedRouteStops[0]
     );
   }, [selectedRouteMeta, selectedRouteId, selectedRouteStops]);
+
+  const bottomSheetRoutes = useMemo(() => {
+    if (!selectedRouteId || !resolvedSelectedRoute?.id) {
+      return routes;
+    }
+
+    if (routes.some((route) => route.id === selectedRouteId)) {
+      return routes;
+    }
+
+    return [resolvedSelectedRoute, ...routes];
+  }, [resolvedSelectedRoute, routes, selectedRouteId]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -310,11 +333,109 @@ const ExploreMapScreen: React.FC = () => {
       return;
     }
 
-    setUserCoordinate({
+    const next: LatLng = {
       latitude: coordinate.latitude,
       longitude: coordinate.longitude,
+    };
+
+    userCoordinateRef.current = next;
+    setUserCoordinate(next);
+
+    if (locationWaitersRef.current.length > 0) {
+      locationWaitersRef.current.forEach((resolve) => resolve(next));
+      locationWaitersRef.current = [];
+    }
+  }, []);
+
+  const waitForUserCoordinate = useCallback((timeoutMs = 10_000): Promise<LatLng | null> => {
+    if (userCoordinateRef.current) {
+      return Promise.resolve(userCoordinateRef.current);
+    }
+
+    return new Promise((resolve) => {
+      const onCoordinate = (coordinate: LatLng) => {
+        clearTimeout(timer);
+        resolve(coordinate);
+      };
+
+      const timer = setTimeout(() => {
+        locationWaitersRef.current = locationWaitersRef.current.filter(
+          (entry) => entry !== onCoordinate,
+        );
+        resolve(null);
+      }, timeoutMs);
+
+      locationWaitersRef.current.push(onCoordinate);
     });
   }, []);
+
+  const ensureUserLocation = useCallback(async (): Promise<LatLng | null> => {
+    const granted = await requestLocation();
+    setLocationGranted(granted);
+
+    if (!granted) {
+      showToast('error', 'Konum izni gerekli');
+      return null;
+    }
+
+    if (userCoordinateRef.current) {
+      return userCoordinateRef.current;
+    }
+
+    return waitForUserCoordinate();
+  }, [waitForUserCoordinate]);
+
+  const animateToUserCoordinate = useCallback(
+    (coordinate: LatLng, distanceKm: number) => {
+      const delta = regionDeltaForDistanceKm(distanceKm);
+
+      mapRef.current?.animateToRegion(
+        {
+          latitude: coordinate.latitude,
+          longitude: coordinate.longitude,
+          latitudeDelta: delta,
+          longitudeDelta: delta,
+        },
+        400,
+      );
+    },
+    [],
+  );
+
+  const handleFiltersChange = useCallback(
+    async (next: MapFilters) => {
+      const wasNearMe = filters.nearMe;
+      const isNearMe = next.nearMe;
+
+      setFilters(next);
+
+      if (!isNearMe) {
+        return;
+      }
+
+      const nextDistanceKm = next.maxDistanceKm ?? MAP_FILTER_DEFAULT_DISTANCE_KM;
+      const needsMapMove =
+        !wasNearMe || next.maxDistanceKm !== filters.maxDistanceKm;
+
+      if (!needsMapMove) {
+        return;
+      }
+
+      const coordinate = await ensureUserLocation();
+
+      if (!coordinate) {
+        setFilters((previous) =>
+          previous.nearMe
+            ? { ...previous, nearMe: false, maxDistanceKm: null }
+            : previous,
+        );
+        return;
+      }
+
+      animateToUserCoordinate(coordinate, nextDistanceKm);
+    },
+    [animateToUserCoordinate, ensureUserLocation, filters.maxDistanceKm, filters.nearMe],
+  );
 
   const fetchRouteDetails = useCallback(
     async (routeId: string) => {
@@ -469,31 +590,21 @@ const ExploreMapScreen: React.FC = () => {
     setLocating(true);
 
     try {
-      const granted = await requestLocation();
+      const coordinate = await ensureUserLocation();
 
-      setLocationGranted(granted);
-
-      if (!granted) {
+      if (!coordinate) {
         return;
       }
 
-      if (!userCoordinate) {
-        return;
-      }
+      const distanceKm = filters.nearMe
+        ? filters.maxDistanceKm ?? MAP_FILTER_DEFAULT_DISTANCE_KM
+        : 2;
 
-      mapRef.current?.animateToRegion(
-        {
-          latitude: userCoordinate.latitude,
-          longitude: userCoordinate.longitude,
-          latitudeDelta: USER_LOCATION_ZOOM_DELTA,
-          longitudeDelta: USER_LOCATION_ZOOM_DELTA,
-        },
-        400,
-      );
+      animateToUserCoordinate(coordinate, distanceKm);
     } finally {
       setLocating(false);
     }
-  }, [userCoordinate]);
+  }, [animateToUserCoordinate, ensureUserLocation, filters.maxDistanceKm, filters.nearMe]);
 
   const handleStyleToggle = useCallback(() => {
     setMapStyleMode((prev) => getNextMapStyle(prev));
@@ -691,7 +802,7 @@ const ExploreMapScreen: React.FC = () => {
           <MapFilterBar
             categories={categories}
             filters={filters}
-            onFiltersChange={setFilters}
+            onFiltersChange={handleFiltersChange}
           />
         </View>
       </View>
@@ -716,7 +827,7 @@ const ExploreMapScreen: React.FC = () => {
 
       <MapBottomSheet
         ref={sheetRef}
-        routes={routes}
+        routes={bottomSheetRoutes}
         loading={loading}
         selectedRouteId={selectedRouteId}
         selectedRoute={resolvedSelectedRoute}

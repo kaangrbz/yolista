@@ -3,6 +3,7 @@ import { showToast } from '../utils/alert';
 import NotificationModel from './notifications.model';
 import { Profile } from './profile.model';
 import { SaveCollectionsService } from '../services/SaveCollectionsService';
+import { applyRouteLocationMetadataToStops } from '../utils/applyRouteLocationMetadata';
 
 /** Stored in routes.image_alignment; add variants here when the app starts persisting them. */
 export type RouteImageAlignment =
@@ -519,7 +520,9 @@ const RouteModel = {
       did_like: userId ? !!userLikesMap[route.id] : false,
     }));
 
-    return enrichRoutesWithSocial(formattedRoutes, userId || null);
+    const enriched = await enrichRoutesWithSocial(formattedRoutes, userId || null);
+
+    return applyRouteLocationMetadataToStops(enriched);
   },
 
   async createRoute(routeData: RoutePoint[], cityId: number, categoryId: number | null) {

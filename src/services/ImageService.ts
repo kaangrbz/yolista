@@ -195,6 +195,18 @@ export class ImageService {
     return this.loadImageWithRetry(imageUrl, bucketName, userId, cacheKey, onStateChange);
   }
 
+  /** Disk önbelleğinde varsa file URI döner; ağ isteği yapmaz. */
+  static async getCachedRouteImageUri(
+    imageUrl: string,
+    userId: string,
+  ): Promise<string | null> {
+    await CacheManager.ensureReady();
+
+    const cacheKey = this.buildDiskCacheKey('routes', imageUrl, userId);
+
+    return CacheManager.getFileUriIfCached(cacheKey);
+  }
+
   private static async loadImageWithRetry(
     imageUrl: string,
     bucketName: string,
