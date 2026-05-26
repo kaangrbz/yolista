@@ -36,8 +36,8 @@
     android:enableOnBackInvokedCallback="false">
 
     <meta-data
-  android:name="com.google.android.geo.API_KEY"
-  android:value="AIzaSyBoQmSR-1d4biIK2J31SpM-aOQuwnxXUP0" />
+      android:name="com.google.android.geo.API_KEY"
+      android:value="${GOOGLE_MAPS_API_KEY}" />
 
     <activity 
       android:name=".MainActivity" 

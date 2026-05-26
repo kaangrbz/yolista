@@ -1,6 +1,6 @@
 # Faz 3 — Rota Detay Deneyimi (Mobil)
 
-> **Durum:** ⬜ Faz 2 sonrası  
+> **Durum:** 🟡 Başladı (Split MVP)  
 > **Bağımlılık:** Faz 2 (durak koordinatları DB'de)
 
 ## 1. Ne Anladım
@@ -58,28 +58,28 @@ Yeni util: `src/utils/openInMaps.ts` — iOS Apple Maps fallback opsiyonel.
 
 ### 2.1. Layout & navigasyon
 
-- [ ] `RouteDetailScreen` — mod toggle: Anlatım (split) / Story.
+- [x] `RouteDetailScreen` — split deneyimi (harita + segment listesi + carousel).
 - [ ] Tercih persist: AsyncStorage `route_detail_view_mode`.
-- [ ] `RouteSplitView.tsx` — harita + segment listesi çift yönlü senkron.
+- [x] `RouteSplitView.tsx` — harita + segment listesi, carousel ile senkron.
 - [ ] `RouteStoryView.tsx` — reanimated tap geçişleri.
 
 ### 2.2. Segment kartları
 
-- [ ] `RouteSegmentCard.tsx` — foto, başlık, not, durak numarası.
-- [ ] `RouteSegmentConnector.tsx` — "X ile Y arası 1.2 km" (haversine; ileride Directions API).
-- [ ] `RouteSummaryBar.tsx` — toplam mesafe, durak sayısı, tahmini süre (yürüyüş ~5 km/saat kuralı ile MVP).
+- [x] `RouteSegmentCard.tsx` — foto, başlık, not, durak numarası.
+- [x] `RouteSegmentConnector.tsx` — "X ile Y arası 1.2 km" (haversine; ileride Directions API).
+- [x] `RouteSummaryBar.tsx` — toplam mesafe, durak sayısı, tahmini süre (yürüyüş ~5 km/saat kuralı ile MVP).
 
 ### 2.3. Harita bileşeni (detay)
 
-- [ ] `RouteDetailMap.tsx` — keşif haritası tile reuse, sadece bu rotanın durakları + polyline.
-- [ ] Aktif durak marker büyütme / renk vurgusu.
-- [ ] `openInMaps` butonları harita overlay FAB + segment kartında.
+- [x] `RouteDetailMap.tsx` — bu rotanın durakları + polyline.
+- [x] Aktif durak marker vurgusu (`pinColor`).
+- [x] `openInMaps` butonları özet bar + segment kartında.
 
 ### 2.4. UniversalPost entegrasyonu
 
-- [ ] Mevcut like/comment/save/header korunur.
-- [ ] Harita + segmentler carousel **üstüne** veya **altına** — scroll birleşik akış.
-- [ ] Koordinatsız duraklar: segment kartında harita butonu gizli, "konum yok" metni.
+- [x] Mevcut like/comment/save/header korunur.
+- [x] Harita + segmentler carousel üstünde — scroll birleşik akış.
+- [x] Koordinatsız duraklar: segment kartında harita butonu gizli, "konum yok" metni.
 
 ### 2.5. Etkileşimler (Faz 3 çekirdek)
 

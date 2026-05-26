@@ -21,13 +21,14 @@ cd ios && pod install && cd ..
 
 ## 2. Android — Google Maps & Konum
 
-`AndroidManifest.xml` içinde Google Maps API key tanımlı:
+API key repoda tutulmaz. Yerel geliştirme için:
 
-```xml
-<meta-data
-  android:name="com.google.android.geo.API_KEY"
-  android:value="YOUR_KEY" />
+```bash
+cp android/secrets.properties.example android/secrets.properties
+# android/secrets.properties içinde GOOGLE_MAPS_API_KEY değerini doldur
 ```
+
+CI/CD için `GOOGLE_MAPS_API_KEY` ortam değişkeni kullanılabilir. Key, build sırasında `AndroidManifest.xml` meta-data alanına enjekte edilir.
 
 Konum izinleri Android 12+ için her ikisi de declare edilmiş durumda:
 

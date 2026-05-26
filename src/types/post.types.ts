@@ -47,6 +47,11 @@ export interface PostProps {
   prefetchedImageRows?: RouteImageRow[];
   showFullScreen?: boolean;
   actions?: PostActions;
+  /** Faz 3 — harita + durak listesi (carousel üstü). */
+  detailExperienceSlot?: React.ReactNode;
+  /** Carousel ↔ harita senkronu. */
+  activeSlideIndex?: number;
+  onActiveSlideIndexChange?: (index: number) => void;
 }
 
 export interface ImageCarouselProps {

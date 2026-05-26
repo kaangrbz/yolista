@@ -187,7 +187,7 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
             style={styles.clearButton}
             onPress={onClearSelection}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel="Durakları kapat"
+            accessibilityLabel="Ana rotaya dön"
             activeOpacity={0.75}>
             <Icon name="close" size={16} color={theme.textSecondary} />
           </TouchableOpacity>

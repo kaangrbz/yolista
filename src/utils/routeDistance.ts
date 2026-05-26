@@ -68,3 +68,63 @@ export const formatRouteDistanceKm = (km: number): string => {
 
   return `~${Math.round(km)} km`;
 };
+
+/** Kuş uçuşu segment mesafesi; koordinat eksikse null. */
+export const getSegmentDistanceKm = (
+  from: LatLngLike,
+  to: LatLngLike,
+): number | null => {
+  const coords = extractValidCoordinates([from, to]);
+
+  if (coords.length < 2) {
+    return null;
+  }
+
+  return haversineDistanceKm(coords[0], coords[1]);
+};
+
+/** MVP yürüyüş tahmini — ~5 km/saat. */
+export const estimateWalkingMinutes = (distanceKm: number): number => {
+  return Math.max(1, Math.round((distanceKm / 5) * 60));
+};
+
+export const formatWalkingDuration = (minutes: number): string => {
+  if (minutes < 60) {
+    return `~${minutes} dk yürüyüş`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+
+  if (remainder === 0) {
+    return `~${hours} sa yürüyüş`;
+  }
+
+  return `~${hours} sa ${remainder} dk yürüyüş`;
+};
+
+export const getSegmentDistanceLabel = (
+  from: LatLngLike,
+  to: LatLngLike,
+): string | null => {
+  const km = getSegmentDistanceKm(from, to);
+
+  if (km === null) {
+    return null;
+  }
+
+  return formatRouteDistanceKm(km);
+};
+
+export const getSegmentWalkingLabel = (
+  from: LatLngLike,
+  to: LatLngLike,
+): string | null => {
+  const km = getSegmentDistanceKm(from, to);
+
+  if (km === null) {
+    return null;
+  }
+
+  return formatWalkingDuration(estimateWalkingMinutes(km));
+};

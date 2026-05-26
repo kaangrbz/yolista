@@ -75,6 +75,14 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
 
   const heartScale = useRef(new Animated.Value(0)).current;
   const heartOpacity = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      x: currentIndex * screenWidth,
+      animated: true,
+    });
+  }, [currentIndex]);
 
   useEffect(() => {
     if (!dynamicHeight) {
@@ -154,6 +162,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   return (
     <View style={[styles.container, { height: calculatedHeight }]}>
       <ScrollView
+        ref={scrollRef}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}

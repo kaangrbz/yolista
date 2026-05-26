@@ -41,6 +41,9 @@ const UniversalPost: React.FC<PostProps> = ({
   prefetchedImageRows,
   showFullScreen = false,
   actions,
+  detailExperienceSlot,
+  activeSlideIndex,
+  onActiveSlideIndexChange,
 }) => {
   const navigation = useNavigation();
   const styles = useThemedStyles((t) => ({
@@ -138,6 +141,7 @@ const UniversalPost: React.FC<PostProps> = ({
     error: imagesError,
     currentIndex,
     handleImageScroll,
+    goToImage,
     refreshImages,
   } = useImages(postId, postOwnerId, {
     leadSlide,
@@ -179,6 +183,22 @@ const UniversalPost: React.FC<PostProps> = ({
   useEffect(() => {
     syncSaveCollections();
   }, [syncSaveCollections]);
+
+  useEffect(() => {
+    if (activeSlideIndex === undefined) {
+      return;
+    }
+
+    goToImage(activeSlideIndex);
+  }, [activeSlideIndex, goToImage]);
+
+  const handleCarouselIndexChange = (index: number) => {
+    handleImageScroll(
+      { nativeEvent: { contentOffset: { x: index * screenWidth } } },
+      screenWidth,
+    );
+    onActiveSlideIndexChange?.(index);
+  };
 
   const handleProfilePress = () => {
     if (!post?.user_id) {
@@ -446,6 +466,8 @@ const UniversalPost: React.FC<PostProps> = ({
         onCopyLinkPress={handleCopyLink}
       />
 
+      {detailExperienceSlot}
+
       {imagesLoading && (
         <PostImageSkeleton
           width={screenWidth}
@@ -474,12 +496,7 @@ const UniversalPost: React.FC<PostProps> = ({
           images={carouselImages}
           hints={carouselHints}
           currentIndex={currentIndex}
-          onIndexChange={(index) =>
-            handleImageScroll(
-              { nativeEvent: { contentOffset: { x: index * screenWidth } } },
-              screenWidth,
-            )
-          }
+          onIndexChange={handleCarouselIndexChange}
           height={carouselHeightOptions.defaultHeight}
           dynamicHeight={true}
           displayHeights={displayHeights}

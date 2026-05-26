@@ -13,7 +13,7 @@
 | 1 | [faz-1-kesif-haritasi.md](./faz-1-kesif-haritasi.md) | ✅ Tamamlandı + cilalandı | Keşif haritası, filtreler, durak seçimi, preview cache |
 | 2 | [faz-2-rota-olusturma-konum.md](./faz-2-rota-olusturma-konum.md) | 🟡 ~%95 | Rota oluşturma, konum UX, publish lat/lng + preview, mesafe chip |
 | 2b | [faz-2b-gonderi-duzenleme.md](./faz-2b-gonderi-duzenleme.md) | ⬜ Planlandı | Tam wizard edit — foto/sıra/konum/kategori, diff + RouteEditWorker |
-| 3 | [faz-3-rota-detay-deneyimi.md](./faz-3-rota-detay-deneyimi.md) | ⬜ Bekliyor | Split view, mesafe, Google Maps export |
+| 3 | [faz-3-rota-detay-deneyimi.md](./faz-3-rota-detay-deneyimi.md) | 🟡 Başladı | Split view, harita, segment mesafe, Google Maps |
 | 4 | [faz-4-sosyal-topluluk.md](./faz-4-sosyal-topluluk.md) | ⬜ Bekliyor | Koleksiyon, rozet, freshness |
 | 5 | [faz-5-kisisellestirme.md](./faz-5-kisisellestirme.md) | ⬜ Bekliyor | Öneri, hava, saved area |
 

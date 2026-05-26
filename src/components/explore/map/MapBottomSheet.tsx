@@ -354,13 +354,7 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
             route={item}
             selected={isSelected}
             distanceLabel={isSelected ? selectedRouteDistanceLabel : null}
-            onPress={() => {
-              if (isSelected) {
-                return;
-              }
-
-              onSelectRoute(item);
-            }}
+            onPress={() => onSelectRoute(item)}
           />
         );
       },

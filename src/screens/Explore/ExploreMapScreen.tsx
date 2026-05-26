@@ -182,32 +182,13 @@ const ExploreMapScreen: React.FC = () => {
     [selectedRouteStops],
   );
 
-  const mainRouteStop = useMemo(() => {
-    if (selectedRouteStops.length === 0) {
-      return null;
-    }
-
-    return (
-      selectedRouteStops.find((stop) => stop.order_index === 0) ??
-      selectedRouteStops[0]
-    );
-  }, [selectedRouteStops]);
-
   const mapStopsToRender = useMemo(() => {
-    if (routeStopsExpanded) {
-      return selectedStopsWithCoords;
+    if (!routeStopsExpanded) {
+      return [];
     }
 
-    if (
-      mainRouteStop &&
-      typeof mainRouteStop.latitude === 'number' &&
-      typeof mainRouteStop.longitude === 'number'
-    ) {
-      return [mainRouteStop];
-    }
-
-    return [];
-  }, [mainRouteStop, routeStopsExpanded, selectedStopsWithCoords]);
+    return selectedStopsWithCoords;
+  }, [routeStopsExpanded, selectedStopsWithCoords]);
 
   const showSelectedRouteOnMap = mapStopsToRender.length > 0;
 
@@ -437,6 +418,12 @@ const ExploreMapScreen: React.FC = () => {
     [animateToUserCoordinate, ensureUserLocation, filters.maxDistanceKm, filters.nearMe],
   );
 
+  const selectedRouteIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    selectedRouteIdRef.current = selectedRouteId;
+  }, [selectedRouteId]);
+
   const fetchRouteDetails = useCallback(
     async (routeId: string) => {
       setStopsLoading(true);
@@ -444,6 +431,10 @@ const ExploreMapScreen: React.FC = () => {
 
       try {
         const all = await RouteModel.getRoutesById(routeId, user?.id);
+
+        if (selectedRouteIdRef.current !== routeId) {
+          return;
+        }
 
         if (!Array.isArray(all)) {
           setSelectedRouteStops([]);
@@ -504,13 +495,19 @@ const ExploreMapScreen: React.FC = () => {
 
         setPolylineCoords(coords);
       } catch (err) {
+        if (selectedRouteIdRef.current !== routeId) {
+          return;
+        }
+
         console.error('Route details load error:', err);
         setSelectedRouteStops([]);
         setPolylineCoords([]);
         setActiveStopId(null);
       } finally {
-        setStopsLoading(false);
-        setPolylineLoading(false);
+        if (selectedRouteIdRef.current === routeId) {
+          setStopsLoading(false);
+          setPolylineLoading(false);
+        }
       }
     },
     [user?.id],
@@ -666,10 +663,36 @@ const ExploreMapScreen: React.FC = () => {
   }, []);
 
   const handleDismissRouteStops = useCallback(() => {
+    const mainRoute =
+      selectedRouteMeta ??
+      selectedRouteStops.find((stop) => stop.order_index === 0) ??
+      selectedRouteStops[0] ??
+      null;
+
     setRouteStopsExpanded(false);
     setPolylineCoords([]);
     setActiveStopId(null);
-  }, []);
+
+    if (
+      mainRoute &&
+      typeof mainRoute.latitude === 'number' &&
+      typeof mainRoute.longitude === 'number'
+    ) {
+      mapRef.current?.animateToRegion(
+        {
+          latitude: mainRoute.latitude,
+          longitude: mainRoute.longitude,
+          latitudeDelta: ROUTE_FOCUS_ZOOM_DELTA,
+          longitudeDelta: ROUTE_FOCUS_ZOOM_DELTA,
+        },
+        350,
+      );
+    }
+
+    if (selectedRouteId) {
+      sheetRef.current?.scrollToRoute(selectedRouteId);
+    }
+  }, [selectedRouteId, selectedRouteMeta, selectedRouteStops]);
 
   const handleClusterPress = useCallback(
     (expansionZoom: number, latitude: number, longitude: number) => {
