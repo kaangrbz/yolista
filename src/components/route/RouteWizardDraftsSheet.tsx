@@ -47,13 +47,11 @@ function formatSavedAt(savedAt: string): string {
 }
 
 function getDraftTitle(draft: RouteWizardDraftRecord): string {
-  const firstTitledStop = draft.routeStops.find((stop) => stop.title.trim().length > 0);
-
-  if (firstTitledStop?.title.trim()) {
-    return firstTitledStop.title.trim();
+  if (draft.selectedCity?.name) {
+    return `${draft.selectedCity.name} · ${draft.photos.length} fotoğraf`;
   }
 
-  return 'İsimsiz rota taslağı';
+  return `${draft.photos.length} fotoğraflı taslak`;
 }
 
 function getDraftSubtitle(draft: RouteWizardDraftRecord): string {

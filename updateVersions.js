@@ -5,6 +5,8 @@ const path = require('path');
 const androidBuildGradlePath = path.join(__dirname, 'android', 'app', 'build.gradle');
 const iosInfoPlistPath = path.join(__dirname, 'ios', 'yolista', 'Info.plist');
 
+const BUMP_TYPES = ['patch', 'minor', 'major'];
+
 // Function to get current Android version and build number
 function getCurrentAndroidVersion() {
     const buildGradleContent = fs.readFileSync(androidBuildGradlePath, 'utf-8');
@@ -14,7 +16,6 @@ function getCurrentAndroidVersion() {
     const currentVersionCode = versionCodeMatch ? parseInt(versionCodeMatch[1], 10) : 0;
     const currentVersionName = versionNameMatch ? versionNameMatch[1] : '';
 
-    console.info('Current Android version and Build Number:'.padEnd(45, ' '), currentVersionName, currentVersionCode);
     return { currentVersionCode, currentVersionName };
 }
 
@@ -25,54 +26,100 @@ function getCurrentIOSVersion() {
     const iosBuildNumberMatch = infoPlistContent.match(/<key>CFBundleVersion<\/key>\s*<string>(.*?)<\/string>/);
 
     const currentVersionName = iosVersionMatch ? iosVersionMatch[1] : '';
-    const currentBuildNumber = iosBuildNumberMatch ? iosBuildNumberMatch[1] : '';
+    const currentBuildNumber = iosBuildNumberMatch ? parseInt(iosBuildNumberMatch[1], 10) : 0;
 
-    console.info('Current iOS version and Build Number:'.padEnd(45, ' '), currentVersionName, Number(currentBuildNumber));
     return { currentVersionName, currentBuildNumber };
 }
 
-// Check for command line arguments
-if (process.argv.length < 4) {
+function printCurrentVersions() {
+    const { currentVersionCode, currentVersionName } = getCurrentAndroidVersion();
+    const { currentVersionName: iosVersion, currentBuildNumber } = getCurrentIOSVersion();
+
+    console.info('Current Android version and Build Number:'.padEnd(45, ' '), currentVersionName, currentVersionCode);
+    console.info('Current iOS version and Build Number:'.padEnd(45, ' '), iosVersion, currentBuildNumber);
+}
+
+function bumpVersion(version, type) {
+    const parts = version.split('.').map(Number);
+    if (parts.length < 3 || parts.some(Number.isNaN)) {
+        throw new Error(`Invalid semver: ${version}`);
+    }
+
+    const [major, minor, patch] = parts;
+
+    switch (type) {
+        case 'major':
+            return `${major + 1}.0.0`;
+        case 'minor':
+            return `${major}.${minor + 1}.0`;
+        case 'patch':
+            return `${major}.${minor}.${patch + 1}`;
+        default:
+            throw new Error(`Unknown bump type: ${type}`);
+    }
+}
+
+function resolveUpdateArgs() {
+    const arg1 = process.argv[2];
+    const arg2 = process.argv[3];
+
+    if (!arg1) {
+        return null;
+    }
+
+    const { currentVersionCode, currentVersionName } = getCurrentAndroidVersion();
+    const parsedBuildNumber = arg2 !== undefined ? parseInt(arg2, 10) : null;
+    const newBuildNumber = parsedBuildNumber !== null && !Number.isNaN(parsedBuildNumber)
+        ? parsedBuildNumber
+        : currentVersionCode + 1;
+
+    if (BUMP_TYPES.includes(arg1)) {
+        return {
+            newVersionName: bumpVersion(currentVersionName, arg1),
+            newBuildNumber,
+        };
+    }
+
+    return {
+        newVersionName: arg1,
+        newBuildNumber,
+    };
+}
+
+function updateAndroidVersion(newVersionName, newBuildNumber) {
+    let buildGradleContent = fs.readFileSync(androidBuildGradlePath, 'utf-8');
+
+    buildGradleContent = buildGradleContent
+        .replace(/versionName ".*?"/, `versionName "${newVersionName}"`)
+        .replace(/versionCode \d+/, `versionCode ${newBuildNumber}`);
+
+    fs.writeFileSync(androidBuildGradlePath, buildGradleContent);
+    console.info('Updated Android version and build number to'.padEnd(45, ' '), newVersionName, newBuildNumber);
+}
+
+function updateIOSVersion(newVersionName, newBuildNumber) {
+    let infoPlistContent = fs.readFileSync(iosInfoPlistPath, 'utf-8');
+    infoPlistContent = infoPlistContent
+        .replace(
+            /<key>CFBundleShortVersionString<\/key>\s*<string>.*?<\/string>/,
+            `<key>CFBundleShortVersionString</key>\n\t<string>${newVersionName}</string>`,
+        )
+        .replace(
+            /<key>CFBundleVersion<\/key>\s*<string>.*?<\/string>/,
+            `<key>CFBundleVersion</key>\n\t<string>${newBuildNumber}</string>`,
+        );
+
+    fs.writeFileSync(iosInfoPlistPath, infoPlistContent);
+    console.info('Updated iOS version and build number to'.padEnd(45, ' '), newVersionName, newBuildNumber);
+}
+
+const updateArgs = resolveUpdateArgs();
+
+if (!updateArgs) {
     console.info('No arguments provided. Fetching current versions...');
-    getCurrentAndroidVersion();
-    getCurrentIOSVersion();
+    printCurrentVersions();
 } else {
-    // Get version and build number from command line arguments
-    const newVersionName = process.argv[2]; // e.g., '2.2.3'
-    const newBuildNumber = process.argv[3]; // Optional build number
-
-    // Update Android version
-    function updateAndroidVersion() {
-        let buildGradleContent = fs.readFileSync(androidBuildGradlePath, 'utf-8');
-
-        // Increment versionCode
-        const versionCodeMatch = buildGradleContent.match(/versionCode (\d+)/);
-        const currentVersionCode = versionCodeMatch ? parseInt(versionCodeMatch[1], 10) : 0;
-        const updatedVersionCode = newBuildNumber ? parseInt(newBuildNumber, 10) : currentVersionCode + 1;
-
-        // Update versionCode and versionName in build.gradle
-        buildGradleContent = buildGradleContent
-            .replace(/versionName ".*?"/, `versionName "${newVersionName}"`)
-            .replace(/versionCode \d+/, `versionCode ${updatedVersionCode}`);
-
-        fs.writeFileSync(androidBuildGradlePath, buildGradleContent);
-        console.info('Updated Android version and build number to'.padEnd(45, ' '), newVersionName,  Number(updatedVersionCode));
-    }
-
-    // Update iOS version
-    function updateIOSVersion() {
-        let infoPlistContent = fs.readFileSync(iosInfoPlistPath, 'utf-8');
-        infoPlistContent = infoPlistContent
-            .replace(/<key>CFBundleShortVersionString<\/key>\s*<string>.*?<\/string>/, `<key>CFBundleShortVersionString</key>\n<string>${newVersionName}</string>`);
-
-        const iosBuildNumber = newBuildNumber ? newBuildNumber : (currentVersionCode + 1);
-        infoPlistContent = infoPlistContent.replace(/<key>CFBundleVersion<\/key>\s*<string>.*?<\/string>/, `<key>CFBundleVersion</key>\n<string>${iosBuildNumber}</string>`);
-
-        fs.writeFileSync(iosInfoPlistPath, infoPlistContent);
-        console.info('Updated iOS version and build number to'.padEnd(45, ' '), newVersionName,  Number(iosBuildNumber));
-    }
-
-    // Run the updates
-    updateAndroidVersion();
-    updateIOSVersion();
+    const { newVersionName, newBuildNumber } = updateArgs;
+    updateAndroidVersion(newVersionName, newBuildNumber);
+    updateIOSVersion(newVersionName, newBuildNumber);
 }

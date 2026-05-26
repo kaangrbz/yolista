@@ -9,10 +9,16 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../../model/routes.model';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
+import { getRouteDisplayLabel } from '../../../utils/getRouteDisplayLabel';
+import {
+  getRouteLocationLabel,
+  getRouteLocationSource,
+} from '../../../utils/routeLocationLabel';
 import {
   usePostImageDownload,
   useProfileImageDownload,
 } from '../../../hooks/useImageDownload';
+import { MAP_ACTIVE_ROUTE_BORDER } from '../../../constants/mapDefaults';
 
 interface MapRouteCardProps {
   route: RouteWithProfile;
@@ -46,8 +52,12 @@ export const MapRouteCard: React.FC<MapRouteCardProps> = ({
       elevation: 3,
     },
     cardSelected: {
-      borderColor: t.accent,
+      borderColor: MAP_ACTIVE_ROUTE_BORDER,
       borderWidth: 2,
+      shadowColor: MAP_ACTIVE_ROUTE_BORDER,
+      shadowOpacity: 0.28,
+      shadowRadius: 10,
+      elevation: 5,
     },
     imageWrapper: {
       position: 'relative',
@@ -167,11 +177,28 @@ export const MapRouteCard: React.FC<MapRouteCardProps> = ({
       color: t.textMuted,
       fontStyle: 'italic',
     },
+    locationChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.surfaceMuted,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 999,
+      marginLeft: 4,
+      maxWidth: 120,
+    },
+    locationChipText: {
+      fontSize: 10,
+      color: t.textMuted,
+      marginLeft: 3,
+      fontWeight: '600',
+    },
   }));
 
   const { imageUri } = usePostImageDownload(
     route.image_url,
     route.user_id || '',
+    route.image_preview_url || undefined,
   );
 
   const { imageUri: avatarUri } = useProfileImageDownload(
@@ -181,6 +208,7 @@ export const MapRouteCard: React.FC<MapRouteCardProps> = ({
   );
 
   const username = route.profiles?.username?.trim() || null;
+  const locationLabel = getRouteLocationLabel(getRouteLocationSource(route));
 
   return (
     <TouchableOpacity
@@ -226,7 +254,7 @@ export const MapRouteCard: React.FC<MapRouteCardProps> = ({
 
       <View style={styles.content}>
         <Text numberOfLines={1} style={styles.title}>
-          {route.title}
+          {getRouteDisplayLabel(route)}
         </Text>
 
         {username ? (
@@ -264,9 +292,20 @@ export const MapRouteCard: React.FC<MapRouteCardProps> = ({
                 {route.cities.name}
               </Text>
             </>
+          ) : locationLabel ? (
+            <Text style={styles.metaTextMuted}>{locationLabel}</Text>
           ) : (
             <Text style={styles.metaTextMuted}>Konum yok</Text>
           )}
+
+          {locationLabel && route.cities?.name ? (
+            <View style={styles.locationChip}>
+              <Icon name="approximately-equal" size={10} color={theme.textMuted} />
+              <Text numberOfLines={1} style={styles.locationChipText}>
+                {locationLabel}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
     </TouchableOpacity>

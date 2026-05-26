@@ -70,6 +70,7 @@ const CommentModel = {
         senderId: userId,
         entityType: 'comment',
         entityId: routeId,
+        message: content.trim(),
       });
 
       console.log('Notification:', notification);

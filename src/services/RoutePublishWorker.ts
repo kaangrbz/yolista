@@ -9,7 +9,10 @@ import {
 } from './routeDraftStorage';
 import { clearWizardDraft } from './routeWizardDraftStorage';
 import type { RoutePublishDraftRecord, RoutePublishEnqueuePayload } from './routePublishTypes';
-import { uploadRoutePhotoToStorage } from './routePhotoStorage';
+import {
+  prepareRoutePhotoPreview,
+} from './RoutePhotoUploadService';
+import { uploadRoutePhotoWithPreview } from './routePhotoStorage';
 
 function getPublishStoreState() {
 
@@ -80,11 +83,13 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
     const routePoints: RoutePoint[] = record.routeStops.map((stop, index) => {
       const photo = record.photosMeta[index];
       const alignment = classifyImageAlignment(photo?.width, photo?.height);
+      const coordinate = stop.coordinate;
+      const locationLabel = stop.address?.trim();
 
       return {
         client_id: randomString(16),
-        title: stop.title,
-        description: stop.description || '',
+        title: stop.title.trim(),
+        description: stop.description?.trim() || '',
         image_url: photo?.storageFileName || photo?.uri || '',
         image_alignment: alignment,
         image_width: normalizeImageDimension(photo?.width),
@@ -93,10 +98,18 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
         is_deleted: false,
         city_id: record.selectedCity?.id || null,
         user_id: record.userId,
+        ...(coordinate
+          ? {
+              latitude: coordinate.latitude,
+              longitude: coordinate.longitude,
+            }
+          : {}),
+        ...(locationLabel ? { location_label: locationLabel } : {}),
       };
     });
 
     const uploadedFileNames: string[] = [];
+    const uploadedPreviewFileNames: string[] = [];
 
     for (let index = 0; index < record.photosMeta.length; index++) {
       const photo = record.photosMeta[index];
@@ -110,26 +123,27 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
         throw new Error('Geçersiz rota noktası');
       }
 
-      const previewUri = photo.processedLocalUri || photo.uri;
+      const tickPreviewUri = photo.processedLocalUri || photo.uri;
 
       store.workerUploadTick({
         jobId: record.jobId,
         currentImageIndex: index,
         totalImages: record.photosMeta.length,
-        previewUri,
+        previewUri: tickPreviewUri,
         subtitleLine: `Fotoğraf ${index + 1} / ${record.photosMeta.length} yükleniyor`,
         progress01: computeProgress01(completedSteps, totalSteps),
       });
 
       if (photo.uploadStatus === 'done' && photo.storageFileName) {
         uploadedFileNames[index] = photo.storageFileName;
+        uploadedPreviewFileNames[index] = photo.storagePreviewFileName || '';
         completedSteps += 1;
 
         store.workerUploadTick({
           jobId: record.jobId,
           currentImageIndex: index,
           totalImages: record.photosMeta.length,
-          previewUri,
+          previewUri: tickPreviewUri,
           subtitleLine: `Fotoğraf ${index + 1} / ${record.photosMeta.length} yüklendi`,
           progress01: computeProgress01(completedSteps, totalSteps),
         });
@@ -138,15 +152,25 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
       }
 
       const uploadUri = photo.processedLocalUri || photo.uri;
-      const { fileName } = await uploadRoutePhotoToStorage(record.userId, uploadUri);
+      const previewLocalUri = await prepareRoutePhotoPreview(
+        record.jobId,
+        photo.id,
+        photo.uri,
+      );
+      const { fileName, previewFileName } = await uploadRoutePhotoWithPreview(
+        record.userId,
+        uploadUri,
+        previewLocalUri,
+      );
       uploadedFileNames[index] = fileName;
+      uploadedPreviewFileNames[index] = previewFileName;
       completedSteps += 1;
 
       store.workerUploadTick({
         jobId: record.jobId,
         currentImageIndex: index,
         totalImages: record.photosMeta.length,
-        previewUri,
+        previewUri: tickPreviewUri,
         subtitleLine: `Fotoğraf ${index + 1} / ${record.photosMeta.length} yüklendi`,
         progress01: computeProgress01(completedSteps, totalSteps),
       });
@@ -154,6 +178,7 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
 
     const finalRoutePoints = routePoints.map((point, index) => {
       const uploadedFileName = uploadedFileNames[index];
+      const uploadedPreviewFileName = uploadedPreviewFileNames[index];
 
       if (!uploadedFileName) {
         throw new Error('Tüm görseller doğrulanamadı');
@@ -162,6 +187,9 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
       return {
         ...point,
         image_url: uploadedFileName,
+        ...(uploadedPreviewFileName
+          ? { image_preview_url: uploadedPreviewFileName }
+          : {}),
       };
     });
 

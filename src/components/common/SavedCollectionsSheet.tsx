@@ -9,6 +9,8 @@ import {
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { SavedCollection, SaveCollectionsService } from '../../services/SaveCollectionsService';
 import SavedCollectionRow from './SavedCollectionRow';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface SavedCollectionsSheetHeaderProps {
   isCreateOpen: boolean;
@@ -21,6 +23,59 @@ const SavedCollectionsSheetHeader: React.FC<SavedCollectionsSheetHeaderProps> = 
   onToggleCreateOpen,
   onSubmitNewListName,
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    headerSection: {
+      paddingHorizontal: 16,
+      paddingTop: 4,
+    },
+    createButton: {
+      alignSelf: 'flex-start',
+      paddingVertical: 8,
+      paddingHorizontal: 0,
+      marginBottom: 0,
+    },
+    createButtonPressed: {
+      opacity: 0.55,
+    },
+    createButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#0095f6',
+    },
+    createInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+      columnGap: 8,
+    },
+    input: {
+      flex: 1,
+      height: 42,
+      borderWidth: 1,
+      borderColor: t.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      color: t.textPrimary,
+      backgroundColor: t.surfaceMuted,
+    },
+    addButton: {
+      height: 42,
+      borderRadius: 8,
+      paddingHorizontal: 16,
+      backgroundColor: t.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addButtonPressed: {
+      opacity: 0.8,
+    },
+    addButtonText: {
+      color: t.id === 'light' ? '#fff' : t.background,
+      fontWeight: '600',
+    },
+  }));
+
   const [draftName, setDraftName] = useState('');
 
   const handleSubmit = async () => {
@@ -57,7 +112,7 @@ const SavedCollectionsSheetHeader: React.FC<SavedCollectionsSheetHeaderProps> = 
             onChangeText={setDraftName}
             style={styles.input}
             placeholder="Liste adı"
-            placeholderTextColor="#888"
+            placeholderTextColor={theme.textMuted}
             autoFocus={true}
             maxLength={40}
           />
@@ -127,6 +182,34 @@ const SavedCollectionsSheet: React.FC<SavedCollectionsSheetProps> = ({
   onToggleCollection,
   onCreateCollection,
 }) => {
+  const styles = useThemedStyles((t) => ({
+    sheetBackground: {
+      backgroundColor: t.background,
+      borderTopLeftRadius: 18,
+      borderTopRightRadius: 18,
+    },
+    sheetIndicator: {
+      backgroundColor: t.borderStrong,
+    },
+    sheetBody: {
+      flex: 1,
+    },
+    flatList: {
+      flex: 1,
+    },
+    listContent: {
+      flexGrow: 1,
+      paddingHorizontal: 16,
+      paddingBottom: 48,
+    },
+    emptyText: {
+      marginTop: 16,
+      fontSize: 14,
+      color: t.textMuted,
+      textAlign: 'center',
+    },
+  }));
+
   const sheetRef = useRef<ComponentRef<typeof BottomSheetModal>>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [previewByCollectionId, setPreviewByCollectionId] = useState<
@@ -240,7 +323,7 @@ const SavedCollectionsSheet: React.FC<SavedCollectionsSheetProps> = ({
         {loading ? 'Listeler yükleniyor...' : 'Henüz listen yok'}
       </Text>
     );
-  }, [loading]);
+  }, [loading, styles.emptyText]);
 
   return (
     <BottomSheetModal
@@ -274,81 +357,5 @@ const SavedCollectionsSheet: React.FC<SavedCollectionsSheetProps> = ({
     </BottomSheetModal>
   );
 };
-
-const styles = StyleSheet.create({
-  sheetBackground: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-  },
-  sheetIndicator: {
-    backgroundColor: '#d2d2d2',
-  },
-  sheetBody: {
-    flex: 1,
-  },
-  headerSection: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-  },
-  flatList: {
-    flex: 1,
-  },
-  createButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: 8,
-    paddingHorizontal: 0,
-    marginBottom: 0,
-  },
-  createButtonPressed: {
-    opacity: 0.55,
-  },
-  createButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0095f6',
-  },
-  createInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    columnGap: 8,
-  },
-  input: {
-    flex: 1,
-    height: 42,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    color: '#111',
-  },
-  addButton: {
-    height: 42,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#111',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addButtonPressed: {
-    opacity: 0.8,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  listContent: {
-    flexGrow: 1,
-    paddingHorizontal: 16,
-    paddingBottom: 48,
-  },
-  emptyText: {
-    marginTop: 16,
-    fontSize: 14,
-    color: '#777',
-    textAlign: 'center',
-  },
-});
 
 export default SavedCollectionsSheet;

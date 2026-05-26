@@ -10,6 +10,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { PhotoGrid } from '../../components/route/PhotoGrid';
 import { RouteWizardDraftsSheet } from '../../components/route/RouteWizardDraftsSheet';
+import { WizardStepIndicator } from '../../components/createFlow/WizardStepIndicator';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useThemedStyles } from '../../theme/useThemedStyles';
 import { useCreateRouteFlowStore } from '../../store/createRouteFlowStore';
@@ -19,6 +20,7 @@ import {
   deleteWizardDraft,
   listWizardDrafts,
 } from '../../services/routeWizardDraftStorage';
+import { MAX_ROUTE_STOPS } from '../../constants/routeContentLimits';
 import type { CreateFlowPhoto, RouteWizardDraftRecord, WizardStep } from '../../types/createRouteFlowTypes';
 
 type PickerPhotoInput = Omit<CreateFlowPhoto, 'uploadStatus'>;
@@ -36,7 +38,6 @@ export const PhotoSelectionScreen = () => {
   const photos = useCreateRouteFlowStore((state) => state.photos);
   const setPhotosFromPicker = useCreateRouteFlowStore((state) => state.setPhotosFromPicker);
   const removePhoto = useCreateRouteFlowStore((state) => state.removePhoto);
-  const reorderPhotos = useCreateRouteFlowStore((state) => state.reorderPhotos);
   const setWizardStep = useCreateRouteFlowStore((state) => state.setWizardStep);
   const hydrateFromWizardDraft = useCreateRouteFlowStore((state) => state.hydrateFromWizardDraft);
   const resetFlow = useCreateRouteFlowStore((state) => state.resetFlow);
@@ -90,14 +91,14 @@ export const PhotoSelectionScreen = () => {
       textAlign: 'center',
     },
     continueButton: {
-      backgroundColor: t.accent,
+      backgroundColor: t.buttonPrimaryBg,
       paddingVertical: 16,
       paddingHorizontal: 32,
       borderRadius: 12,
       alignItems: 'center',
     },
     continueButtonText: {
-      color: t.background,
+      color: t.buttonPrimaryText,
       fontSize: 16,
       fontWeight: '600',
     },
@@ -108,8 +109,8 @@ export const PhotoSelectionScreen = () => {
       paddingVertical: 16,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: t.accent,
-      backgroundColor: 'transparent',
+      borderColor: t.buttonSecondaryBorder,
+      backgroundColor: t.buttonSecondaryBg,
       gap: 8,
     },
     draftsButtonWithContinue: {
@@ -118,13 +119,13 @@ export const PhotoSelectionScreen = () => {
     draftsButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: t.accent,
+      color: t.buttonSecondaryText,
     },
     draftsBadge: {
       minWidth: 22,
       height: 22,
       borderRadius: 11,
-      backgroundColor: t.accent,
+      backgroundColor: t.buttonPrimaryBg,
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 6,
@@ -132,7 +133,7 @@ export const PhotoSelectionScreen = () => {
     draftsBadgeText: {
       fontSize: 12,
       fontWeight: '700',
-      color: t.background,
+      color: t.buttonPrimaryText,
     },
   }));
 
@@ -144,21 +145,18 @@ export const PhotoSelectionScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      setWizardStep('photo');
       refreshDrafts();
-    }, [refreshDrafts]),
+    }, [refreshDrafts, setWizardStep]),
   );
 
   const handlePhotoSelect = (incoming: PickerPhotoInput[]) => {
-    if (incoming.length > 10) {
-      Alert.alert('Uyarı', 'En fazla 10 fotoğraf seçebilirsiniz.');
+    if (incoming.length > MAX_ROUTE_STOPS) {
+      Alert.alert('Uyarı', `En fazla ${MAX_ROUTE_STOPS} fotoğraf seçebilirsiniz.`);
       return;
     }
 
     setPhotosFromPicker(incoming);
-  };
-
-  const handlePhotoReorder = (fromIndex: number, toIndex: number) => {
-    reorderPhotos(fromIndex, toIndex);
   };
 
   const handleRemovePhoto = (photoId: string) => {
@@ -204,24 +202,24 @@ export const PhotoSelectionScreen = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Fotoğraflar</Text>
         <Text style={styles.subtitle}>
-          En fazla 10 görsel; sırayı sonra değiştirebilirsin.
+          En fazla {MAX_ROUTE_STOPS} görsel ekleyebilirsin.
         </Text>
+        <WizardStepIndicator currentStep="photo" />
       </View>
 
       <View style={styles.content}>
         <PhotoGrid
           selectedPhotos={photos}
           onPhotoSelect={handlePhotoSelect}
-          onPhotoReorder={handlePhotoReorder}
           onRemovePhoto={handleRemovePhoto}
-          maxPhotos={10}
+          maxPhotos={MAX_ROUTE_STOPS}
         />
       </View>
 
       <View style={styles.footer}>
         {canContinue ? (
           <Text style={styles.countText}>
-            {photos.length}/10 seçildi
+            {photos.length}/{MAX_ROUTE_STOPS} seçildi
           </Text>
         ) : null}
 
@@ -240,7 +238,7 @@ export const PhotoSelectionScreen = () => {
               canContinue && styles.draftsButtonWithContinue,
             ]}
             onPress={handleOpenDrafts}>
-            <Icon name="content-save-outline" size={18} color={theme.accent} />
+            <Icon name="content-save-outline" size={18} color={theme.buttonSecondaryText} />
             <Text style={styles.draftsButtonText}>Taslaklar</Text>
             <View style={styles.draftsBadge}>
               <Text style={styles.draftsBadgeText}>{drafts.length}</Text>

@@ -31,6 +31,7 @@ import ModalSheetSafeArea from '../common/ModalSheetSafeArea';
 import ProfileEmailVerification from './ProfileEmailVerification';
 import { serializeWebsiteList } from '../../utils/websiteUtils';
 import { useNestedScrollDragLock } from '../../hooks/useNestedScrollDragLock';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface ProfileEditModalProps {
   visible: boolean;
@@ -80,6 +81,45 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
     reenableDelayMs: 1000,
   });
   const { user } = useAuth();
+  const styles = useThemedStyles((t) => ({
+    modalContainer: {
+      flex: 1,
+      backgroundColor: t.overlayDark,
+      justifyContent: 'flex-end',
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    modalContent: {
+      backgroundColor: t.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: '94%',
+      flex: 1,
+      overflow: 'hidden',
+    },
+    content: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+    },
+    paddedSection: {
+      paddingHorizontal: 20,
+    },
+    formSection: {
+      marginTop: 4,
+    },
+    emailSection: {
+      marginBottom: 12,
+    },
+    emailVerificationWrap: {
+      marginTop: -10,
+    },
+    bottomSpacer: {
+      height: 40,
+    },
+  }));
 
   // Form state
   const [formState, setFormState] = useState<FormState>({
@@ -503,45 +543,5 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '94%',
-    flex: 1,
-    overflow: 'hidden',
-  },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  paddedSection: {
-    paddingHorizontal: 20,
-  },
-  formSection: {
-    marginTop: 4,
-  },
-  emailSection: {
-    marginBottom: 12,
-  },
-  emailVerificationWrap: {
-    marginTop: -10,
-  },
-  bottomSpacer: {
-    height: 40,
-  },
-});
 
 export default ProfileEditModal;

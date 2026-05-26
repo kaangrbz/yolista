@@ -1,21 +1,30 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PhotoSelectionScreen } from '../screens/CreateRoute/PhotoSelectionScreen';
 import { StopDetailsScreen } from '../screens/CreateRoute/StopDetailsScreen';
 import { CategorySelectionScreen } from '../screens/CreateRoute/CategorySelectionScreen';
+import { LocationPickerScreen } from '../screens/CreateRoute/LocationPickerScreen';
 import { useCreateRouteFlowStore } from '../store/createRouteFlowStore';
+import { useThemedStyles } from '../theme/useThemedStyles';
 
 export type CreateRouteStackParamList = {
   PhotoSelection: undefined;
   StopDetails: undefined;
   CategorySelection: undefined;
+  LocationPicker: { stopId: string };
 };
 
 const Stack = createNativeStackNavigator<CreateRouteStackParamList>();
 
 export const CreateRouteStack = () => {
   const flowSessionId = useCreateRouteFlowStore((state) => state.flowSessionId);
+  const styles = useThemedStyles((t) => ({
+    wrapper: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+  }));
 
   return (
     <View style={styles.wrapper}>
@@ -25,6 +34,7 @@ export const CreateRouteStack = () => {
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
+          contentStyle: styles.wrapper,
         }}
       >
         <Stack.Screen
@@ -47,7 +57,17 @@ export const CreateRouteStack = () => {
           name="CategorySelection"
           component={CategorySelectionScreen}
           options={{
-            title: 'Kategori ve Şehir',
+            title: 'Kategori',
+          }}
+        />
+
+        <Stack.Screen
+          name="LocationPicker"
+          component={LocationPickerScreen}
+          options={{
+            title: 'Konum Seç',
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
           }}
         />
       </Stack.Navigator>
@@ -55,8 +75,4 @@ export const CreateRouteStack = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  wrapper: {
-    flex: 1,
-  },
-});
+export default CreateRouteStack;

@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface ProfileTabsProps {
   activeTab: number;
@@ -13,6 +15,25 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
   isCurrentUserProfile,
   onTabChange,
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    tabContainer: {
+      flexDirection: 'row',
+      backgroundColor: t.background,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.hairlineBorder,
+    },
+    tab: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    activeTab: {
+      borderBottomWidth: 2,
+      borderBottomColor: '#1DA1F2',
+    },
+  }));
+
   const tabs = [
     { index: 0, icon: 'grid', label: 'Grid' },
     { index: 1, icon: 'format-list-bulleted', label: 'List' },
@@ -21,7 +42,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
   if (isCurrentUserProfile) {
     tabs.push(
       { index: 2, icon: 'bookmark', label: 'Saved' },
-      { index: 3, icon: 'heart', label: 'Liked' }
+      { index: 3, icon: 'heart', label: 'Liked' },
     );
   }
 
@@ -36,31 +57,12 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
           <Icon
             name={tab.icon}
             size={20}
-            color={activeTab === tab.index ? '#1DA1F2' : '#666'}
+            color={activeTab === tab.index ? '#1DA1F2' : theme.textSecondary}
           />
         </TouchableOpacity>
       ))}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    // paddingTop: 12, // wont enable this
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#1DA1F2',
-  },
-});
 
 export default ProfileTabs;

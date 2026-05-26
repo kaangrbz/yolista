@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { PostCaptionProps } from '../../types/post.types';
 import { getTimeAgo } from '../../utils/timeAgo';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 const PostCaption: React.FC<PostCaptionProps> = ({
   username,
-  title,
   description,
   likeCount,
   commentCount,
@@ -15,6 +15,54 @@ const PostCaption: React.FC<PostCaptionProps> = ({
   isExpanded,
   onToggleExpanded,
 }) => {
+  const trimmedDescription = description?.trim() ?? '';
+
+  const styles = useThemedStyles((t) => ({
+    container: {
+      paddingHorizontal: 12,
+    },
+    likesText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: t.textPrimary,
+      paddingBottom: 4,
+    },
+    captionContainer: {
+      paddingBottom: 4,
+    },
+    caption: {
+      fontSize: 14,
+      color: t.textPrimary,
+    },
+    username: {
+      fontWeight: '600',
+    },
+    description: {
+      fontSize: 14,
+      color: t.textPrimary,
+      marginTop: 4,
+    },
+    commentsPreview: {
+      paddingBottom: 4,
+    },
+    commentsText: {
+      fontSize: 14,
+      color: t.textMuted,
+    },
+    timeText: {
+      fontSize: 12,
+      color: t.textMuted,
+      paddingBottom: 8,
+    },
+    seeMoreButton: {
+      marginTop: 4,
+    },
+    seeMoreText: {
+      fontSize: 14,
+      color: t.textMuted,
+      fontWeight: '500',
+    },
+  }));
 
   return (
     <View style={styles.container}>
@@ -37,22 +85,19 @@ const PostCaption: React.FC<PostCaptionProps> = ({
         )
       )}
 
-      {/* Caption */}
       <View style={styles.captionContainer}>
         <Text style={styles.caption}>
           <Text style={styles.username}>{username}</Text>
-          {' '}
-          <Text style={styles.captionText}>{title}</Text>
         </Text>
-        {description && (
+        {trimmedDescription ? (
           <View>
             <Text
               style={styles.description}
               numberOfLines={isExpanded ? undefined : 3}
             >
-              {description}
+              {trimmedDescription}
             </Text>
-            {description.length > 140 && (
+            {trimmedDescription.length > 140 && (
               <TouchableOpacity
                 style={styles.seeMoreButton}
                 onPress={onToggleExpanded}
@@ -63,7 +108,7 @@ const PostCaption: React.FC<PostCaptionProps> = ({
               </TouchableOpacity>
             )}
           </View>
-        )}
+        ) : null}
       </View>
 
       <TouchableOpacity
@@ -84,60 +129,9 @@ const PostCaption: React.FC<PostCaptionProps> = ({
         </Text>
       </TouchableOpacity>
 
-      {/* Time */}
       <Text style={styles.timeText}>{getTimeAgo(createdAt)}</Text>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 12,
-  },
-  likesText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#262626',
-    paddingBottom: 4,
-  },
-  captionContainer: {
-    paddingBottom: 4,
-  },
-  caption: {
-    fontSize: 14,
-    color: '#262626',
-  },
-  username: {
-    fontWeight: '600',
-  },
-  captionText: {
-    fontWeight: '400',
-  },
-  description: {
-    fontSize: 14,
-    color: '#262626',
-    marginTop: 4,
-  },
-  commentsPreview: {
-    paddingBottom: 4,
-  },
-  commentsText: {
-    fontSize: 14,
-    color: '#8e8e8e',
-  },
-  timeText: {
-    fontSize: 12,
-    color: '#8e8e8e',
-    paddingBottom: 8,
-  },
-  seeMoreButton: {
-    marginTop: 4,
-  },
-  seeMoreText: {
-    fontSize: 14,
-    color: '#8e8e8e',
-    fontWeight: '500',
-  },
-});
 
 export default PostCaption;

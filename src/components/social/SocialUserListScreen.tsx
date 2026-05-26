@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -10,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ThemedRefreshControl from '../common/ThemedRefreshControl';
 import { useIsFocused } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Profile } from '../../model/profile.model';
@@ -26,6 +26,8 @@ import UserCard from '../user/UserCard';
 import { SocialListHeader } from '../header/Header';
 import { SocialListFollowChip } from './SocialListFollowChip';
 import { KeyboardAwareContainer } from '../common';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 export type FetchSocialProfilesPage = (
   offset: number,
@@ -52,6 +54,69 @@ export const SocialUserListScreen: React.FC<SocialUserListScreenProps> = ({
   listKey,
   initialTotalHint,
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    safe: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    listTop: {
+      paddingTop: 8,
+      paddingBottom: 8,
+      gap: 6,
+    },
+    summaryText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: t.textSecondary,
+      letterSpacing: -0.1,
+    },
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: 34,
+      paddingHorizontal: 8,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.border,
+      borderRadius: 8,
+      backgroundColor: t.surfaceMuted,
+    },
+    searchIcon: {
+      marginRight: 6,
+    },
+    searchInput: {
+      flex: 1,
+      paddingVertical: 6,
+      paddingHorizontal: 0,
+      fontSize: 14,
+      color: t.textPrimary,
+    },
+    listContent: {
+      paddingHorizontal: 12,
+      paddingBottom: 20,
+    },
+    listContentGrow: {
+      flexGrow: 1,
+    },
+    emptyWrap: {
+      flex: 1,
+      paddingTop: 32,
+      paddingHorizontal: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    emptyText: {
+      fontSize: 14,
+      color: t.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    footer: {
+      paddingVertical: 8,
+      alignItems: 'center',
+    },
+  }));
+
   const { user: authUser } = useAuth();
   const currentUserId = authUser?.id;
 
@@ -342,7 +407,7 @@ export const SocialUserListScreen: React.FC<SocialUserListScreenProps> = ({
     if (isInitialLoading) {
       return (
         <View style={styles.emptyWrap}>
-          <ActivityIndicator size="large" color="#121212" />
+          <ActivityIndicator size="large" color={theme.textPrimary} />
         </View>
       );
     }
@@ -366,7 +431,7 @@ export const SocialUserListScreen: React.FC<SocialUserListScreenProps> = ({
 
     return (
       <View style={styles.footer}>
-        <ActivityIndicator size="small" color="#121212" />
+        <ActivityIndicator size="small" color={theme.textPrimary} />
       </View>
     );
   };
@@ -424,14 +489,14 @@ export const SocialUserListScreen: React.FC<SocialUserListScreenProps> = ({
               <Icon
                 name="magnify"
                 size={18}
-                color="#9CA3AF"
+                color={theme.textMuted}
                 style={styles.searchIcon}
               />
               <TextInput
                 value={searchText}
                 onChangeText={setSearchText}
                 placeholder="İsim veya kullanıcı adı"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={theme.textMuted}
                 style={styles.searchInput}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -447,7 +512,7 @@ export const SocialUserListScreen: React.FC<SocialUserListScreenProps> = ({
                   accessibilityRole="button"
                   accessibilityLabel="Aramayı temizle"
                 >
-                  <Icon name="close-circle" size={18} color="#9CA3AF" />
+                  <Icon name="close-circle" size={18} color={theme.textMuted} />
                 </TouchableOpacity>
               ) : null}
             </View>
@@ -466,7 +531,7 @@ export const SocialUserListScreen: React.FC<SocialUserListScreenProps> = ({
           items.length === 0 && styles.listContentGrow,
         ]}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         onEndReached={() => {
           void loadMore();
@@ -478,64 +543,3 @@ export const SocialUserListScreen: React.FC<SocialUserListScreenProps> = ({
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  listTop: {
-    paddingTop: 8,
-    paddingBottom: 8,
-    gap: 6,
-  },
-  summaryText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-    letterSpacing: -0.1,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 34,
-    paddingHorizontal: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-  },
-  searchIcon: {
-    marginRight: 6,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 0,
-    fontSize: 14,
-    color: '#121212',
-  },
-  listContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 20,
-  },
-  listContentGrow: {
-    flexGrow: 1,
-  },
-  emptyWrap: {
-    flex: 1,
-    paddingTop: 32,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  footer: {
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-});

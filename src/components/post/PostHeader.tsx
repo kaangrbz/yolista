@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { DefaultAvatar } from '../../assets';
 import { PostHeaderProps } from '../../types/post.types';
 import { useProfileImageDownload } from '../../hooks/useImageDownload';
 import PostDropdownMenu from '../PostDropdownMenu';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 const PostHeader: React.FC<PostHeaderProps> = ({
   username,
@@ -26,14 +28,54 @@ const PostHeader: React.FC<PostHeaderProps> = ({
   isFollowing = false,
   isVerified = false,
 }) => {
-  // Use the profile image download hook if userId is provided
-  const { imageUri: downloadedImageUri, loading: imageLoading } = useProfileImageDownload(
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    userInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    profileImage: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      marginRight: 12,
+    },
+    userDetails: {
+      flex: 1,
+    },
+    usernameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    username: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: t.textPrimary,
+      flexShrink: 1,
+    },
+    verifiedIcon: {
+      marginLeft: 4,
+    },
+    location: {
+      fontSize: 12,
+      color: t.textMuted,
+    },
+  }));
+
+  const { imageUri: downloadedImageUri } = useProfileImageDownload(
     userId ? userImage : undefined,
     userId || '',
-    userImagePreview
+    userImagePreview,
   );
 
-  // Use downloaded image if available, otherwise fallback to userImage or DefaultAvatar
   const profileImageSource = downloadedImageUri
     ? { uri: downloadedImageUri }
     : userImage
@@ -74,50 +116,10 @@ const PostHeader: React.FC<PostHeaderProps> = ({
         onDelete={onDeletePress}
         onShare={onSharePress}
         onCopyLink={onCopyLinkPress}
+        iconColor={theme.textPrimary}
       />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  profileImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 12,
-  },
-  userDetails: {
-    flex: 1,
-  },
-  usernameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  username: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#262626',
-    flexShrink: 1,
-  },
-  verifiedIcon: {
-    marginLeft: 4,
-  },
-  location: {
-    fontSize: 12,
-    color: '#8e8e8e',
-  },
-});
 
 export default PostHeader;

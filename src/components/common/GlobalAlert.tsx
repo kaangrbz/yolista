@@ -9,6 +9,8 @@ import {
   StatusBar,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useThemedStyles } from '../../theme/useThemedStyles';
+import { useAppTheme } from '../../context/AppThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -28,6 +30,69 @@ interface GlobalAlertProps {
 }
 
 const GlobalAlert: React.FC<GlobalAlertProps> = ({ alert, onDismiss }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      zIndex: 9999,
+      paddingBottom: 50,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+    },
+    content: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderRadius: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: t.id === 'light' ? '#121212' : t.surfaceMuted,
+      borderWidth: t.id === 'light' ? 0 : StyleSheet.hairlineWidth,
+      borderColor: t.hairlineBorder,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: -2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+    },
+    leftContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    rightContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    message: {
+      color: t.id === 'light' ? '#fff' : t.textPrimary,
+      fontSize: 16,
+      fontWeight: '400',
+      flex: 1,
+    },
+    actionButton: {
+      backgroundColor: t.id === 'light' ? 'rgba(255, 255, 255, 0.2)' : t.borderStrong,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 4,
+      marginRight: 8,
+    },
+    actionText: {
+      color: t.id === 'light' ? '#fff' : t.textPrimary,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    dismissButton: {
+      padding: 4,
+    },
+  }));
+
   const translateY = useRef(new Animated.Value(100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -113,72 +178,12 @@ const GlobalAlert: React.FC<GlobalAlertProps> = ({ alert, onDismiss }) => {
             style={styles.dismissButton}
             onPress={handleDismiss}
           >
-            <Icon name="close" size={20} color="#fff" />
+            <Icon name="close" size={20} color={theme.id === 'light' ? '#fff' : theme.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
     </Animated.View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 9999,
-    paddingBottom: 50, // Safe area bottom
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#000',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  leftContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  rightContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  message: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '400',
-    flex: 1,
-  },
-  actionButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  actionText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  dismissButton: {
-    padding: 4,
-  },
-});
 
 export default GlobalAlert;

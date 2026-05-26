@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, Image, ScrollView, Dimensions, TouchableOpacity, Animated } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { ImageCarouselProps } from '../../types/post.types';
+import { useThemedStyles } from '../../theme/useThemedStyles';
+import PhotoHintOverlay from './PhotoHintOverlay';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 const ImageCarousel: React.FC<ImageCarouselProps> = ({
   images,
+  hints = [],
   currentIndex,
   onIndexChange,
   height = 400,
@@ -17,6 +20,56 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   isLiked = false,
   onDoubleTap,
 }) => {
+  const styles = useThemedStyles((t) => ({
+    container: {
+      position: 'relative',
+    },
+    scrollView: {
+      height: '100%',
+    },
+    image: {
+      width: screenWidth,
+    },
+    placeholder: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: t.surfaceMuted,
+    },
+    placeholderText: {
+      fontSize: 16,
+      color: t.textMuted,
+    },
+    indicators: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      flexDirection: 'row',
+    },
+    indicator: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: 'rgba(255, 255, 255, 0.5)',
+      marginHorizontal: 2,
+    },
+    activeIndicator: {
+      backgroundColor: '#fff',
+    },
+    imageTouchable: {
+      width: screenWidth,
+      height: '100%',
+    },
+    heartAnimation: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      marginTop: -40,
+      marginLeft: -40,
+      zIndex: 1000,
+    },
+  }));
+
   const [calculatedHeight, setCalculatedHeight] = useState(height);
   const hasPresetHeights = Boolean(displayHeights?.length);
 
@@ -96,6 +149,8 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
     );
   }
 
+  const currentHint = hints[currentIndex]?.trim() ?? '';
+
   return (
     <View style={[styles.container, { height: calculatedHeight }]}>
       <ScrollView
@@ -141,6 +196,13 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         </View>
       )}
 
+      {currentHint ? (
+        <PhotoHintOverlay
+          hint={currentHint}
+          slideKey={`${currentIndex}-${currentHint}`}
+        />
+      ) : null}
+
       <Animated.View
         style={[
           styles.heartAnimation,
@@ -156,55 +218,5 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-  },
-  scrollView: {
-    height: '100%',
-  },
-  image: {
-    width: screenWidth,
-  },
-  placeholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  placeholderText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  indicators: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    flexDirection: 'row',
-  },
-  indicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    marginHorizontal: 2,
-  },
-  activeIndicator: {
-    backgroundColor: '#fff',
-  },
-  imageTouchable: {
-    width: screenWidth,
-    height: '100%',
-  },
-  heartAnimation: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginTop: -40,
-    marginLeft: -40,
-    zIndex: 1000,
-  },
-});
 
 export default ImageCarousel;

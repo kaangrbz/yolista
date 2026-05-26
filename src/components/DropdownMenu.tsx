@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, ReactNode } from 'react';
 import { View, Modal, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import { useThemedStyles } from '../theme/useThemedStyles';
 
 interface DropdownMenuProps {
   visible: boolean;
@@ -18,8 +19,32 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   children,
   dropdownWidth = 150,
 }) => {
+  const styles = useThemedStyles((t) => ({
+    modalOverlay: {
+      flex: 1,
+      justifyContent: 'flex-start',
+      alignItems: 'flex-start',
+      backgroundColor: 'transparent',
+    },
+    menu: {
+      position: 'absolute',
+      width: 80,
+      right: 20,
+      backgroundColor: t.background,
+      borderRadius: 8,
+      padding: 10,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.hairlineBorder,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+  }));
+
   const triggerRef = useRef<View>(null);
-  const [position, setPosition] = useState({x: 0, y: 0, width: 0});
+  const [position, setPosition] = useState({ x: 0, y: 0, width: 0 });
 
   useEffect(() => {
     if (triggerRef.current && visible) {
@@ -43,7 +68,8 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
           transparent={true}
           visible={visible}
           animationType="fade"
-          onRequestClose={handleClose}>
+          onRequestClose={handleClose}
+        >
           <TouchableWithoutFeedback onPress={handleClose}>
             <View style={styles.modalOverlay}>
               <View
@@ -54,7 +80,8 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
                     right: 10,
                     width: dropdownWidth,
                   },
-                ]}>
+                ]}
+              >
                 {children}
               </View>
             </View>
@@ -64,28 +91,3 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-    modalOverlay: {
-      flex: 1,
-      justifyContent: 'flex-start',
-      alignItems: 'flex-start',
-      backgroundColor: 'transparent',
-    },
-    menu: {
-      position: 'absolute',
-      width: 80,
-      right: 20,
-      backgroundColor: 'white',
-      borderRadius: 5,
-      padding: 10,
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 2},
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-      elevation: 4,
-    },
-    menuOption: {
-      paddingHorizontal: 10,
-    },
-  });

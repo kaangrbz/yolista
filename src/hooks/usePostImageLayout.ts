@@ -35,6 +35,11 @@ export function usePostImageLayout(
     [readyImageSlides],
   );
 
+  const carouselHints = useMemo(
+    () => readyImageSlides.map((slide) => slide.hint?.trim() || null),
+    [readyImageSlides],
+  );
+
   const displayHeights = useMemo(
     () => readyImageSlides.map((slide) => getSlideDisplayHeight(slide)),
     [readyImageSlides, getSlideDisplayHeight],
@@ -58,6 +63,7 @@ export function usePostImageLayout(
     imagePlaceholderHeight,
     readyImageSlides,
     carouselImages,
+    carouselHints,
     displayHeights,
   };
 }

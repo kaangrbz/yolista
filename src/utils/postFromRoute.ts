@@ -33,8 +33,9 @@ export function postFromRouteWithProfile(route: RouteWithProfile): Post {
 
 export function leadSlideFromRoute(
   route: RouteWithProfile,
-): Pick<PostImageSlide, 'width' | 'height' | 'imageAlignment'> {
+): Pick<PostImageSlide, 'hint' | 'width' | 'height' | 'imageAlignment'> {
   return {
+    hint: route.title?.trim() || null,
     width: normalizeImageDimension(route.image_width ?? undefined),
     height: normalizeImageDimension(route.image_height ?? undefined),
     imageAlignment: route.image_alignment ?? null,

@@ -1,9 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, RefreshControl, ActivityIndicator, Animated } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, FlatList, ActivityIndicator, Animated } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useThemedStyles } from '../theme/useThemedStyles';
+import ThemedRefreshControl from '../components/common/ThemedRefreshControl';
 import { RouteWithProfile } from '../model/routes.model';
+import { useAuth } from '../context/AuthContext';
 import WelcomeModal from '../components/common/WelcomeModal';
 import { markWelcomeSeen, shouldShowWelcome } from '../utils/welcome';
-import { supabase } from '../lib/supabase';
 import { HomeHeader } from '../components/header/Header';
 import UniversalPost from '../components/UniversalPost';
 import { useHomePosts } from '../hooks/usePosts';
@@ -13,7 +16,63 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { isInitialListLoading } from '../utils/listRefreshUtils';
 
 export const HomeScreen = () => {
-  const [userId, setUserId] = useState<string>('');
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    flatList: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    loadingContainer: {
+      height: 100,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    endContainer: {
+      paddingVertical: 30,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    endText: {
+      fontSize: 16,
+      color: t.textPrimary,
+      fontWeight: '600',
+      marginBottom: 5,
+    },
+    endSubText: {
+      fontSize: 14,
+      color: t.textSecondary,
+      textAlign: 'center',
+    },
+    successMessage: {
+      position: 'absolute',
+      top: 100,
+      left: 20,
+      right: 20,
+      backgroundColor: t.accentPositive,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      zIndex: 1000,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    successText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+  }));
+
+  const { user } = useAuth();
+  const userId = user?.id ?? '';
   const [refreshing, setRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -31,19 +90,6 @@ export const HomeScreen = () => {
   const { rowsByPostId } = useListPostImagesBatch(routes);
 
   useEffect(() => {
-    const fetchUserId = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setUserId(user.id);
-        }
-      } catch (error) {
-        console.error('Error fetching user ID:', error);
-      }
-    };
-
-    fetchUserId();
-
     shouldShowWelcome().then((shouldShow) => {
       if (shouldShow) {
         setShowWelcomeModal(true);
@@ -172,7 +218,7 @@ export const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <HomeHeader />
 
       {showSuccessMessage && (
@@ -189,12 +235,7 @@ export const HomeScreen = () => {
         renderItem={renderPost}
         keyExtractor={(item) => item.id || ''}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#1DA1F2']}
-            tintColor="#1DA1F2"
-          />
+          <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
@@ -206,178 +247,3 @@ export const HomeScreen = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  flatList: {
-    flex: 1,
-  },
-  categoriesContainer: {
-    paddingTop: 16,
-    paddingHorizontal: 16,
-  },
-  loadingContainer: {
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
-  endContainer: {
-    paddingVertical: 30,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  endText: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '600',
-    marginBottom: 5,
-  },
-  endSubText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-  },
-  categoryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingVertical: 6,
-    borderRadius: 25,
-    marginRight: 12,
-  },
-  categoryText: {
-    color: 'white',
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  routesContainer: {
-  },
-  noRoutesContainer: {
-    paddingTop: 16,
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  routeCard: {
-    borderTopColor: '#ddd',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    backgroundColor: 'white',
-  },
-  routeImage: {
-    width: '100%',
-    height: 200,
-  },
-  routeInfo: {
-  },
-  routeTitle: {
-    fontSize: 18,
-    paddingTop: 10,
-    paddingHorizontal: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  routeDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  detailText: {
-    marginLeft: 4,
-    color: '#666',
-  },
-  noRoutesText: {
-    fontSize: 16,
-    width: '70%',
-    color: '#666',
-    textAlign: 'center',
-  },
-  reactionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginVertical: 8,
-    width: '100%',
-    justifyContent: 'space-between',
-  },
-  reactionText: {
-    marginLeft: 4,
-    color: '#666',
-  },
-  reactionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 4,
-  },
-  commentContainer: {
-    borderStartWidth: 1,
-    borderEndWidth: 1,
-  },
-  commentInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 4,
-    paddingLeft: 6,
-    paddingRight: 12,
-    backgroundColor: '#f0f0f0',
-  },
-  commentInput: {
-    flex: 1,
-    fontSize: 12,
-    color: '#222',
-  },
-  commentImage: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-  },
-  routeDescription: {
-    fontSize: 14,
-    paddingHorizontal: 16,
-    color: '#666',
-  },
-  seeMoreText: {
-    color: '#666',
-    marginTop: 2,
-    fontSize: 12,
-    paddingHorizontal: 16,
-  },
-  successMessage: {
-    position: 'absolute',
-    top: 100,
-    left: 20,
-    right: 20,
-    backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  successText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-});

@@ -7,6 +7,8 @@ import {
   TextInput,
   TextInputProps,
 } from 'react-native';
+import { useAppTheme } from '../../../context/AppThemeContext';
+import { useThemedStyles } from '../../../theme/useThemedStyles';
 
 interface ProfileFormFieldProps extends TextInputProps {
   label: string;
@@ -28,7 +30,65 @@ const ProfileFormField: React.FC<ProfileFormFieldProps> = ({
   editable = true,
   ...textInputProps
 }) => {
-  // Note: This component should be used within KeyboardAwareContainer in parent modal/screen
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      marginBottom: 20,
+    },
+    labelContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    label: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: t.textPrimary,
+    },
+    required: {
+      color: '#e74c3c',
+      fontSize: 16,
+      marginLeft: 4,
+    },
+    input: {
+      borderWidth: 1.5,
+      borderColor: t.borderStrong,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      fontSize: 16,
+      color: t.textPrimary,
+      backgroundColor: t.surfaceMuted,
+      minHeight: 48,
+    },
+    inputDisabled: {
+      backgroundColor: t.border,
+      color: t.textMuted,
+    },
+    multilineInput: {
+      minHeight: 100,
+      paddingTop: 14,
+    },
+    inputError: {
+      borderColor: '#e74c3c',
+    },
+    inputSuccess: {
+      borderColor: '#27ae60',
+    },
+    errorText: {
+      color: '#e74c3c',
+      fontSize: 13,
+      marginTop: 6,
+      fontWeight: '500',
+    },
+    successText: {
+      color: '#27ae60',
+      fontSize: 13,
+      marginTop: 6,
+      fontWeight: '500',
+    },
+  }));
+
   return (
     <View style={styles.container}>
       <View style={styles.labelContainer}>
@@ -48,7 +108,7 @@ const ProfileFormField: React.FC<ProfileFormFieldProps> = ({
         multiline={multiline}
         numberOfLines={multiline ? rows : 1}
         textAlignVertical={multiline ? 'top' : 'center'}
-        placeholderTextColor="#999"
+        placeholderTextColor={theme.textMuted}
         editable={editable}
         {...textInputProps}
       />
@@ -58,65 +118,5 @@ const ProfileFormField: React.FC<ProfileFormFieldProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 20,
-  },
-  labelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  required: {
-    color: '#e74c3c',
-    fontSize: 16,
-    marginLeft: 4,
-  },
-  input: {
-    borderWidth: 1.5,
-    borderColor: '#e0e0e0',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#333',
-    backgroundColor: '#fff',
-    minHeight: 48,
-  },
-  inputDisabled: {
-    backgroundColor: '#F8FAFC',
-    color: '#64748B',
-  },
-  multilineInput: {
-    minHeight: 100,
-    paddingTop: 14,
-  },
-  inputError: {
-    borderColor: '#e74c3c',
-    backgroundColor: '#fdf2f2',
-  },
-  inputSuccess: {
-    borderColor: '#27ae60',
-    backgroundColor: '#f2fdf2',
-  },
-  errorText: {
-    color: '#e74c3c',
-    fontSize: 13,
-    marginTop: 6,
-    fontWeight: '500',
-  },
-  successText: {
-    color: '#27ae60',
-    fontSize: 13,
-    marginTop: 6,
-    fontWeight: '500',
-  },
-});
 
 export default ProfileFormField;

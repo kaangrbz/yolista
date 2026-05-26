@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import RouteModel, { RouteWithProfile, GetRoutesProps } from '../model/routes.model';
 import { showToast } from '../utils/alert';
 import { mergeRoutesPreservingUnchanged } from '../utils/listRefreshUtils';
+import {
+  getCachedHomeFeedPosts,
+  getCachedHomeFeedPostsSync,
+  setCachedHomeFeedPosts,
+} from '../services/homeFeedCache';
 
 type FetchPostsOptions = {
   reset?: boolean;
@@ -49,21 +54,6 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
   // Options değişikliklerini takip et
   const currentOptionsString = JSON.stringify(options);
 
-  useEffect(() => {
-    if (currentOptionsString !== lastOptionsRef.current) {
-      optionsRef.current = options;
-      lastOptionsRef.current = currentOptionsString;
-
-      // Options değiştiğinde posts'ları sıfırla ve yeniden yükle
-      if (isInitialized) {
-        setCurrentPage(0);
-        setPosts([]);
-        setHasMore(true);
-        void fetchPosts({ reset: true });
-      }
-    }
-  }, [currentOptionsString, isInitialized]);
-
   // Limit'i hesapla
   const getLimit = (): number => {
     if (options.homeFeed?.limit) {return options.homeFeed.limit;}
@@ -72,6 +62,27 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
     return 10;
   };
 
+  const isFeedUserIdMissing = (currentOptions: PostOptions): boolean => {
+    if (currentOptions.homeFeed) {
+      return !currentOptions.homeFeed.loggedUserId;
+    }
+
+    if (currentOptions.profileFeed) {
+      return !currentOptions.profileFeed.userId;
+    }
+
+    return false;
+  };
+
+  const loadHomeFeedFromCache = useCallback(async (loggedUserId: string): Promise<RouteWithProfile[]> => {
+    const syncCached = getCachedHomeFeedPostsSync(loggedUserId);
+
+    if (syncCached.length > 0) {
+      return syncCached;
+    }
+
+    return getCachedHomeFeedPosts(loggedUserId);
+  }, []);
 
   // Post'ları getir
   const fetchPosts = useCallback(async (options: FetchPostsOptions = {}) => {
@@ -86,9 +97,9 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
       return;
     }
 
-    // Profile feed için userId kontrolü
+    // Home/profile feed için userId kontrolü
     const currentOptions = optionsRef.current;
-    if (currentOptions.profileFeed && (!currentOptions.profileFeed.userId || currentOptions.profileFeed.userId === '')) {
+    if (isFeedUserIdMissing(currentOptions)) {
       return;
     }
 
@@ -156,6 +167,10 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
         });
       }
 
+      if (reset && currentOptions.homeFeed?.loggedUserId && newPosts.length > 0) {
+        void setCachedHomeFeedPosts(currentOptions.homeFeed.loggedUserId, newPosts);
+      }
+
       const limit = getLimit();
       const hasMoreData = newPosts.length === limit;
       setHasMore(hasMoreData);
@@ -178,6 +193,44 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
     }
   }, [isLoading, currentPage]);
 
+  useEffect(() => {
+    if (currentOptionsString !== lastOptionsRef.current) {
+      optionsRef.current = options;
+      lastOptionsRef.current = currentOptionsString;
+
+      if (isInitialized) {
+        const runAfterOptionsChange = async () => {
+          const currentOptions = optionsRef.current;
+          const homeUserId = currentOptions.homeFeed?.loggedUserId;
+
+          if (homeUserId) {
+            const cached = await loadHomeFeedFromCache(homeUserId);
+
+            setCurrentPage(0);
+            setHasMore(true);
+
+            if (cached.length > 0) {
+              setPosts(cached);
+              await fetchPosts({ reset: true, silent: true });
+              return;
+            }
+
+            setPosts([]);
+            await fetchPosts({ reset: true });
+            return;
+          }
+
+          setCurrentPage(0);
+          setPosts([]);
+          setHasMore(true);
+          await fetchPosts({ reset: true });
+        };
+
+        void runAfterOptionsChange();
+      }
+    }
+  }, [currentOptionsString, isInitialized, fetchPosts, loadHomeFeedFromCache]);
+
   const refresh = useCallback(async () => {
     await fetchPosts({ reset: true, silent: true });
   }, [fetchPosts]);
@@ -189,11 +242,36 @@ export const usePosts = (options: PostOptions): UsePostsResult => {
   }, [hasMore, isLoading, fetchPosts]);
 
   useEffect(() => {
-    if (!isInitialized) {
-      void fetchPosts({ reset: true });
-      setIsInitialized(true);
+    if (isInitialized) {
+      return;
     }
-  }, [isInitialized, fetchPosts]);
+
+    const currentOptions = optionsRef.current;
+
+    if (isFeedUserIdMissing(currentOptions)) {
+      return;
+    }
+
+    const initializeFeed = async () => {
+      const homeUserId = currentOptions.homeFeed?.loggedUserId;
+
+      if (homeUserId) {
+        const cached = await loadHomeFeedFromCache(homeUserId);
+
+        if (cached.length > 0) {
+          setPosts(cached);
+          await fetchPosts({ reset: true, silent: true });
+          setIsInitialized(true);
+          return;
+        }
+      }
+
+      await fetchPosts({ reset: true });
+      setIsInitialized(true);
+    };
+
+    void initializeFeed();
+  }, [isInitialized, fetchPosts, currentOptionsString, loadHomeFeedFromCache]);
 
   return {
     posts,

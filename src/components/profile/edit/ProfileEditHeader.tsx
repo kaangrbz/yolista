@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { useThemedStyles } from '../../../theme/useThemedStyles';
 
 interface ProfileEditHeaderProps {
   onClose: () => void;
@@ -20,6 +21,58 @@ const ProfileEditHeader: React.FC<ProfileEditHeaderProps> = ({
   loading,
   canSave,
 }) => {
+  const styles = useThemedStyles((t) => ({
+    container: {
+      backgroundColor: t.background,
+      paddingBottom: 4,
+    },
+    handle: {
+      alignSelf: 'center',
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: t.borderStrong,
+      marginTop: 8,
+      marginBottom: 12,
+    },
+    toolbar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    cancelButton: {
+      minWidth: 64,
+      paddingVertical: 6,
+    },
+    cancelText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: t.textMuted,
+    },
+    title: {
+      flex: 1,
+      fontSize: 17,
+      fontWeight: '700',
+      color: t.textPrimary,
+      textAlign: 'center',
+      letterSpacing: -0.3,
+    },
+    saveButton: {
+      minWidth: 64,
+      alignItems: 'flex-end',
+      paddingVertical: 6,
+    },
+    saveText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#1DA1F2',
+    },
+    saveTextDisabled: {
+      color: t.borderStrong,
+    },
+  }));
+
   const saveDisabled = loading || !canSave;
 
   return (
@@ -63,57 +116,5 @@ const ProfileEditHeader: React.FC<ProfileEditHeaderProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#fff',
-    paddingBottom: 4,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E2E8F0',
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  toolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  cancelButton: {
-    minWidth: 64,
-    paddingVertical: 6,
-  },
-  cancelText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#64748B',
-  },
-  title: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0F172A',
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  saveButton: {
-    minWidth: 64,
-    alignItems: 'flex-end',
-    paddingVertical: 6,
-  },
-  saveText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1DA1F2',
-  },
-  saveTextDisabled: {
-    color: '#CBD5E1',
-  },
-});
 
 export default ProfileEditHeader;

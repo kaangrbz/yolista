@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ActivityIndicator,
   Pressable,
+  StyleSheet,
+  Dimensions,
 } from 'react-native';
 import { showConfirm } from './common/ConfirmModal';
 import { useNavigation } from '@react-navigation/native';
@@ -21,11 +22,16 @@ import PostActions from './post/PostActions';
 import PostCaption from './post/PostCaption';
 import ShareModal from './ShareModal';
 import { ShareService } from '../services/ShareService';
+import { getRouteShareLabel } from '../utils/getRouteDisplayLabel';
 import { PostProps } from '../types/post.types';
 import RouteModel from '../model/routes.model';
 import { useGlobalAlert } from '../hooks/useGlobalAlert';
 import SavedCollectionsSheet from './common/SavedCollectionsSheet';
 import { useCommentsSheet } from '../context/CommentsSheetContext';
+import { useThemedStyles } from '../theme/useThemedStyles';
+
+const { height: windowHeight } = Dimensions.get('window');
+const FULL_SCREEN_MIN_HEIGHT = Math.max(windowHeight - 160, 480);
 
 const UniversalPost: React.FC<PostProps> = ({
   postId,
@@ -37,6 +43,57 @@ const UniversalPost: React.FC<PostProps> = ({
   actions,
 }) => {
   const navigation = useNavigation();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      backgroundColor: t.background,
+      borderBottomWidth: 0,
+      borderBottomColor: t.hairlineBorder,
+    },
+    fullScreenContainer: {
+      flexGrow: 1,
+      minHeight: FULL_SCREEN_MIN_HEIGHT,
+    },
+    loadingContainer: {
+      flex: 1,
+      minHeight: 400,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: t.background,
+    },
+    fullScreenLoadingContainer: {
+      minHeight: FULL_SCREEN_MIN_HEIGHT,
+    },
+    errorContainer: {
+      flex: 1,
+      minHeight: 400,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: t.background,
+    },
+    fullScreenErrorContainer: {
+      minHeight: FULL_SCREEN_MIN_HEIGHT,
+    },
+    errorText: {
+      fontSize: 16,
+      color: t.textSecondary,
+    },
+    imagePlaceholder: {
+      alignSelf: 'center',
+      gap: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: t.surfaceMuted,
+    },
+    imagePlaceholderPressed: {
+      opacity: 0.88,
+    },
+    imageMessageText: {
+      fontSize: 14,
+      color: t.textSecondary,
+      textAlign: 'center',
+    },
+  }));
+
   const { openComments, subscribeCommentCount } = useCommentsSheet();
   const initialPost = useMemo(
     () => (initialRoute ? postFromRouteWithProfile(initialRoute) : null),
@@ -93,6 +150,7 @@ const UniversalPost: React.FC<PostProps> = ({
     screenWidth,
     imagePlaceholderHeight,
     carouselImages,
+    carouselHints,
     displayHeights,
   } = usePostImageLayout(imageSlides, leadSlide);
 
@@ -329,17 +387,22 @@ const UniversalPost: React.FC<PostProps> = ({
 
   const handleCopyLink = async () => {
     const url = ShareService.generatePostUrl(postId);
-    const title = post?.title?.trim() ?? '';
-    const text = ShareService.composeShareMessage(title, url);
+    const shareLabel = post ? getRouteShareLabel(post) : '';
+    const text = ShareService.composeShareMessage(shareLabel, url);
 
     await copyToClipboard(text, 'Paylaşım metni panoya kopyalandı!');
   };
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0095f6" />
+      <View style={[styles.container, showFullScreen && styles.fullScreenContainer]}>
+        <View
+          style={[
+            styles.loadingContainer,
+            showFullScreen && styles.fullScreenLoadingContainer,
+          ]}
+        >
+          <ActivityIndicator size="large" color="#1DA1F2" />
         </View>
       </View>
     );
@@ -347,8 +410,13 @@ const UniversalPost: React.FC<PostProps> = ({
 
   if (error || !post) {
     return (
-      <View style={styles.container}>
-        <View style={styles.errorContainer}>
+      <View style={[styles.container, showFullScreen && styles.fullScreenContainer]}>
+        <View
+          style={[
+            styles.errorContainer,
+            showFullScreen && styles.fullScreenErrorContainer,
+          ]}
+        >
           <Text style={styles.errorText}>{error || 'Gönderi bulunamadı'}</Text>
         </View>
       </View>
@@ -356,7 +424,7 @@ const UniversalPost: React.FC<PostProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, showFullScreen && styles.fullScreenContainer]}>
       <PostHeader
         username={post.profiles?.username || 'unknown'}
         userImage={post.profiles?.image_url}
@@ -404,6 +472,7 @@ const UniversalPost: React.FC<PostProps> = ({
       {!imagesLoading && !imagesError && carouselImages.length > 0 && (
         <ImageCarousel
           images={carouselImages}
+          hints={carouselHints}
           currentIndex={currentIndex}
           onIndexChange={(index) =>
             handleImageScroll(
@@ -452,7 +521,6 @@ const UniversalPost: React.FC<PostProps> = ({
 
       <PostCaption
         username={post.profiles?.username || 'unknown'}
-        title={post.title}
         description={post.description}
         likeCount={likeCount}
         commentCount={commentCount}
@@ -467,7 +535,7 @@ const UniversalPost: React.FC<PostProps> = ({
         visible={isShareModalVisible}
         onClose={() => setIsShareModalVisible(false)}
         postId={postId}
-        postTitle={post.title}
+        postTitle={getRouteShareLabel(post)}
         postImage={carouselImages[0]}
         postUrl={ShareService.generatePostUrl(postId)}
       />
@@ -485,41 +553,5 @@ const UniversalPost: React.FC<PostProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#fff',
-    marginBottom: 1,
-  },
-  loadingContainer: {
-    minHeight: 400,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContainer: {
-    minHeight: 400,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  imagePlaceholder: {
-    alignSelf: 'center',
-    gap: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  imagePlaceholderPressed: {
-    opacity: 0.88,
-  },
-  imageMessageText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-  },
-});
 
 export default UniversalPost;

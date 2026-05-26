@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import RouteCard from '../route/RouteCard';
 import type { RouteWithProfile } from '../../model/routes.model';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 import {
   distributeToMasonryColumns,
   getExploreMasonryColumnWidth,
@@ -25,6 +26,24 @@ const ExploreMasonryGrid: React.FC<ExploreMasonryGridProps> = ({
   expandedDescriptions,
   onToggleDescription,
 }) => {
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+      paddingTop: 4,
+      backgroundColor: t.background,
+    },
+    column: {
+      flexDirection: 'column',
+    },
+    cell: {
+      width: '100%',
+      borderRadius: 8,
+      overflow: 'hidden',
+    },
+  }));
+
   const columnWidth = getExploreMasonryColumnWidth();
   const rowGap = getMasonryRowGap();
   const columnGap = getMasonryColumnGap();
@@ -72,22 +91,5 @@ const ExploreMasonryGrid: React.FC<ExploreMasonryGridProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    paddingTop: 4,
-  },
-  column: {
-    flexDirection: 'column',
-  },
-  cell: {
-    width: '100%',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-});
 
 export default ExploreMasonryGrid;

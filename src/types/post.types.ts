@@ -51,6 +51,8 @@ export interface PostProps {
 
 export interface ImageCarouselProps {
   images: string[];
+  /** DB title — fotoğraf ipucu; images ile aynı indeks */
+  hints?: (string | null | undefined)[];
   currentIndex: number;
   onIndexChange: (index: number) => void;
   height?: number;
@@ -98,7 +100,6 @@ export interface PostActionsProps {
 
 export interface PostCaptionProps {
   username: string;
-  title: string;
   description?: string;
   likeCount: number;
   commentCount: number;

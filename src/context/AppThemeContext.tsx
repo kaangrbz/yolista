@@ -8,7 +8,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
-import { StatusBar } from 'react-native';
+import { AppState, Platform, StatusBar } from 'react-native';
 import {
   APP_THEMES,
   isAppThemeId,
@@ -16,6 +16,8 @@ import {
   type AppThemeId,
 } from '../theme/appThemes';
 import { AUTH_THEMES, type AuthThemeColors } from '../theme/authThemes';
+import { applySystemNavigationBar } from '../utils/systemNavigationBar';
+import { ThemedAppShell } from '../components/common/ThemedAppShell';
 
 const STORAGE_KEY = 'yolista-app-theme';
 
@@ -88,6 +90,28 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
 
   const theme = APP_THEMES[themeId];
 
+  useEffect(() => {
+    if (!ready) {
+      return;
+    }
+
+    applySystemNavigationBar(theme);
+  }, [theme, ready]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        applySystemNavigationBar(theme);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [theme]);
+
   const value = useMemo(
     () => ({
       theme,
@@ -103,8 +127,9 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
       <StatusBar
         barStyle={theme.statusBarStyle}
         backgroundColor={theme.background}
+        translucent={false}
       />
-      {children}
+      <ThemedAppShell>{children}</ThemedAppShell>
     </AppThemeContext.Provider>
   );
 }

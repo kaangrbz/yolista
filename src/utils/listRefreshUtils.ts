@@ -44,6 +44,9 @@ const isSameNotification = (
     && previous.entity_id === next.entity_id
     && previous.message === next.message
     && previous.sender_id === next.sender_id
+    && previous.notification_types?.key === next.notification_types?.key
+    && previous.notification_types?.label === next.notification_types?.label
+    && previous.notification_types?.color === next.notification_types?.color
     && previous.profiles?.username === next.profiles?.username
     && previous.profiles?.image_url === next.profiles?.image_url
     && previous.profiles?.image_preview_url === next.profiles?.image_preview_url

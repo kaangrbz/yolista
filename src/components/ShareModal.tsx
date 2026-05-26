@@ -18,6 +18,8 @@ import { useGlobalAlert } from '../hooks/useGlobalAlert';
 import ModalSheetSafeArea from './common/ModalSheetSafeArea';
 import { KeyboardAwareContainer } from './common';
 import { ShareService } from '../services/ShareService';
+import { useAppTheme } from '../context/AppThemeContext';
+import { useThemedStyles } from '../theme/useThemedStyles';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -38,6 +40,149 @@ const ShareModal: React.FC<ShareModalProps> = ({
   postImage,
   postUrl,
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    overlay: {
+      flex: 1,
+      backgroundColor: t.overlayDark,
+      justifyContent: 'flex-end',
+    },
+    modalContainer: {
+      backgroundColor: t.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: screenHeight * 0.85,
+      alignSelf: 'stretch',
+    },
+    modalInner: {
+      flexGrow: 0,
+      flexShrink: 1,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.hairlineBorder,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: t.textPrimary,
+    },
+    closeButton: {
+      padding: 4,
+    },
+    messageContainer: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+    },
+    messageLabel: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: t.textPrimary,
+      marginBottom: 8,
+    },
+    messageInput: {
+      borderWidth: 1,
+      borderColor: t.border,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      color: t.textPrimary,
+      minHeight: 80,
+      maxHeight: 120,
+      backgroundColor: t.surfaceMuted,
+    },
+    characterCount: {
+      fontSize: 12,
+      color: t.textSecondary,
+      textAlign: 'right',
+      marginTop: 4,
+    },
+    optionsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+    },
+    optionButton: {
+      width: (screenWidth - 60) / 3,
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    optionIcon: {
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    optionTitle: {
+      fontSize: 12,
+      color: t.textPrimary,
+      textAlign: 'center',
+    },
+    loadingIndicator: {
+      position: 'absolute',
+      right: 0,
+      top: 0,
+    },
+    previewContainer: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.hairlineBorder,
+    },
+    previewTitle: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: t.textPrimary,
+      marginBottom: 12,
+    },
+    previewCard: {
+      flexDirection: 'row',
+      backgroundColor: t.surfaceMuted,
+      borderRadius: 8,
+      padding: 12,
+      minHeight: 80,
+    },
+    previewImage: {
+      width: 60,
+      height: 60,
+      backgroundColor: t.borderStrong,
+      borderRadius: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+      overflow: 'hidden',
+    },
+    previewImageContent: {
+      width: '100%',
+      height: '100%',
+    },
+    previewContent: {
+      flex: 1,
+      justifyContent: 'center',
+      minHeight: 60,
+    },
+    previewPostTitle: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: t.textPrimary,
+      marginBottom: 4,
+      lineHeight: 18,
+    },
+    previewUrl: {
+      fontSize: 12,
+      color: t.textSecondary,
+      lineHeight: 16,
+    },
+  }));
+
   const [customMessage, setCustomMessage] = useState('');
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const { copyToClipboard, showAlert } = useGlobalAlert();
@@ -176,7 +321,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
           <View style={styles.header}>
             <Text style={styles.title}>Paylaş</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Icon name="close" size={24} color="#000" />
+              <Icon name="close" size={24} color={theme.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -186,6 +331,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
             <TextInput
               style={styles.messageInput}
               placeholder="Gönderiyle birlikte paylaşmak istediğiniz mesajı yazın..."
+              placeholderTextColor={theme.textMuted}
               value={customMessage}
               onChangeText={setCustomMessage}
               multiline
@@ -212,7 +358,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
                 <Text style={styles.optionTitle}>{option.title}</Text>
                 {isGeneratingLink && option.id === 'link' && (
                   <View style={styles.loadingIndicator}>
-                    <Icon name="loading" size={16} color="#666" />
+                    <Icon name="loading" size={16} color={theme.textMuted} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -231,7 +377,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
                     resizeMode="cover"
                   />
                 ) : (
-                  <Icon name="image" size={40} color="#ccc" />
+                  <Icon name="image" size={40} color={theme.textMuted} />
                 )}
               </View>
               <View style={styles.previewContent}>
@@ -254,146 +400,5 @@ const ShareModal: React.FC<ShareModalProps> = ({
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContainer: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: screenHeight * 0.85,
-    alignSelf: 'stretch',
-  },
-  modalInner: {
-    flexGrow: 0,
-    flexShrink: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  messageContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  messageLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000',
-    marginBottom: 8,
-  },
-  messageInput: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#000',
-    minHeight: 80,
-    maxHeight: 120,
-  },
-  characterCount: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'right',
-    marginTop: 4,
-  },
-  optionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  optionButton: {
-    width: (screenWidth - 60) / 3,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  optionIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  optionTitle: {
-    fontSize: 12,
-    color: '#000',
-    textAlign: 'center',
-  },
-  loadingIndicator: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
-  previewContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  previewTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000',
-    marginBottom: 12,
-  },
-  previewCard: {
-    flexDirection: 'row',
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    padding: 12,
-    minHeight: 80,
-  },
-  previewImage: {
-    width: 60,
-    height: 60,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    overflow: 'hidden',
-  },
-  previewImageContent: {
-    width: '100%',
-    height: '100%',
-  },
-  previewContent: {
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: 60,
-  },
-  previewPostTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#000',
-    marginBottom: 4,
-    lineHeight: 18,
-  },
-  previewUrl: {
-    fontSize: 12,
-    color: '#666',
-    lineHeight: 16,
-  },
-});
 
 export default ShareModal;

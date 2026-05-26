@@ -54,20 +54,36 @@ export const useImageDownload = (
   return state;
 };
 
-// Post image download hook
+const postImageMemoryCache = new Map<string, string>();
+
+const getPostImageCacheKey = (imageUrl: string, userId: string) =>
+  `${userId}:${imageUrl}`;
+
+// Post image download hook — prefers preview when provided (harita / küçük thumb).
 export const usePostImageDownload = (
   imageUrl: string | undefined,
-  userId: string
+  userId: string,
+  imagePreviewUrl?: string | undefined,
 ) => {
-  const [state, setState] = useState<ImageDownloadState>({
-    imageUri: null,
-    loading: false,
-    error: null,
-    retryCount: 0,
+  const storageKey =
+    imagePreviewUrl || imageUrl;
+
+  const cacheKey =
+    storageKey && userId ? getPostImageCacheKey(storageKey, userId) : null;
+
+  const [state, setState] = useState<ImageDownloadState>(() => {
+    const cachedUri = cacheKey ? postImageMemoryCache.get(cacheKey) ?? null : null;
+
+    return {
+      imageUri: cachedUri,
+      loading: Boolean(storageKey && userId && !cachedUri),
+      error: null,
+      retryCount: 0,
+    };
   });
 
   useEffect(() => {
-    if (!imageUrl || !userId) {
+    if (!storageKey || !userId) {
       setState({
         imageUri: null,
         loading: false,
@@ -77,11 +93,28 @@ export const usePostImageDownload = (
       return;
     }
 
+    const memoryKey = getPostImageCacheKey(storageKey, userId);
+    const cachedUri = postImageMemoryCache.get(memoryKey);
+
+    if (cachedUri) {
+      setState({
+        imageUri: cachedUri,
+        loading: false,
+        error: null,
+        retryCount: 0,
+      });
+      return;
+    }
+
     const downloadImage = async () => {
-      const result = await ImageService.downloadPostImage(
-        imageUrl,
+      await ImageService.downloadPostImage(
+        storageKey,
         userId,
         (downloadState) => {
+          if (downloadState.imageUri) {
+            postImageMemoryCache.set(memoryKey, downloadState.imageUri);
+          }
+
           setState({
             imageUri: downloadState.imageUri,
             loading: downloadState.loading,
@@ -92,8 +125,8 @@ export const usePostImageDownload = (
       );
     };
 
-    downloadImage();
-  }, [imageUrl, userId]);
+    void downloadImage();
+  }, [storageKey, userId]);
 
   return state;
 };

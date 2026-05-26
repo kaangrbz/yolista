@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,9 @@ import {
   Keyboard,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { CategorySelector } from '../../components/route/CategorySelector';
-import { CitySelector } from '../../components/route/CitySelector';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useThemedStyles } from '../../theme/useThemedStyles';
 import { publishRouteFromCreateFlow } from '../../utils/createFlowPublish';
@@ -20,6 +19,7 @@ import { useCreateRouteFlowStore } from '../../store/createRouteFlowStore';
 import { showToast } from '../../utils/alert';
 import { useCreateFlowPreventRemove } from '../../hooks/useCreateFlowPreventRemove';
 import { useCreateFlowAndroidBack } from '../../hooks/useCreateFlowAndroidBack';
+import { WizardStepIndicator } from '../../components/createFlow/WizardStepIndicator';
 
 export interface Category {
   id: number;
@@ -39,7 +39,6 @@ export const CategorySelectionScreen = () => {
   const photos = useCreateRouteFlowStore((state) => state.photos);
   const routeStops = useCreateRouteFlowStore((state) => state.routeStops);
   const storeCategory = useCreateRouteFlowStore((state) => state.selectedCategory);
-  const storeCity = useCreateRouteFlowStore((state) => state.selectedCity);
   const setCategoryCity = useCreateRouteFlowStore((state) => state.setCategoryCity);
   const waitUntilUploadsSettled = useCreateRouteFlowStore(
     (state) => state.waitUntilUploadsSettled,
@@ -50,12 +49,20 @@ export const CategorySelectionScreen = () => {
   const setWizardStep = useCreateRouteFlowStore((state) => state.setWizardStep);
 
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(storeCategory);
-  const [selectedCity, setSelectedCity] = useState<City | null>(storeCity);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   useCreateFlowPreventRemove('category');
   useCreateFlowAndroidBack('category');
+
+  useFocusEffect(
+    useCallback(() => {
+      setWizardStep('category');
+      const category = useCreateRouteFlowStore.getState().selectedCategory;
+      setCategoryCity(category, null);
+      setSelectedCategory(category);
+    }, [setWizardStep, setCategoryCity]),
+  );
 
   const theme = useAppTheme();
   const styles = useThemedStyles((t) => ({
@@ -88,24 +95,6 @@ export const CategorySelectionScreen = () => {
       color: t.textSecondary,
       lineHeight: 22,
     },
-    uploadBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginTop: 12,
-      alignSelf: 'flex-start',
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: 999,
-      backgroundColor: t.surfaceMuted,
-      borderWidth: 1,
-      borderColor: t.border,
-    },
-    uploadBadgeText: {
-      fontSize: 12,
-      fontWeight: '500',
-      color: t.textSecondary,
-    },
     content: {
       flex: 1,
     },
@@ -122,6 +111,7 @@ export const CategorySelectionScreen = () => {
       paddingHorizontal: 16,
       borderWidth: 1,
       borderColor: t.border,
+      marginTop: 24,
     },
     summaryItem: {
       flex: 1,
@@ -141,7 +131,7 @@ export const CategorySelectionScreen = () => {
       marginHorizontal: 12,
     },
     section: {
-      marginTop: 24,
+      marginTop: 8,
     },
     sectionHeader: {
       flexDirection: 'row',
@@ -175,41 +165,6 @@ export const CategorySelectionScreen = () => {
     sectionBody: {
       backgroundColor: t.background,
     },
-    previewCard: {
-      marginTop: 24,
-      padding: 14,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: t.border,
-      backgroundColor: t.surfaceMuted,
-    },
-    previewLabel: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: t.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.6,
-      marginBottom: 10,
-    },
-    previewRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-    },
-    previewChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingVertical: 6,
-      paddingHorizontal: 10,
-      borderRadius: 999,
-      backgroundColor: t.accent,
-    },
-    previewChipText: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: t.background,
-    },
     footer: {
       flexDirection: 'row',
       gap: 12,
@@ -233,13 +188,13 @@ export const CategorySelectionScreen = () => {
       opacity: 0.7,
     },
     primaryButton: {
-      backgroundColor: t.accent,
+      backgroundColor: t.buttonPrimaryBg,
       flex: 1.4,
     },
     primaryButtonText: {
       fontSize: 16,
       fontWeight: '700',
-      color: t.background,
+      color: t.buttonPrimaryText,
     },
   }));
 
@@ -258,18 +213,13 @@ export const CategorySelectionScreen = () => {
 
   const handleCategorySelect = (category: Category | null) => {
     setSelectedCategory(category);
-    setCategoryCity(category, selectedCity);
+    setCategoryCity(category, null);
   };
 
-  const handleCitySelect = (city: City | null) => {
-    setSelectedCity(city);
-    setCategoryCity(selectedCategory, city);
-  };
-
-  const runPublish = async (category: Category | null, city: City | null) => {
+  const runPublish = async (category: Category | null) => {
     setIsPublishing(true);
     setWizardStep('category');
-    setCategoryCity(category, city);
+    setCategoryCity(category, null);
 
     try {
       if (anyUploadInProgress()) {
@@ -287,7 +237,7 @@ export const CategorySelectionScreen = () => {
           selectedPhotos: photos,
           routeStops,
           selectedCategory: category,
-          selectedCity: city,
+          selectedCity: null,
         },
       );
     } finally {
@@ -295,9 +245,8 @@ export const CategorySelectionScreen = () => {
     }
   };
 
-  const handlePublish = () => runPublish(selectedCategory, selectedCity);
+  const handlePublish = () => runPublish(selectedCategory);
 
-  const uploadInProgress = anyUploadInProgress();
   const photoCount = photos.length;
   const stopCount = routeStops.length;
 
@@ -307,17 +256,9 @@ export const CategorySelectionScreen = () => {
         <Text style={styles.eyebrow}>Son adım</Text>
         <Text style={styles.title}>Rotanı etiketle</Text>
         <Text style={styles.subtitle}>
-          Kategori ve şehir seçmek zorunlu değil. İstediğin zaman atlayabilirsin.
+          Kategori seçmek zorunlu değil. İstediğin zaman atlayabilirsin.
         </Text>
-
-        {uploadInProgress ? (
-          <View style={styles.uploadBadge}>
-            <ActivityIndicator size="small" color={theme.accent} />
-            <Text style={styles.uploadBadgeText}>
-              Fotoğraflar arka planda yükleniyor…
-            </Text>
-          </View>
-        ) : null}
+        <WizardStepIndicator currentStep="category" />
       </View>
 
       <ScrollView
@@ -325,18 +266,6 @@ export const CategorySelectionScreen = () => {
         contentContainerStyle={styles.contentInner}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryItem}>
-            <Icon name="image-multiple-outline" size={18} color={theme.textSecondary} />
-            <Text style={styles.summaryItemText}>{photoCount} fotoğraf</Text>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryItem}>
-            <Icon name="map-marker-path" size={18} color={theme.textSecondary} />
-            <Text style={styles.summaryItemText}>{stopCount} durak</Text>
-          </View>
-        </View>
-
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
@@ -357,49 +286,17 @@ export const CategorySelectionScreen = () => {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Icon name="city-variant-outline" size={18} color={theme.textPrimary} />
-              <Text style={styles.sectionTitle}>Şehir</Text>
-            </View>
-            <Text style={styles.optional}>opsiyonel</Text>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryItem}>
+            <Icon name="image-multiple-outline" size={18} color={theme.textSecondary} />
+            <Text style={styles.summaryItemText}>{photoCount} fotoğraf</Text>
           </View>
-          <Text style={styles.sectionHint}>
-            Rotanın geçtiği şehri ekle; şehir bazlı keşifte öne çıksın.
-          </Text>
-
-          <View style={styles.sectionBody}>
-            <CitySelector
-              selectedCity={selectedCity}
-              onCitySelect={handleCitySelect}
-            />
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Icon name="map-marker-path" size={18} color={theme.textSecondary} />
+            <Text style={styles.summaryItemText}>{stopCount} durak</Text>
           </View>
         </View>
-
-        {selectedCategory || selectedCity ? (
-          <View style={styles.previewCard}>
-            <Text style={styles.previewLabel}>Şu an seçili</Text>
-            <View style={styles.previewRow}>
-              {selectedCategory ? (
-                <View style={styles.previewChip}>
-                  <Icon
-                    name={selectedCategory.icon_name || 'tag'}
-                    size={14}
-                    color={theme.background}
-                  />
-                  <Text style={styles.previewChipText}>{selectedCategory.name}</Text>
-                </View>
-              ) : null}
-              {selectedCity ? (
-                <View style={styles.previewChip}>
-                  <Icon name="city" size={14} color={theme.background} />
-                  <Text style={styles.previewChipText}>{selectedCity.name}</Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
-        ) : null}
       </ScrollView>
 
       {isKeyboardVisible ? null : (
@@ -414,10 +311,10 @@ export const CategorySelectionScreen = () => {
             disabled={isPublishing}
             activeOpacity={0.85}>
             {isPublishing ? (
-              <ActivityIndicator size="small" color={theme.background} />
+              <ActivityIndicator size="small" color={theme.buttonPrimaryText} />
             ) : (
               <>
-                <Icon name="send" size={18} color={theme.background} />
+                <Icon name="send" size={18} color={theme.buttonPrimaryText} />
                 <Text style={styles.primaryButtonText}>Yayınla</Text>
               </>
             )}

@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface SimpleSkeletonLoaderProps {
   width?: number | string;
@@ -14,6 +15,12 @@ const SimpleSkeletonLoader: React.FC<SimpleSkeletonLoaderProps> = ({
   borderRadius = 4,
   style,
 }) => {
+  const styles = useThemedStyles((t) => ({
+    skeleton: {
+      backgroundColor: t.surfaceMuted,
+    },
+  }));
+
   return (
     <View
       style={[
@@ -28,11 +35,5 @@ const SimpleSkeletonLoader: React.FC<SimpleSkeletonLoaderProps> = ({
     />
   );
 };
-
-const styles = StyleSheet.create({
-  skeleton: {
-    backgroundColor: '#f0f0f0',
-  },
-});
 
 export default SimpleSkeletonLoader;

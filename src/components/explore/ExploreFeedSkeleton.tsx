@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import SimpleSkeletonLoader from '../common/SimpleSkeletonLoader';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 import {
   EXPLORE_MASONRY_COLUMNS,
   getExploreMasonryColumnWidth,
@@ -9,12 +10,24 @@ import {
 } from '../../utils/exploreLayoutUtils';
 
 const SKELETON_HEIGHT_RATIOS = [1, 1.45, 0.72, 1, 1.2, 0.85, 1.45, 1, 0.72];
-const SKELETON_ITEMS_PER_COLUMN = 3;
+const SKELETON_ITEMS_PER_COLUMN = 6;
 
 const ExploreFeedSkeleton: React.FC = () => {
   const columnWidth = getExploreMasonryColumnWidth();
   const columnGap = getMasonryColumnGap();
   const rowGap = getMasonryRowGap();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+      paddingTop: 4,
+      backgroundColor: t.background,
+    },
+    column: {
+      flexDirection: 'column',
+    },
+  }));
 
   const columns = Array.from({ length: EXPLORE_MASONRY_COLUMNS }, (_, columnIndex) => {
     return Array.from({ length: SKELETON_ITEMS_PER_COLUMN }, (_, rowIndex) => {
@@ -49,17 +62,5 @@ const ExploreFeedSkeleton: React.FC = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    paddingTop: 4,
-  },
-  column: {
-    flexDirection: 'column',
-  },
-});
 
 export default ExploreFeedSkeleton;

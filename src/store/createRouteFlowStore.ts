@@ -49,6 +49,11 @@ interface CreateRouteFlowState {
   patchPhotoUpload: (patch: Partial<CreateFlowPhoto> & { id: string }) => void;
   retryPhotoUpload: (photoId: string) => void;
   setRouteStops: (stops: RouteStop[]) => void;
+  setStopLocation: (
+    stopId: string,
+    location: { latitude: number; longitude: number; address?: string },
+  ) => void;
+  clearStopLocation: (stopId: string) => void;
   setCategoryCity: (category: Category | null, city: City | null) => void;
   setWizardStep: (step: WizardStep) => void;
   markDirty: () => void;
@@ -126,9 +131,16 @@ export const useCreateRouteFlowStore = create<CreateRouteFlowState>((set, get) =
 
   reorderPhotos: (fromIndex, toIndex) => {
     const photos = [...get().photos];
-    const [moved] = photos.splice(fromIndex, 1);
-    photos.splice(toIndex, 0, moved);
-    set({ photos, isDirty: true });
+    const routeStops = [...get().routeStops];
+    const [movedPhoto] = photos.splice(fromIndex, 1);
+    photos.splice(toIndex, 0, movedPhoto);
+
+    const stopByPhotoId = new Map(routeStops.map((stop) => [stop.photoId, stop]));
+    const reorderedStops = photos
+      .map((photo) => stopByPhotoId.get(photo.id))
+      .filter((stop): stop is RouteStop => !!stop);
+
+    set({ photos, routeStops: reorderedStops, isDirty: true });
   },
 
   patchPhotoUpload: (patch) => {
@@ -158,6 +170,35 @@ export const useCreateRouteFlowStore = create<CreateRouteFlowState>((set, get) =
 
   setRouteStops: (stops) => {
     set({ routeStops: stops, isDirty: true });
+  },
+
+  setStopLocation: (stopId, location) => {
+    set((state) => ({
+      routeStops: state.routeStops.map((stop) =>
+        stop.id === stopId
+          ? {
+              ...stop,
+              coordinate: {
+                latitude: location.latitude,
+                longitude: location.longitude,
+              },
+              address: location.address?.trim() || stop.address,
+            }
+          : stop,
+      ),
+      isDirty: true,
+    }));
+  },
+
+  clearStopLocation: (stopId) => {
+    set((state) => ({
+      routeStops: state.routeStops.map((stop) =>
+        stop.id === stopId
+          ? { ...stop, coordinate: undefined, address: undefined }
+          : stop,
+      ),
+      isDirty: true,
+    }));
   },
 
   setCategoryCity: (category, city) => {
@@ -248,7 +289,10 @@ export const useCreateRouteFlowStore = create<CreateRouteFlowState>((set, get) =
     }
 
     const hasStopText = state.routeStops.some(
-      (stop) => stop.title.trim().length > 0 || (stop.description || '').trim().length > 0,
+      (stop) =>
+        stop.title.trim().length > 0 ||
+        (stop.description || '').trim().length > 0 ||
+        !!stop.coordinate,
     );
 
     if (hasStopText) {

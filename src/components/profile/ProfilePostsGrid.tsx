@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, FlatList, Dimensions } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../model/routes.model';
 import ProfilePostsGridSkeleton from './ProfilePostsGridSkeleton';
 import ProfileGridItem from './ProfileGridItem';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface ProfilePostsGridProps {
   routes: RouteWithProfile[];
@@ -16,9 +18,33 @@ const ProfilePostsGrid: React.FC<ProfilePostsGridProps> = ({
   onRoutePress,
   loading = false,
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    gridContainer: {
+      flex: 1,
+      minHeight: 300,
+      backgroundColor: t.background,
+    },
+    flatList: {
+      flexGrow: 1,
+    },
+    gridContent: {
+      flexGrow: 1,
+    },
+    emptyPosts: {
+      alignItems: 'center',
+      paddingVertical: 40,
+    },
+    emptyText: {
+      fontSize: 16,
+      color: t.textSecondary,
+      marginTop: 12,
+    },
+  }));
+
   const renderEmptyState = () => (
     <View style={styles.emptyPosts}>
-      <Icon name="image-outline" size={48} color="#ccc" />
+      <Icon name="image-outline" size={48} color={theme.textMuted} />
       <Text style={styles.emptyText}>Henüz gönderi yok</Text>
     </View>
   );
@@ -60,27 +86,5 @@ const ProfilePostsGrid: React.FC<ProfilePostsGridProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  gridContainer: {
-    flex: 1,
-    minHeight: 300, // Minimum height to ensure visibility
-  },
-  flatList: {
-    flexGrow: 1,
-  },
-  gridContent: {
-    flexGrow: 1,
-  },
-  emptyPosts: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 12,
-  },
-});
 
 export default ProfilePostsGrid;

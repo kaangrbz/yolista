@@ -8,6 +8,8 @@ import { RouteWithProfile } from '../model/routes.model';
 import {
   VIEWPORT_DEBOUNCE_MS,
   VIEWPORT_MIN_DELTA_CHANGE,
+  VIEWPORT_MIN_PAN_FRACTION,
+  VIEWPORT_MIN_ZOOM_FRACTION,
 } from '../constants/mapDefaults';
 import { useAuth } from '../context/AuthContext';
 
@@ -38,16 +40,33 @@ const shouldSkipUpdate = (previous: Region | null, next: Region): boolean => {
     return false;
   }
 
+  const latThreshold = Math.max(
+    previous.latitudeDelta * VIEWPORT_MIN_PAN_FRACTION,
+    VIEWPORT_MIN_DELTA_CHANGE,
+  );
+  const lngThreshold = Math.max(
+    previous.longitudeDelta * VIEWPORT_MIN_PAN_FRACTION,
+    VIEWPORT_MIN_DELTA_CHANGE,
+  );
+  const latDeltaThreshold = Math.max(
+    previous.latitudeDelta * VIEWPORT_MIN_ZOOM_FRACTION,
+    VIEWPORT_MIN_DELTA_CHANGE,
+  );
+  const lngDeltaThreshold = Math.max(
+    previous.longitudeDelta * VIEWPORT_MIN_ZOOM_FRACTION,
+    VIEWPORT_MIN_DELTA_CHANGE,
+  );
+
   const latDiff = Math.abs(previous.latitude - next.latitude);
   const lngDiff = Math.abs(previous.longitude - next.longitude);
   const latDeltaDiff = Math.abs(previous.latitudeDelta - next.latitudeDelta);
   const lngDeltaDiff = Math.abs(previous.longitudeDelta - next.longitudeDelta);
 
   return (
-    latDiff < VIEWPORT_MIN_DELTA_CHANGE &&
-    lngDiff < VIEWPORT_MIN_DELTA_CHANGE &&
-    latDeltaDiff < VIEWPORT_MIN_DELTA_CHANGE &&
-    lngDeltaDiff < VIEWPORT_MIN_DELTA_CHANGE
+    latDiff < latThreshold &&
+    lngDiff < lngThreshold &&
+    latDeltaDiff < latDeltaThreshold &&
+    lngDeltaDiff < lngDeltaThreshold
   );
 };
 

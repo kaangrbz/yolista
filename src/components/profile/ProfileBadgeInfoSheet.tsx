@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type { ProfileBadge } from '../../model/profile.model';
 import { PROFILE_BADGE_ASSETS } from '../../lib/profileBadges';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface ProfileBadgeInfoSheetProps {
   visible: boolean;
@@ -56,6 +57,66 @@ const ProfileBadgeInfoSheet: React.FC<ProfileBadgeInfoSheetProps> = ({
   onClose,
 }) => {
   const insets = useSafeAreaInsets();
+  const styles = useThemedStyles((t) => ({
+    overlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+    },
+    backdrop: {
+      ...StyleSheet.absoluteFill,
+      backgroundColor: t.overlayDark,
+    },
+    sheet: {
+      alignSelf: 'stretch',
+      backgroundColor: t.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingHorizontal: 20,
+      paddingTop: 10,
+      alignItems: 'center',
+    },
+    handle: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: t.borderStrong,
+      marginBottom: 14,
+    },
+    iconWrap: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: t.surfaceMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 12,
+    },
+    title: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: t.textPrimary,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    message: {
+      fontSize: 14,
+      color: t.textSecondary,
+      lineHeight: 20,
+      textAlign: 'center',
+      marginBottom: 16,
+    },
+    closeButton: {
+      alignSelf: 'stretch',
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    closeButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#fff',
+    },
+  }));
 
   if (!badge) {
     return null;
@@ -100,66 +161,5 @@ const ProfileBadgeInfoSheet: React.FC<ProfileBadgeInfoSheetProps> = ({
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-  },
-  sheet: {
-    alignSelf: 'stretch',
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    alignItems: 'center',
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E5E7EB',
-    marginBottom: 14,
-  },
-  iconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F8FAFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  message: {
-    fontSize: 14,
-    color: '#64748B',
-    lineHeight: 20,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  closeButton: {
-    alignSelf: 'stretch',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-});
 
 export default ProfileBadgeInfoSheet;

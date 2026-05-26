@@ -25,7 +25,13 @@ export interface GeocodingResult {
   };
 }
 
+export interface ReverseGeocodingResult {
+  formattedAddress: string;
+  shortName: string;
+}
+
 const NOMINATIM_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
+const REVERSE_ENDPOINT = 'https://nominatim.openstreetmap.org/reverse';
 const REQUEST_TIMEOUT_MS = 8000;
 
 const buildShortName = (displayName: string): string => {
@@ -111,6 +117,64 @@ export const GeocodingService = {
       }
 
       return [];
+    } finally {
+      clearTimeout(timer);
+    }
+  },
+
+  async reverseGeocode(
+    latitude: number,
+    longitude: number,
+  ): Promise<ReverseGeocodingResult | null> {
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return null;
+    }
+
+    const params = new URLSearchParams({
+      lat: String(latitude),
+      lon: String(longitude),
+      format: 'json',
+      zoom: '18',
+      addressdetails: '0',
+      'accept-language': 'tr',
+    });
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(`${REVERSE_ENDPOINT}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'YolistaApp/0.1 (https://roulista.com)',
+          Accept: 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Nominatim reverse HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const formattedAddress: string = data?.display_name || '';
+
+      if (!formattedAddress) {
+        return null;
+      }
+
+      return {
+        formattedAddress,
+        shortName: buildShortName(formattedAddress),
+      };
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        console.log('Reverse geocoding timeout');
+      } else {
+        console.error('GeocodingService.reverseGeocode:', err);
+      }
+
+      return null;
     } finally {
       clearTimeout(timer);
     }

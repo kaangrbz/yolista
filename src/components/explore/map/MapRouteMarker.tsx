@@ -1,29 +1,42 @@
-import React from 'react';
-import { Image, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Image, Text, View, ViewProps } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
 import { usePostImageDownload } from '../../../hooks/useImageDownload';
 
-interface MapRouteMarkerProps {
+interface MapRouteMarkerProps extends Pick<ViewProps, 'collapsable'> {
   /** Supabase storage'daki dosya adı (route.image_url). */
   imageUrl?: string | null;
+  /** Küçük kare önizleme — varsa öncelikli indirilir. */
+  imagePreviewUrl?: string | null;
   /** Resmi indirmek için gerekli kullanıcı id (route.user_id). */
   userId?: string | null;
   iconName?: string;
   selected?: boolean;
   /** Aynı konumdaki toplam rota sayısı (>=1). 2 ve üzeri ise iskambil-kart efekti uygulanır. */
   stackCount?: number;
+  /** Durak sırası rozeti (seçili rota durakları için). */
+  orderLabel?: string;
+  /** Şehir merkezi fallback — pin görselinde tahmini konum göstergesi. */
+  estimatedLocation?: boolean;
+  /** Önizleme yüklendiğinde harita marker snapshot'ı için çağrılır. */
+  onImageReady?: () => void;
 }
 
 const CARD_SIZE = 52;
 
 export const MapRouteMarker: React.FC<MapRouteMarkerProps> = ({
   imageUrl,
+  imagePreviewUrl,
   userId,
   iconName = 'map-marker',
   selected = false,
   stackCount = 1,
+  orderLabel,
+  estimatedLocation = false,
+  onImageReady,
+  collapsable,
 }) => {
   const theme = useAppTheme();
   const styles = useThemedStyles((t) => ({
@@ -65,6 +78,10 @@ export const MapRouteMarker: React.FC<MapRouteMarkerProps> = ({
       transform: [{ scale: 1.08 }],
       borderColor: t.accent,
       shadowOpacity: 0.3,
+    },
+    cardEstimated: {
+      borderStyle: 'dashed',
+      borderColor: t.textMuted,
     },
     image: {
       width: '100%',
@@ -108,25 +125,56 @@ export const MapRouteMarker: React.FC<MapRouteMarkerProps> = ({
     tailSelected: {
       borderTopColor: t.accent,
     },
+    estimatedBadge: {
+      position: 'absolute',
+      bottom: 2,
+      left: 2,
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: t.overlayDark,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
   }));
 
   const safeStack = Math.max(1, stackCount);
-  const showStack = safeStack > 1;
+  const showStack = !orderLabel && safeStack > 1;
+  const showOrderLabel = Boolean(orderLabel);
 
-  const { imageUri } = usePostImageDownload(
+  const storageKey = imagePreviewUrl || imageUrl;
+
+  const { imageUri, loading } = usePostImageDownload(
     imageUrl || undefined,
     userId || '',
+    imagePreviewUrl || undefined,
   );
 
+  useEffect(() => {
+    if (!storageKey || !userId) {
+      return;
+    }
+
+    if (!loading) {
+      onImageReady?.();
+    }
+  }, [storageKey, userId, loading, imageUri, onImageReady]);
+
   return (
-    <View style={styles.wrapper}>
+    <View style={styles.wrapper} collapsable={collapsable}>
       <View style={styles.stackArea}>
         {showStack && safeStack >= 3 ? (
           <View style={[styles.card, styles.cardBack2]} />
         ) : null}
         {showStack ? <View style={[styles.card, styles.cardBack1]} /> : null}
 
-        <View style={[styles.card, selected && styles.cardSelected]}>
+        <View
+          style={[
+            styles.card,
+            selected && styles.cardSelected,
+            estimatedLocation && styles.cardEstimated,
+          ]}
+        >
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.image} />
           ) : (
@@ -139,9 +187,21 @@ export const MapRouteMarker: React.FC<MapRouteMarkerProps> = ({
             </View>
           )}
 
+          {showOrderLabel ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{orderLabel}</Text>
+            </View>
+          ) : null}
+
           {showStack ? (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{safeStack}</Text>
+            </View>
+          ) : null}
+
+          {estimatedLocation ? (
+            <View style={styles.estimatedBadge}>
+              <Icon name="approximately-equal" size={10} color={theme.background} />
             </View>
           ) : null}
         </View>

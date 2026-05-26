@@ -116,6 +116,60 @@ export function classifyImageAlignment(
   return 'landscape';
 }
 
+/** Harita pin ve küçük thumb için kare önizleme boyutu. */
+export const ROUTE_IMAGE_PREVIEW_SIZE = 128;
+
+/**
+ * Kare önizleme — yatay/dikey fark etmez, merkezden cover crop.
+ */
+export async function resizeImageCover(
+  uri: string,
+  size: number = ROUTE_IMAGE_PREVIEW_SIZE,
+  format: 'JPEG' | 'PNG' | 'WEBP' = 'JPEG',
+  quality: number = 80,
+  clientId?: string,
+): Promise<ResizedImage | null> {
+  try {
+    if (!uri) {
+      console.error('No URI provided for image cover resize');
+      return null;
+    }
+
+    const imageUri = Platform.OS === 'android' ? `file://${uri}` : uri;
+
+    const resized = await ImageResizer.createResizedImage(
+      imageUri,
+      size,
+      size,
+      format,
+      quality,
+      0,
+      undefined,
+      false,
+      {
+        mode: 'cover',
+        onlyScaleDown: false,
+      },
+    );
+
+    if (!resized?.uri) {
+      console.error('Failed to cover-resize image: No result from ImageResizer');
+      return null;
+    }
+
+    const filename = `${clientId || 'unknown_client'}_${Date.now()}_preview.${format.toLowerCase()}`;
+
+    return {
+      uri: resized.uri,
+      client_id: clientId || '',
+      filename,
+    };
+  } catch (error) {
+    console.error('Error cover-resizing image:', error);
+    return null;
+  }
+}
+
 export async function resizeImage(
   uri: string,
   width: number = 1080,

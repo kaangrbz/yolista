@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import SimpleSkeletonLoader from '../common/SimpleSkeletonLoader';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface PostImageSkeletonProps {
   width: number;
@@ -8,19 +9,19 @@ interface PostImageSkeletonProps {
 }
 
 const PostImageSkeleton: React.FC<PostImageSkeletonProps> = ({ width, height }) => {
+  const styles = useThemedStyles((t) => ({
+    container: {
+      alignSelf: 'center',
+      backgroundColor: t.surfaceMuted,
+      overflow: 'hidden',
+    },
+  }));
+
   return (
     <View style={[styles.container, { width, height }]}>
       <SimpleSkeletonLoader width={width} height={height} borderRadius={0} />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    alignSelf: 'center',
-    backgroundColor: '#f8f9fa',
-    overflow: 'hidden',
-  },
-});
 
 export default PostImageSkeleton;

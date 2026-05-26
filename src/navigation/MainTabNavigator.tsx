@@ -59,15 +59,21 @@ const ExploreStack = createNativeStackNavigator<ExploreStackParamList>();
 const TAB_ICON_SIZE = 26;
 const CREATE_TAB_ICON_SIZE = 30;
 
-const tabStackScreenOptions = {
-  headerShown: false,
-  animation: 'slide_from_right' as const,
+const useTabStackScreenOptions = () => {
+  const theme = useAppTheme();
+
+  return {
+    headerShown: false,
+    animation: 'slide_from_right' as const,
+    contentStyle: { backgroundColor: theme.background },
+  };
 };
 
 const ProfileStackScreen = () => {
   const { user } = useAuth();
   const currentUserId = user?.id || '';
   const currentUsername = user?.profile?.username || '';
+  const tabStackScreenOptions = useTabStackScreenOptions();
 
   return (
     <ProfileStack.Navigator screenOptions={tabStackScreenOptions}>
@@ -104,6 +110,8 @@ const ProfileStackScreen = () => {
 };
 
 const HomeStackScreen = () => {
+  const tabStackScreenOptions = useTabStackScreenOptions();
+
   return (
     <HomeStack.Navigator screenOptions={tabStackScreenOptions}>
       <HomeStack.Screen
@@ -139,6 +147,8 @@ const HomeStackScreen = () => {
 };
 
 const ExploreStackScreen = () => {
+  const tabStackScreenOptions = useTabStackScreenOptions();
+
   return (
     <ExploreStack.Navigator screenOptions={tabStackScreenOptions}>
       <ExploreStack.Screen
@@ -180,6 +190,9 @@ const MainTabNavigator = () => {
         tabBarInactiveTintColor: theme.textMuted,
         headerShown: false,
         tabBarShowLabel: false,
+        sceneStyle: {
+          backgroundColor: theme.background,
+        },
         tabBarStyle: {
           backgroundColor: theme.background,
         },

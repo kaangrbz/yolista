@@ -19,11 +19,12 @@ export const MapWeatherBadge: React.FC<MapWeatherBadgeProps> = ({
     container: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       paddingHorizontal: 8,
-      paddingVertical: 4,
       borderRadius: 12,
       backgroundColor: t.surfaceMuted,
-      minHeight: 26,
+      height: 32,
+      minWidth: 52,
     },
     temp: {
       marginLeft: 4,
@@ -35,22 +36,16 @@ export const MapWeatherBadge: React.FC<MapWeatherBadgeProps> = ({
 
   const { weather, loading } = useWeather({ latitude, longitude });
 
-  if (loading && !weather) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="small" color={theme.textSecondary} />
-      </View>
-    );
-  }
-
-  if (!weather) {
-    return null;
-  }
-
   return (
     <View style={styles.container}>
-      <Icon name={weather.iconName} size={18} color={theme.accent} />
-      <Text style={styles.temp}>{weather.temperatureC}°</Text>
+      {loading && !weather ? (
+        <ActivityIndicator size="small" color={theme.textSecondary} />
+      ) : weather ? (
+        <>
+          <Icon name={weather.iconName} size={18} color={theme.accent} />
+          <Text style={styles.temp}>{weather.temperatureC}°</Text>
+        </>
+      ) : null}
     </View>
   );
 };

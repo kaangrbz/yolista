@@ -6,18 +6,14 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import MapView, {
   LatLng,
-  Marker,
   Polyline,
-  PROVIDER_DEFAULT,
   Region,
-  UrlTile,
 } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
@@ -31,20 +27,29 @@ import CategoryModel from '../../model/category.model';
 import { CategoryItem } from '../../types/category.types';
 import { requestLocation } from '../../permissions';
 import { useViewportRoutes } from '../../hooks/useViewportRoutes';
+import { useRouteMapClusters } from '../../hooks/useRouteMapClusters';
 import {
   ROUTE_FOCUS_ZOOM_DELTA,
+  regionForStopFocus,
   TURKEY_BOUNDS,
   TURKEY_REGION,
   USER_LOCATION_ZOOM_DELTA,
+  MAP_FILTER_DEFAULT_DISTANCE_KM,
 } from '../../constants/mapDefaults';
 import {
   getNextMapStyle,
-  getTileSource,
   MapStyleMode,
 } from '../../constants/mapStyles';
+import {
+  getMapProvider,
+  getNativeMapType,
+} from '../../constants/mapViewConfig';
 
 import MapFilterBar, { MapFilters } from '../../components/explore/map/MapFilterBar';
-import MapRouteMarker from '../../components/explore/map/MapRouteMarker';
+import MapRouteGroupMarker from '../../components/explore/map/MapRouteGroupMarker';
+import MapRouteStopMarker from '../../components/explore/map/MapRouteStopMarker';
+import { getMapStopKey } from '../../components/explore/map/MapRouteStopCard';
+import MapClusterMarkerWrapper from '../../components/explore/map/MapClusterMarkerWrapper';
 import MapStyleToggle from '../../components/explore/map/MapStyleToggle';
 import MyLocationFab from '../../components/explore/map/MyLocationFab';
 import MapZoomControls from '../../components/explore/map/MapZoomControls';
@@ -73,6 +78,13 @@ const ExploreMapScreen: React.FC = () => {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [userCoordinate, setUserCoordinate] = useState<LatLng | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const [selectedRouteMeta, setSelectedRouteMeta] = useState<RouteWithProfile | null>(
+    null,
+  );
+  const [selectedRouteStops, setSelectedRouteStops] = useState<RouteWithProfile[]>([]);
+  const [routeStopsExpanded, setRouteStopsExpanded] = useState(true);
+  const [activeStopId, setActiveStopId] = useState<string | null>(null);
+  const [stopsLoading, setStopsLoading] = useState(false);
   const [polylineCoords, setPolylineCoords] = useState<LatLng[]>([]);
   const [polylineLoading, setPolylineLoading] = useState(false);
   const [mapStyleMode, setMapStyleMode] = useState<MapStyleMode>('light');
@@ -124,48 +136,14 @@ const ExploreMapScreen: React.FC = () => {
     filterBarRow: {
       marginTop: 6,
     },
-    loadingBadge: {
-      position: 'absolute',
-      alignSelf: 'center',
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: t.background,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-      shadowColor: '#000',
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
-    },
-    loadingText: {
-      marginLeft: 8,
-      fontSize: 12,
-      color: t.textSecondary,
-      fontWeight: '500',
-    },
-    attribution: {
-      position: 'absolute',
-      alignSelf: 'center',
-      paddingHorizontal: 6,
-      paddingVertical: 1,
-      backgroundColor: t.background,
-      borderRadius: 4,
-    },
-    attributionText: {
-      fontSize: 9,
-      color: t.textSecondary,
-    },
   }));
 
   const discoveryFilters = useMemo(() => {
     return {
       categoryId: filters.categoryId || undefined,
-      maxDistanceKm:
-        filters.nearMe && filters.maxDistanceKm
-          ? filters.maxDistanceKm
-          : undefined,
+      maxDistanceKm: filters.nearMe
+        ? filters.maxDistanceKm ?? MAP_FILTER_DEFAULT_DISTANCE_KM
+        : undefined,
       userCoordinate:
         filters.nearMe && userCoordinate
           ? {
@@ -180,6 +158,62 @@ const ExploreMapScreen: React.FC = () => {
     region,
     filters: discoveryFilters,
   });
+
+  const mapClusters = useRouteMapClusters(routes, region);
+
+  const selectedStopsWithCoords = useMemo(
+    () =>
+      selectedRouteStops.filter(
+        (stop) =>
+          typeof stop.latitude === 'number' &&
+          typeof stop.longitude === 'number',
+      ),
+    [selectedRouteStops],
+  );
+
+  const mainRouteStop = useMemo(() => {
+    if (selectedRouteStops.length === 0) {
+      return null;
+    }
+
+    return (
+      selectedRouteStops.find((stop) => stop.order_index === 0) ??
+      selectedRouteStops[0]
+    );
+  }, [selectedRouteStops]);
+
+  const mapStopsToRender = useMemo(() => {
+    if (routeStopsExpanded) {
+      return selectedStopsWithCoords;
+    }
+
+    if (
+      mainRouteStop &&
+      typeof mainRouteStop.latitude === 'number' &&
+      typeof mainRouteStop.longitude === 'number'
+    ) {
+      return [mainRouteStop];
+    }
+
+    return [];
+  }, [mainRouteStop, routeStopsExpanded, selectedStopsWithCoords]);
+
+  const showSelectedRouteOnMap = mapStopsToRender.length > 0;
+
+  const resolvedSelectedRoute = useMemo(() => {
+    if (selectedRouteMeta) {
+      return selectedRouteMeta;
+    }
+
+    if (!selectedRouteId || selectedRouteStops.length === 0) {
+      return null;
+    }
+
+    return (
+      selectedRouteStops.find((stop) => stop.order_index === 0) ??
+      selectedRouteStops[0]
+    );
+  }, [selectedRouteMeta, selectedRouteId, selectedRouteStops]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -282,36 +316,79 @@ const ExploreMapScreen: React.FC = () => {
     });
   }, []);
 
-  const fetchPolylineForRoute = useCallback(
+  const fetchRouteDetails = useCallback(
     async (routeId: string) => {
+      setStopsLoading(true);
       setPolylineLoading(true);
 
       try {
         const all = await RouteModel.getRoutesById(routeId, user?.id);
 
         if (!Array.isArray(all)) {
+          setSelectedRouteStops([]);
           setPolylineCoords([]);
+          setActiveStopId(null);
 
           return;
         }
 
-        const coords: LatLng[] = all
+        const sorted = [...all].sort(
+          (a: RouteWithProfile, b: RouteWithProfile) =>
+            (a.order_index || 0) - (b.order_index || 0),
+        );
+
+        const mainRoute =
+          sorted.find((row) => row.order_index === 0) ?? sorted[0];
+        const ownerId =
+          mainRoute?.user_id || mainRoute?.profiles?.id || '';
+
+        const stopsWithOwner = sorted.map((stop) => ({
+          ...stop,
+          user_id: stop.user_id || ownerId,
+        }));
+
+        setSelectedRouteStops(stopsWithOwner);
+
+        const defaultActiveStop =
+          stopsWithOwner.find(
+            (stop) =>
+              typeof stop.latitude === 'number' &&
+              typeof stop.longitude === 'number',
+          ) ?? stopsWithOwner[0];
+
+        setActiveStopId(
+          defaultActiveStop ? getMapStopKey(defaultActiveStop) : null,
+        );
+
+        if (mainRoute) {
+          setSelectedRouteMeta((previous) => ({
+            ...mainRoute,
+            user_id: mainRoute.user_id || ownerId,
+            profiles: mainRoute.profiles ?? previous?.profiles,
+            categories: mainRoute.categories ?? previous?.categories,
+            cities: mainRoute.cities ?? previous?.cities,
+          }));
+        }
+
+        const coords: LatLng[] = sorted
           .filter(
-            (row: any) =>
+            (row) =>
               typeof row.latitude === 'number' &&
               typeof row.longitude === 'number',
           )
-          .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
-          .map((row: any) => ({
-            latitude: row.latitude,
-            longitude: row.longitude,
+          .map((row) => ({
+            latitude: row.latitude as number,
+            longitude: row.longitude as number,
           }));
 
         setPolylineCoords(coords);
       } catch (err) {
-        console.error('Polyline load error:', err);
+        console.error('Route details load error:', err);
+        setSelectedRouteStops([]);
         setPolylineCoords([]);
+        setActiveStopId(null);
       } finally {
+        setStopsLoading(false);
         setPolylineLoading(false);
       }
     },
@@ -325,6 +402,9 @@ const ExploreMapScreen: React.FC = () => {
       }
 
       setSelectedRouteId(route.id);
+      setSelectedRouteMeta(route);
+      setRouteStopsExpanded(true);
+      setActiveStopId(null);
 
       if (
         typeof route.latitude === 'number' &&
@@ -343,10 +423,29 @@ const ExploreMapScreen: React.FC = () => {
 
       sheetRef.current?.snapTo('medium');
       sheetRef.current?.scrollToRoute(route.id);
-      void fetchPolylineForRoute(route.id);
+      void fetchRouteDetails(route.id);
     },
-    [fetchPolylineForRoute],
+    [fetchRouteDetails],
   );
+
+  const handleStopPress = useCallback((stop: RouteWithProfile) => {
+    setActiveStopId(getMapStopKey(stop));
+
+    if (
+      typeof stop.latitude !== 'number' ||
+      typeof stop.longitude !== 'number'
+    ) {
+      return;
+    }
+
+    mapRef.current?.animateToRegion(
+      regionForStopFocus({
+        latitude: stop.latitude,
+        longitude: stop.longitude,
+      }),
+      350,
+    );
+  }, []);
 
   const handleMarkerPress = useCallback(
     (route: RouteWithProfile) => {
@@ -455,96 +554,92 @@ const ExploreMapScreen: React.FC = () => {
     );
   }, []);
 
-  // Aynı koordinattaki (≈11m hassasiyet) rotaları grupla — iskambil-kart efekti için.
-  const routeGroups = useMemo(() => {
-    const groups = new Map<string, RouteWithProfile[]>();
+  const handleDismissRouteStops = useCallback(() => {
+    setRouteStopsExpanded(false);
+    setPolylineCoords([]);
+    setActiveStopId(null);
+  }, []);
 
-    routes.forEach((route) => {
-      if (
-        typeof route.latitude !== 'number' ||
-        typeof route.longitude !== 'number'
-      ) {
-        return;
+  const handleClusterPress = useCallback(
+    (expansionZoom: number, latitude: number, longitude: number) => {
+      const latitudeDelta = Math.min(360 / 2 ** expansionZoom, region.latitudeDelta);
+      const longitudeDelta = Math.min(360 / 2 ** expansionZoom, region.longitudeDelta);
+
+      mapRef.current?.animateToRegion(
+        {
+          latitude,
+          longitude,
+          latitudeDelta: Math.max(latitudeDelta, 0.005),
+          longitudeDelta: Math.max(longitudeDelta, 0.005),
+        },
+        350,
+      );
+    },
+    [region.latitudeDelta, region.longitudeDelta],
+  );
+
+  const renderMapFeature = useCallback(
+    (feature: (typeof mapClusters)[number]) => {
+      if (feature.type === 'cluster') {
+        return (
+          <MapClusterMarkerWrapper
+            key={`cluster-${feature.clusterId}`}
+            clusterId={feature.clusterId}
+            latitude={feature.latitude}
+            longitude={feature.longitude}
+            count={feature.count}
+            onPress={() =>
+              handleClusterPress(
+                feature.expansionZoom,
+                feature.latitude,
+                feature.longitude,
+              )
+            }
+          />
+        );
       }
 
-      const key = `${route.latitude.toFixed(4)}_${route.longitude.toFixed(4)}`;
-      const existing = groups.get(key);
-
-      if (existing) {
-        existing.push(route);
-      } else {
-        groups.set(key, [route]);
-      }
-    });
-
-    return Array.from(groups.values());
-  }, [routes]);
-
-  const renderGroupMarker = useCallback(
-    (group: RouteWithProfile[]) => {
-      const primary = group[0];
+      const group = feature.group;
 
       if (
-        !primary ||
-        typeof primary.latitude !== 'number' ||
-        typeof primary.longitude !== 'number'
+        showSelectedRouteOnMap &&
+        selectedRouteId &&
+        group.some((route) => route.id === selectedRouteId)
       ) {
         return null;
       }
 
-      const isSelected = group.some((r) => r.id === selectedRouteId);
-      const key = primary.id
-        ? `group-${primary.id}`
-        : `group-${primary.latitude.toFixed(4)}-${primary.longitude.toFixed(4)}`;
-      // Resim async indiği için ilk render'da tracksViewChanges açık olmalı;
-      // Marker'ın kendi içindeki MapRouteMarker yüklenince native tarafa kopyalanacak.
-      // Performans için Marker bir kez ısıdıktan sonra false'a düşürmek istenirse
-      // ileride bu mantık imageReady state'iyle iyileştirilebilir.
-      const hasImage = !!primary.image_url;
-
       return (
-        <Marker
-          key={key}
-          identifier={primary.id || undefined}
-          coordinate={{
-            latitude: primary.latitude,
-            longitude: primary.longitude,
-          }}
-          tracksViewChanges={hasImage}
-          onPress={(event) => {
-            event.stopPropagation();
-            handleMarkerPress(primary);
-          }}
-          onCalloutPress={() => handleCalloutPress(primary)}
-          title={
-            group.length > 1
-              ? `${group.length} rota`
-              : primary.title
+        <MapRouteGroupMarker
+          key={
+            group[0]?.id
+              ? `group-${group[0].id}`
+              : `group-${group[0]?.latitude}-${group[0]?.longitude}`
           }
-          description={primary.cities?.name}
-        >
-          <MapRouteMarker
-            imageUrl={primary.image_url || null}
-            userId={primary.user_id || null}
-            iconName={primary.categories?.icon_name}
-            selected={isSelected}
-            stackCount={group.length}
-          />
-        </Marker>
+          group={group}
+          selectedRouteId={selectedRouteId}
+          onPress={handleMarkerPress}
+          onCalloutPress={handleCalloutPress}
+        />
       );
     },
-    [handleCalloutPress, handleMarkerPress, selectedRouteId],
+    [
+      handleCalloutPress,
+      handleClusterPress,
+      handleMarkerPress,
+      selectedRouteId,
+      showSelectedRouteOnMap,
+    ],
   );
 
   const showsTopOffset = insets.top + 6;
-  const tileSource = getTileSource(mapStyleMode);
 
   return (
     <View style={styles.container}>
       <MapView
         ref={mapRef}
-        provider={PROVIDER_DEFAULT}
-        mapType="none"
+        provider={getMapProvider()}
+        mapType={getNativeMapType(mapStyleMode)}
         style={styles.map}
         initialRegion={TURKEY_REGION}
         onRegionChangeComplete={handleRegionChangeComplete}
@@ -554,32 +649,24 @@ const ExploreMapScreen: React.FC = () => {
         toolbarEnabled={false}
         onUserLocationChange={locationGranted ? handleUserLocationChange : undefined}
       >
-        <UrlTile
-          urlTemplate={tileSource.urlTemplate}
-          maximumZ={tileSource.maximumZ}
-          flipY={false}
-          shouldReplaceMapContent
-          zIndex={-2}
-        />
+        {mapClusters.map(renderMapFeature)}
 
-        {tileSource.overlayUrlTemplate ? (
-          <UrlTile
-            urlTemplate={tileSource.overlayUrlTemplate}
-            maximumZ={tileSource.maximumZ}
-            flipY={false}
-            zIndex={-1}
-          />
-        ) : null}
-
-        {routeGroups.map(renderGroupMarker)}
-
-        {polylineCoords.length > 1 ? (
+        {routeStopsExpanded && polylineCoords.length > 1 ? (
           <Polyline
             coordinates={polylineCoords}
             strokeColor={theme.accent}
             strokeWidth={4}
           />
         ) : null}
+
+        {mapStopsToRender.map((stop) => (
+          <MapRouteStopMarker
+            key={stop.id || `stop-${stop.order_index}`}
+            stop={stop}
+            selected={routeStopsExpanded && activeStopId === getMapStopKey(stop)}
+            onPress={routeStopsExpanded ? handleStopPress : undefined}
+          />
+        ))}
       </MapView>
 
       <View
@@ -609,13 +696,6 @@ const ExploreMapScreen: React.FC = () => {
         </View>
       </View>
 
-      {loading || polylineLoading ? (
-        <View style={[styles.loadingBadge, { top: showsTopOffset + 110 }]}>
-          <ActivityIndicator size="small" color={theme.accent} />
-          <Text style={styles.loadingText}>Yükleniyor</Text>
-        </View>
-      ) : null}
-
       <MapZoomControls
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
@@ -634,19 +714,19 @@ const ExploreMapScreen: React.FC = () => {
         topOffset={showsTopOffset + 172}
       />
 
-      <View
-        style={[styles.attribution, { bottom: insets.bottom + 100 }]}
-        pointerEvents="none"
-      >
-        <Text style={styles.attributionText}>{tileSource.attribution}</Text>
-      </View>
-
       <MapBottomSheet
         ref={sheetRef}
         routes={routes}
         loading={loading}
         selectedRouteId={selectedRouteId}
+        selectedRoute={resolvedSelectedRoute}
+        selectedRouteStops={selectedRouteStops}
+        showRouteStopsPanel={routeStopsExpanded}
+        activeStopId={activeStopId}
+        stopsLoading={stopsLoading}
         onSelectRoute={handleSelectRoute}
+        onStopPress={handleStopPress}
+        onDismissRouteStops={handleDismissRouteStops}
         weatherLatitude={region.latitude}
         weatherLongitude={region.longitude}
       />

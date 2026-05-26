@@ -50,6 +50,8 @@ import {
   setCachedCommentDraft,
   setCachedRouteComments,
 } from '../../services/RouteCommentsCache';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 type RootStackParamList = {
   ProfileMain: { username: string; currentUserId?: string };
@@ -86,6 +88,57 @@ const CommentItem: React.FC<CommentItemProps> = ({
   onDeletePress,
   isDeleting = false,
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    commentItem: {
+      flexDirection: 'row',
+      marginBottom: 14,
+      paddingBottom: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.hairlineBorder,
+    },
+    commentAvatarWrap: {
+      marginRight: 10,
+    },
+    commentContent: {
+      flex: 1,
+    },
+    commentHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      marginBottom: 4,
+    },
+    commentAuthorContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      flex: 1,
+      marginRight: 8,
+    },
+    deleteCommentButton: {
+      padding: 4,
+      marginTop: -2,
+    },
+    commentAuthor: {
+      fontWeight: '600',
+      fontSize: 14,
+      color: t.textPrimary,
+    },
+    commentTime: {
+      fontSize: 12,
+      color: t.textMuted,
+    },
+    commentText: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: t.textSecondary,
+    },
+    verifiedIcon: {
+      marginHorizontal: 2,
+    },
+  }));
+
   const isOwnComment = !!currentUserId && item.user_id === currentUserId;
   const canDelete = isOwnComment && !item.id.startsWith('temp-') && !!onDeletePress;
 
@@ -144,9 +197,9 @@ const CommentItem: React.FC<CommentItemProps> = ({
               accessibilityLabel="Yorumu sil"
             >
               {isDeleting ? (
-                <ActivityIndicator size="small" color="#999" />
+                <ActivityIndicator size="small" color={theme.textMuted} />
               ) : (
-                <Icon name="trash-can-outline" size={18} color="#999" />
+                <Icon name="trash-can-outline" size={18} color={theme.textMuted} />
               )}
             </TouchableOpacity>
           ) : null}
@@ -166,6 +219,117 @@ const CommentsSheet: React.FC<CommentsSheetProps> = ({
   const navigation = useNavigation<CommentsNavigationProp>();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    sheetBackground: {
+      backgroundColor: t.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+    },
+    sheetIndicator: {
+      backgroundColor: t.borderStrong,
+      width: 40,
+    },
+    sheetHeader: {
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+    },
+    sheetHandleSpacer: {
+      height: 4,
+    },
+    commentsTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: t.textPrimary,
+    },
+    headerSpinner: {
+      marginTop: 12,
+      alignSelf: 'flex-start',
+    },
+    flatList: {
+      flex: 1,
+    },
+    listContent: {
+      flexGrow: 1,
+      paddingHorizontal: 16,
+    },
+    listFooterSpacer: {
+      height: 8,
+    },
+    emptyCommentsContainer: {
+      paddingTop: 28,
+      paddingBottom: 24,
+      alignItems: 'center',
+      gap: 8,
+    },
+    emptyCommentsText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: t.textSecondary,
+    },
+    emptyCommentsHint: {
+      marginTop: 6,
+      fontSize: 13,
+      color: t.textMuted,
+    },
+    inputSection: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingTop: 10,
+      paddingBottom: 12,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.hairlineBorder,
+      backgroundColor: t.background,
+    },
+    inputAvatarWrap: {
+      marginBottom: 4,
+    },
+    inputFieldWrap: {
+      flex: 1,
+      position: 'relative',
+    },
+    commentInput: {
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      paddingRight: 52,
+      borderWidth: 1,
+      borderColor: t.border,
+      borderRadius: 20,
+      fontSize: 15,
+      minHeight: 42,
+      maxHeight: 96,
+      backgroundColor: t.surfaceMuted,
+      color: t.textPrimary,
+    },
+    characterCount: {
+      position: 'absolute',
+      right: 10,
+      bottom: 8,
+      fontSize: 10,
+      color: t.textMuted,
+    },
+    characterCountWarning: {
+      color: '#ff3b30',
+      fontWeight: '600',
+    },
+    sendButton: {
+      backgroundColor: '#0095f6',
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 3,
+    },
+    sendButtonPressed: {
+      opacity: 0.85,
+    },
+    disabledSendButton: {
+      backgroundColor: t.borderStrong,
+    },
+  }));
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState('');
@@ -467,11 +631,11 @@ const CommentsSheet: React.FC<CommentsSheetProps> = ({
         <View style={styles.sheetHandleSpacer} />
         <Text style={styles.commentsTitle}>Yorumlar</Text>
         {loading && comments.length === 0 ? (
-          <ActivityIndicator size="small" color="#121212" style={styles.headerSpinner} />
+          <ActivityIndicator size="small" color={theme.textPrimary} style={styles.headerSpinner} />
         ) : null}
       </View>
     );
-  }, [comments.length, loading]);
+  }, [comments.length, loading, styles, theme.textPrimary]);
 
   const renderListEmpty = useCallback(() => {
     if (loading) {
@@ -480,16 +644,16 @@ const CommentsSheet: React.FC<CommentsSheetProps> = ({
 
     return (
       <View style={styles.emptyCommentsContainer}>
-        <Icon name="comment-text-outline" size={40} color="#d0d0d0" />
+        <Icon name="comment-text-outline" size={40} color={theme.textMuted} />
         <Text style={styles.emptyCommentsText}>Henüz yorum yok</Text>
         <Text style={styles.emptyCommentsHint}>İlk yorumu sen ol!</Text>
       </View>
     );
-  }, [loading]);
+  }, [loading, styles, theme.textMuted]);
 
   const renderListFooter = useCallback(() => {
     return <View style={styles.listFooterSpacer} />;
-  }, []);
+  }, [styles]);
 
   const isSendDisabled =
     submitting || !commentText.trim() || commentText.length > MAX_CHARACTERS;
@@ -512,7 +676,7 @@ const CommentsSheet: React.FC<CommentsSheetProps> = ({
             <View style={styles.inputFieldWrap}>
               <BottomSheetTextInput
                 placeholder="Yorum yap..."
-                placeholderTextColor="#888"
+                placeholderTextColor={theme.textMuted}
                 style={styles.commentInput}
                 value={commentText}
                 onChangeText={handleCommentChange}
@@ -544,7 +708,7 @@ const CommentsSheet: React.FC<CommentsSheetProps> = ({
                 <Icon
                   name="send"
                   size={16}
-                  color={commentText.trim() ? '#fff' : '#999'}
+                  color={commentText.trim() ? '#fff' : theme.textMuted}
                 />
               )}
             </Pressable>
@@ -561,6 +725,8 @@ const CommentsSheet: React.FC<CommentsSheetProps> = ({
       insets.bottom,
       isSendDisabled,
       submitting,
+      styles,
+      theme.textMuted,
       user?.id,
     ],
   );
@@ -597,163 +763,5 @@ const CommentsSheet: React.FC<CommentsSheetProps> = ({
     </BottomSheetModal>
   );
 };
-
-const styles = StyleSheet.create({
-  sheetBackground: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  sheetIndicator: {
-    backgroundColor: '#d2d2d2',
-    width: 40,
-  },
-  sheetHeader: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  sheetHandleSpacer: {
-    height: 4,
-  },
-  commentsTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#121212',
-  },
-  headerSpinner: {
-    marginTop: 12,
-    alignSelf: 'flex-start',
-  },
-  flatList: {
-    flex: 1,
-  },
-  listContent: {
-    flexGrow: 1,
-    paddingHorizontal: 16,
-  },
-  listFooterSpacer: {
-    height: 8,
-  },
-  commentItem: {
-    flexDirection: 'row',
-    marginBottom: 14,
-    paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ebebeb',
-  },
-  commentAvatarWrap: {
-    marginRight: 10,
-  },
-  commentContent: {
-    flex: 1,
-  },
-  commentHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  commentAuthorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    flex: 1,
-    marginRight: 8,
-  },
-  deleteCommentButton: {
-    padding: 4,
-    marginTop: -2,
-  },
-  commentAuthor: {
-    fontWeight: '600',
-    fontSize: 14,
-    color: '#1a1a1a',
-  },
-  commentTime: {
-    fontSize: 12,
-    color: '#888',
-  },
-  commentText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#333',
-  },
-  verifiedIcon: {
-    marginHorizontal: 2,
-  },
-  emptyCommentsContainer: {
-    paddingTop: 28,
-    paddingBottom: 24,
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyCommentsText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#555',
-  },
-  emptyCommentsHint: {
-    marginTop: 6,
-    fontSize: 13,
-    color: '#999',
-  },
-  inputSection: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#ebebeb',
-    backgroundColor: '#fff',
-  },
-  inputAvatarWrap: {
-    marginBottom: 4,
-  },
-  inputFieldWrap: {
-    flex: 1,
-    position: 'relative',
-  },
-  commentInput: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    paddingRight: 52,
-    borderWidth: 1,
-    borderColor: '#e8e8e8',
-    borderRadius: 20,
-    fontSize: 15,
-    minHeight: 42,
-    maxHeight: 96,
-    backgroundColor: '#f8f8f8',
-    color: '#121212',
-  },
-  characterCount: {
-    position: 'absolute',
-    right: 10,
-    bottom: 8,
-    fontSize: 10,
-    color: '#aaa',
-  },
-  characterCountWarning: {
-    color: '#ff3b30',
-    fontWeight: '600',
-  },
-  sendButton: {
-    backgroundColor: '#0095f6',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 3,
-  },
-  sendButtonPressed: {
-    opacity: 0.85,
-  },
-  disabledSendButton: {
-    backgroundColor: '#e0e0e0',
-  },
-});
 
 export default CommentsSheet;

@@ -2,7 +2,6 @@ import React from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   TextInput,
   ScrollView,
@@ -11,6 +10,8 @@ import {Formik} from 'formik';
 import * as Yup from 'yup';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import KeyboardAwareContainer from '../components/common/KeyboardAwareContainer';
+import { useThemedStyles } from '../theme/useThemedStyles';
+import { useAppTheme } from '../context/AppThemeContext';
 
 const validationSchema = Yup.object().shape({
   name: Yup.string()
@@ -48,13 +49,89 @@ const colorOptions = [
 ];
 
 export const AddCategoryScreen = ({navigation}: any) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    form: {
+      padding: 16,
+    },
+    inputContainer: {
+      marginBottom: 20,
+    },
+    label: {
+      fontSize: 16,
+      fontWeight: '600',
+      marginBottom: 8,
+      color: t.textPrimary,
+    },
+    input: {
+      borderWidth: 1,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      color: t.textPrimary,
+      borderColor: t.border,
+      backgroundColor: t.surfaceMuted,
+    },
+    errorText: {
+      color: '#dc2626',
+      fontSize: 12,
+      marginTop: 4,
+    },
+    iconContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    iconButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: t.surfaceMuted,
+    },
+    selectedIcon: {
+      backgroundColor: '#1DA1F2',
+    },
+    colorContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    colorButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    selectedColor: {
+      borderColor: '#1DA1F2',
+    },
+    submitButton: {
+      backgroundColor: '#1DA1F2',
+      padding: 16,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginTop: 20,
+    },
+    submitButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  }));
+
   const handleSubmit = (values: any) => {
-    // TODO: Save category to storage/state
     navigation.goBack();
   };
 
   return (
-    <KeyboardAwareContainer style={StyleSheet.flatten([styles.container, {backgroundColor: '#fff'}])}>
+    <KeyboardAwareContainer style={styles.container}>
       <Formik
         initialValues={{name: '', icon: '', color: ''}}
         validationSchema={validationSchema}
@@ -70,22 +147,14 @@ export const AddCategoryScreen = ({navigation}: any) => {
         }) => (
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, {color: '#222'}]}>
-                Kategori Adı
-              </Text>
+              <Text style={styles.label}>Kategori Adı</Text>
               <TextInput
-                style={[
-                  styles.input,
-                  {
-                    color: '#000',
-                    borderColor: '#ddd',
-                  },
-                ]}
+                style={styles.input}
                 onChangeText={handleChange('name')}
                 onBlur={handleBlur('name')}
                 value={values.name}
                 placeholder="Kategori adını girin"
-                placeholderTextColor={'#999'}
+                placeholderTextColor={theme.textMuted}
               />
               {errors.name && touched.name && (
                 <Text style={styles.errorText}>{errors.name}</Text>
@@ -107,7 +176,7 @@ export const AddCategoryScreen = ({navigation}: any) => {
                       <Icon
                         name={icon}
                         size={24}
-                        color={values.icon === icon ? '#fff' : '#666'}
+                        color={values.icon === icon ? '#fff' : theme.textSecondary}
                       />
                     </TouchableOpacity>
                   ))}
@@ -154,74 +223,3 @@ export const AddCategoryScreen = ({navigation}: any) => {
     </KeyboardAwareContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  form: {
-    padding: 16,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  errorText: {
-    color: '#cc0000',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  iconContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  iconButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  selectedIcon: {
-    backgroundColor: '#cc0000',
-  },
-  colorContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  colorButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  selectedColor: {
-    borderColor: '#cc0000',
-  },
-  submitButton: {
-    backgroundColor: '#cc0000',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

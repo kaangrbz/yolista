@@ -5,7 +5,7 @@ import type { PostImageSlide } from '../types/postImage.types';
 import { normalizeImageDimension } from '../utils/imageUtils';
 
 export const ROUTE_IMAGE_SELECT =
-  'id, parent_id, image_url, order_index, user_id, image_width, image_height, image_alignment';
+  'id, parent_id, image_url, order_index, user_id, image_width, image_height, image_alignment, title';
 
 export interface RouteImageRow {
   id: string;
@@ -16,13 +16,17 @@ export interface RouteImageRow {
   image_width?: number | null;
   image_height?: number | null;
   image_alignment?: RouteImageAlignment | null;
+  title?: string | null;
 }
 
 export type SlidesByPostId = Record<string, PostImageSlide[]>;
 export type RouteRowsByPostId = Record<string, RouteImageRow[]>;
 
 function mapRouteRowToSlideMeta(route: RouteImageRow) {
+  const hint = route.title?.trim() || null;
+
   return {
+    hint,
     width: normalizeImageDimension(route.image_width ?? undefined),
     height: normalizeImageDimension(route.image_height ?? undefined),
     imageAlignment: route.image_alignment ?? null,

@@ -13,7 +13,9 @@ import ImageViewer from '../ImageViewer';
 import KeyboardAwareContainer from '../common/KeyboardAwareContainer';
 import ShareModal from '../ShareModal';
 import { ShareService } from '../../services/ShareService';
+import { getRouteDisplayLabel, getRouteShareLabel } from '../../utils/getRouteDisplayLabel';
 import { useCommentsSheet } from '../../context/CommentsSheetContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 // Define the navigation param list type
 type RootStackParamList = {
@@ -70,6 +72,187 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const [loadingImage, setLoadingImage] = useState(true);
   const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
+  const styles = useThemedStyles((t) => ({
+    cardContainer: {
+      position: 'relative',
+      minHeight: 400,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    categoryContainer: {
+      alignSelf: 'flex-start',
+    },
+    withConnectingLine: {
+      paddingLeft: 16,
+    },
+    connectingLine: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 2,
+      backgroundColor: t.border,
+    },
+    connectingLineLast: {
+      height: 24,
+    },
+    routeCard: {
+      backgroundColor: t.background,
+      borderTopLeftRadius: 12,
+      borderTopRightRadius: 12,
+      marginBottom: 16,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    imageContainer: {
+      width: '100%',
+      height: 200,
+      backgroundColor: t.surfaceMuted,
+    },
+    routeInfo: {
+      paddingBottom: 0,
+    },
+    routeTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginBottom: 4,
+      color: t.textPrimary,
+    },
+    routeDescription: {
+      fontSize: 14,
+      color: t.textSecondary,
+      marginBottom: 8,
+      marginTop: 4,
+      lineHeight: 20,
+    },
+    routeCategory: {
+      fontSize: 14,
+      color: t.textSecondary,
+      marginBottom: 8,
+      marginTop: 4,
+    },
+    cityContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    cityName: {
+      fontSize: 13,
+      color: t.textPrimary,
+    },
+    seeMoreText: {
+      color: '#1DA1F2',
+      fontSize: 14,
+      marginBottom: 4,
+    },
+    reactionContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.hairlineBorder,
+      paddingTop: 12,
+    },
+    reactionItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    reactionText: {
+      marginLeft: 4,
+      color: t.textSecondary,
+    },
+    commentContainer: {},
+    commentInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.hairlineBorder,
+    },
+    commentImage: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      marginRight: 8,
+    },
+    commentInput: {
+      flex: 1,
+      padding: 0,
+      margin: 0,
+      fontSize: 14,
+      color: t.textPrimary,
+    },
+    routeImage: {
+      width: '100%',
+      height: '100%',
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    exploreCard: {
+      backgroundColor: t.background,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+      width: '100%',
+      height: '100%',
+    },
+    exploreImageContainer: {
+      width: '100%',
+      height: '100%',
+      backgroundColor: t.surfaceMuted,
+    },
+    exploreImage: {
+      width: '100%',
+      height: '100%',
+    },
+    exploreOverlay: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      zIndex: 1,
+    },
+    likeContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      borderRadius: 12,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    likeCount: {
+      color: '#fff',
+      fontSize: 12,
+      marginLeft: 4,
+      fontWeight: '600',
+    },
+    exploreInfo: {
+      padding: 8,
+    },
+    exploreTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: t.textPrimary,
+      marginBottom: 4,
+    },
+    exploreDescription: {
+      fontSize: 12,
+      color: t.textSecondary,
+      lineHeight: 16,
+    },
+  }));
 
   // Handle text layout if needed
   const handleTextLayout = (e: any, key: string) => {
@@ -235,7 +418,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
               navigation.navigate('RouteDetail', { routeId: route.id || '' });
             }}
             disabled={!isMainRoute}>
-            <Text style={styles.routeTitle}>{route.title}</Text>
+            <Text style={styles.routeTitle}>{getRouteDisplayLabel(route)}</Text>
 
             {/* Category and city should be hidden for not main routes */}
             <View style={[styles.row, !isMainRoute && { display: 'none' }, { paddingBottom: 4 }]}>
@@ -370,201 +553,12 @@ const RouteCard: React.FC<RouteCardProps> = ({
         visible={isShareModalVisible}
         onClose={() => setIsShareModalVisible(false)}
         postId={safeRouteId}
-        postTitle={route.title || 'Rota'}
+        postTitle={getRouteShareLabel(route)}
         postImage={imageUri || undefined}
         postUrl={ShareService.generatePostUrl(safeRouteId)}
       />
     </View>
   );
 };
-
-const CONNECTING_LINE_WIDTH = 2;
-const CONNECTING_LINE_COLOR = '#e1e8ed';
-
-const styles = StyleSheet.create({
-  cardContainer: {
-    position: 'relative',
-    minHeight: 400,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  categoryContainer: {
-    alignSelf: 'flex-start',
-  },
-  withConnectingLine: {
-    paddingLeft: 16,
-  },
-  connectingLine: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: CONNECTING_LINE_WIDTH,
-    backgroundColor: CONNECTING_LINE_COLOR,
-  },
-  connectingLineLast: {
-    height: 24, // Adjust this value based on your design
-  },
-  routeCard: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    marginBottom: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  imageContainer: {
-    width: '100%',
-    height: 200,
-    backgroundColor: '#f5f5f5',
-  },
-  routeInfo: {
-    paddingBottom: 0,
-  },
-  routeTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-    color: '#121212',
-  },
-  routeDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-    marginTop: 4,
-    lineHeight: 20,
-  },
-  routeCategory: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-    marginTop: 4,
-  },
-
-  cityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  cityName: {
-    fontSize: 13,
-    color: '#333',
-  },
-  seeMoreText: {
-    color: '#007AFF',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  reactionContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 12,
-  },
-  reactionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  reactionText: {
-    marginLeft: 4,
-    color: '#666',
-  },
-  commentContainer: {
-  },
-  commentInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  commentImage: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    marginRight: 8,
-  },
-  commentInput: {
-    flex: 1,
-    padding: 0,
-    margin: 0,
-    fontSize: 14,
-    color: '#121212',
-  },
-  routeImage: {
-    width: '100%',
-    height: '100%',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // Explore screen specific styles
-  exploreCard: {
-    backgroundColor: '#fff',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    width: '100%',
-    height: '100%',
-  },
-  exploreImageContainer: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f5f5f5',
-  },
-  exploreImage: {
-    width: '100%',
-    height: '100%',
-  },
-  exploreOverlay: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    zIndex: 1,
-  },
-  likeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  likeCount: {
-    color: '#fff',
-    fontSize: 12,
-    marginLeft: 4,
-    fontWeight: '600',
-  },
-  exploreInfo: {
-    padding: 8,
-  },
-  exploreTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#121212',
-    marginBottom: 4,
-  },
-  exploreDescription: {
-    fontSize: 12,
-    color: '#666',
-    lineHeight: 16,
-  },
-});
 
 export default RouteCard;

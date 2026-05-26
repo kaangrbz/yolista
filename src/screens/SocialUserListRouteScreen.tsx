@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SocialUserListScreen } from '../components/social/SocialUserListScreen';
 import { SocialListHeader } from '../components/header/Header';
@@ -8,6 +8,7 @@ import {
   type SocialUserListRouteParams,
 } from '../types/socialUserList';
 import { createSocialUserListFetchPage } from '../utils/createSocialUserListFetchPage';
+import { useThemedStyles } from '../theme/useThemedStyles';
 
 type ListMeta = {
   title: string;
@@ -52,6 +53,24 @@ export const SocialUserListRouteScreen = ({
   navigation: any;
   route: { params?: unknown };
 }) => {
+  const styles = useThemedStyles((t) => ({
+    invalidSafe: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    invalidBody: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    invalidText: {
+      fontSize: 15,
+      color: t.textSecondary,
+      textAlign: 'center',
+    },
+  }));
+
   const rawParams = route.params;
 
   let kind: SocialUserListRouteParams['kind'] | undefined;
@@ -136,21 +155,3 @@ export const SocialUserListRouteScreen = ({
     />
   );
 };
-
-const styles = StyleSheet.create({
-  invalidSafe: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  invalidBody: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  invalidText: {
-    fontSize: 15,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-});

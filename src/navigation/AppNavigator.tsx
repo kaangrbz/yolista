@@ -234,6 +234,40 @@ export const AppNavigator = () => {
     }
   }, [isLoading, isAuthenticated]);
 
+  useEffect(() => {
+    const navigation = navigationRef.current;
+
+    if (isLoading || !navigation?.isReady()) {
+      return;
+    }
+
+    const currentRoute = navigation.getCurrentRoute()?.name;
+    const authOnlyRoutes = new Set(['Login', 'Register', 'ForgotPassword', 'ResetPassword', 'VerifyEmail']);
+
+    if (isAuthenticated && user) {
+      if (currentRoute === 'Login' || currentRoute === 'VerifyEmail') {
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      }
+
+      return;
+    }
+
+    if (currentRoute && !authOnlyRoutes.has(currentRoute)) {
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    }
+  }, [isAuthenticated, user, isLoading]);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <Logo size="large" color={theme.accent} />
+        <ActivityIndicator size="large" color={theme.accent} />
+      </View>
+    );
+  }
+
+  const initialRouteName = isAuthenticated && user ? 'MainTabs' : 'Login';
+
   return (
     <NavigationContainer
       ref={navigationRef}
@@ -248,21 +282,15 @@ export const AppNavigator = () => {
     >
       <CommentsSheetProvider>
         <Stack.Navigator
-        initialRouteName={isAuthenticated && user ? 'MainTabs' : 'Login'}
+        initialRouteName={initialRouteName}
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
           contentStyle: { backgroundColor: theme.background },
         }}
       >
-        {isAuthenticated && user ? (
-          <Stack.Screen
-            name="MainTabs"
-            component={MainTabNavigator}
-          />
-        ) : (
-          <Stack.Screen name="Login" component={LoginScreen} />
-        )}
+        <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+        <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />

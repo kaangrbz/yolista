@@ -9,10 +9,16 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../../model/routes.model';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
+import { getRouteDisplayLabel } from '../../../utils/getRouteDisplayLabel';
+import {
+  getRouteLocationLabel,
+  getRouteLocationSource,
+} from '../../../utils/routeLocationLabel';
 import {
   usePostImageDownload,
   useProfileImageDownload,
 } from '../../../hooks/useImageDownload';
+import { MAP_ACTIVE_ROUTE_BORDER } from '../../../constants/mapDefaults';
 
 interface MapRouteRowProps {
   route: RouteWithProfile;
@@ -47,6 +53,12 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
       overflow: 'hidden',
       marginRight: 12,
       backgroundColor: t.surfaceMuted,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    imageWrapperSelected: {
+      borderWidth: 2,
+      borderColor: MAP_ACTIVE_ROUTE_BORDER,
     },
     image: {
       width: '100%',
@@ -132,6 +144,7 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
   const { imageUri } = usePostImageDownload(
     route.image_url,
     route.user_id || '',
+    route.image_preview_url || undefined,
   );
 
   const { imageUri: avatarUri } = useProfileImageDownload(
@@ -141,6 +154,7 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
   );
 
   const username = route.profiles?.username?.trim() || null;
+  const locationLabel = getRouteLocationLabel(getRouteLocationSource(route));
 
   return (
     <TouchableOpacity
@@ -148,7 +162,7 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
       activeOpacity={0.85}
       style={[styles.row, selected && styles.rowSelected]}
     >
-      <View style={styles.imageWrapper}>
+      <View style={[styles.imageWrapper, selected && styles.imageWrapperSelected]}>
         {imageUri ? (
           <Image source={{ uri: imageUri }} style={styles.image} />
         ) : (
@@ -164,7 +178,7 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
 
       <View style={styles.content}>
         <Text numberOfLines={1} style={styles.title}>
-          {route.title}
+          {getRouteDisplayLabel(route)}
         </Text>
 
         {username ? (
@@ -201,8 +215,21 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
               <Text numberOfLines={1} style={styles.metaText}>
                 {route.cities.name}
               </Text>
-              <View style={styles.dot} />
+              {locationLabel ? (
+                <>
+                  <View style={styles.dot} />
+                  <Text numberOfLines={1} style={styles.metaText}>
+                    {locationLabel}
+                  </Text>
+                </>
+              ) : (
+                <View style={styles.dot} />
+              )}
             </>
+          ) : locationLabel ? (
+            <Text numberOfLines={1} style={styles.metaText}>
+              {locationLabel}
+            </Text>
           ) : null}
 
           <Icon

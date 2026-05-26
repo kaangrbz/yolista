@@ -2,20 +2,19 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   ActivityIndicator,
   ListRenderItem,
-  RefreshControl,
   ScrollView,
   NativeSyntheticEvent,
   NativeScrollEvent,
-} from 'react-native';
-import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import ThemedRefreshControl from '../components/common/ThemedRefreshControl';
+import { useThemedScrollSurface } from '../theme/useThemedScrollSurface';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { CategoryItem } from '../types/category.types';
 import CategoryModel from '../model/category.model';
@@ -29,7 +28,6 @@ import ExploreMasonryGrid from '../components/explore/ExploreMasonryGrid';
 import ExploreFeedSkeleton from '../components/explore/ExploreFeedSkeleton';
 import { useAuth } from '../context/AuthContext';
 import { buildProfileNavigationParams } from '../utils/profileSlug';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useExplorePosts } from '../hooks/usePosts';
 import { KeyboardAwareContainer } from '../components/common';
 import {
@@ -37,12 +35,127 @@ import {
   getExploreGridCardWidth,
 } from '../utils/exploreLayoutUtils';
 import { isInitialListLoading } from '../utils/listRefreshUtils';
+import { useAppTheme } from '../context/AppThemeContext';
+import { useThemedStyles } from '../theme/useThemedStyles';
 
 const GRID_CARD_WIDTH = getExploreGridCardWidth();
 const SEARCH_DEBOUNCE_MS = 500;
 
 const ExploreScreen = () => {
   const isFocused = useIsFocused();
+  const theme = useAppTheme();
+  const scrollSurface = useThemedScrollSurface();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginHorizontal: 12,
+      marginVertical: 6,
+    },
+    searchContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.surfaceMuted,
+      borderRadius: 10,
+      paddingHorizontal: 10,
+    },
+    mapToggleButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      backgroundColor: t.textPrimary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: 8,
+    },
+    searchIcon: {
+      marginRight: 8,
+    },
+    searchInput: {
+      flex: 1,
+      height: 40,
+      color: t.textPrimary,
+      fontSize: 16,
+    },
+    noRoutesContainer: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 12,
+    },
+    noRoutesText: {
+      fontSize: 16,
+      color: t.textSecondary,
+      textAlign: 'center',
+    },
+    categoriesContainer: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.hairlineBorder,
+    },
+    usersList: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    userItem: {
+      backgroundColor: t.surfaceMuted,
+    },
+    title: {
+      fontSize: 16,
+      fontWeight: '500',
+      marginHorizontal: 12,
+      marginVertical: 6,
+      color: t.textPrimary,
+    },
+    categoriesList: {
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+    },
+    categoryItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.surfaceMuted,
+      borderRadius: 20,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      marginRight: 6,
+    },
+    activeCategoryItem: {
+      backgroundColor: t.textPrimary,
+    },
+    categoryIcon: {
+      marginRight: 6,
+    },
+    categoryText: {
+      fontSize: 14,
+      color: t.textPrimary,
+      fontWeight: '500',
+    },
+    activeCategoryText: {
+      color: t.background,
+    },
+    gridContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      backgroundColor: t.background,
+    },
+    gridCardWrapper: {
+      width: GRID_CARD_WIDTH,
+      aspectRatio: 1,
+    },
+    footerLoader: {
+      paddingVertical: 12,
+    },
+    nestedList: {
+      backgroundColor: t.background,
+    },
+    scrollBottomSpacer: {
+      height: 120,
+    },
+  }));
 
   const route = useRoute();
   const [categories, setCategories] = useState<CategoryItem[]>([]);
@@ -53,7 +166,6 @@ const ExploreScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
   const { user } = useAuth();
-  const insets = useSafeAreaInsets();
   const [expandedDescriptions, setExpandedDescriptions] = useState<{ [key: string]: boolean }>({});
 
   const { posts: routes, isLoading, refresh: refreshPosts, loadMore, hasMore } = useExplorePosts(
@@ -159,7 +271,7 @@ const ExploreScreen = () => {
       <Icon
         name={item.icon_name}
         size={20}
-        color={activeCategory === item.id ? '#fff' : '#333'}
+        color={activeCategory === item.id ? theme.background : theme.textPrimary}
         style={styles.categoryIcon}
       />
       <Text
@@ -241,19 +353,23 @@ const ExploreScreen = () => {
   const useMasonryLayout = EXPLORE_LAYOUT_MODE === 'masonry';
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
-      <KeyboardAwareContainer enableScrollView={false} keyboardVerticalOffset={0}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <KeyboardAwareContainer
+        enableScrollView={false}
+        keyboardVerticalOffset={0}
+        style={styles.container}
+      >
       <ExploreHeader />
 
       <View style={styles.searchRow}>
         <View style={styles.searchContainer}>
-          <Icon name="magnify" size={20} color="#999" style={styles.searchIcon} />
+          <Icon name="magnify" size={20} color={theme.textMuted} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Rota, Yer, Kategori, Şehir Ara.."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholderTextColor="#999"
+            placeholderTextColor={theme.textMuted}
             autoFocus={false}
             returnKeyType="search"
             blurOnSubmit={true}
@@ -265,19 +381,15 @@ const ExploreScreen = () => {
           activeOpacity={0.85}
           onPress={() => (navigation as any).navigate('ExploreMap')}
         >
-          <Icon name="map-outline" size={20} color="#fff" />
+          <Icon name="map-outline" size={20} color={theme.background} />
         </TouchableOpacity>
       </View>
 
       <ScrollView
+        style={scrollSurface.style}
+        contentContainerStyle={scrollSurface.contentContainerStyle}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#333', '#121212']}
-            tintColor="#000000"
-            titleColor="#000000"
-          />
+          <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         onScroll={handleScroll}
         scrollEventThrottle={200}
@@ -292,6 +404,7 @@ const ExploreScreen = () => {
               keyExtractor={(item) => item.id}
               scrollEnabled={false}
               showsHorizontalScrollIndicator={false}
+              style={styles.nestedList}
               contentContainerStyle={styles.usersList}
             />
           </>
@@ -307,6 +420,7 @@ const ExploreScreen = () => {
             horizontal
             nestedScrollEnabled
             showsHorizontalScrollIndicator={false}
+            style={styles.nestedList}
             contentContainerStyle={styles.categoriesList}
           />
         </View>
@@ -342,7 +456,7 @@ const ExploreScreen = () => {
         )}
 
         {isLoadingMore && hasMore && (
-          <ActivityIndicator size="small" color="#000" style={styles.footerLoader} />
+          <ActivityIndicator size="small" color={theme.textPrimary} style={styles.footerLoader} />
         )}
 
         <View style={styles.scrollBottomSpacer} />
@@ -351,112 +465,5 @@ const ExploreScreen = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 12,
-    marginVertical: 6,
-  },
-  searchContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-  },
-  mapToggleButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#121212',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    color: '#000',
-    fontSize: 16,
-  },
-  noRoutesContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 12,
-  },
-  noRoutesText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-  categoriesContainer: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  usersList: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  userItem: {
-    backgroundColor: '#F5F5F5',
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginHorizontal: 12,
-    marginVertical: 6,
-  },
-  categoriesList: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  categoryItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 6,
-  },
-  activeCategoryItem: {
-    backgroundColor: '#000',
-  },
-  categoryIcon: {
-    marginRight: 6,
-  },
-  categoryText: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
-  },
-  activeCategoryText: {
-    color: '#fff',
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  gridCardWrapper: {
-    width: GRID_CARD_WIDTH,
-    aspectRatio: 1,
-  },
-  footerLoader: {
-    paddingVertical: 12,
-  },
-  scrollBottomSpacer: {
-    height: 120,
-  },
-});
 
 export default ExploreScreen;

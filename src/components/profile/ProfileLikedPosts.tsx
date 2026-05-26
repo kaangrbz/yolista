@@ -1,9 +1,11 @@
 import React, { useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../model/routes.model';
 import UniversalPost from '../UniversalPost';
 import { useListPostImagesBatch } from '../../hooks/useListPostImagesBatch';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface ProfileLikedPostsProps {
   likedPosts: RouteWithProfile[];
@@ -18,11 +20,35 @@ const ProfileLikedPosts: React.FC<ProfileLikedPostsProps> = ({
   loadingMore = false,
   initialLoading = false,
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    listContainer: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    flatList: {
+      backgroundColor: t.background,
+    },
+    emptyPosts: {
+      alignItems: 'center',
+      paddingVertical: 40,
+    },
+    emptyText: {
+      fontSize: 16,
+      color: t.textSecondary,
+      marginTop: 12,
+    },
+    footerLoading: {
+      paddingVertical: 20,
+      alignItems: 'center',
+    },
+  }));
+
   const { rowsByPostId } = useListPostImagesBatch(likedPosts);
 
   const renderEmptyState = () => (
     <View style={styles.emptyPosts}>
-      <Icon name="heart-outline" size={48} color="#ccc" />
+      <Icon name="heart-outline" size={48} color={theme.textMuted} />
       <Text style={styles.emptyText}>Henüz beğenilen gönderi yok</Text>
     </View>
   );
@@ -75,28 +101,10 @@ const ProfileLikedPosts: React.FC<ProfileLikedPostsProps> = ({
         ListFooterComponent={renderFooter}
         showsVerticalScrollIndicator={false}
         scrollEnabled={false}
+        style={styles.flatList}
       />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  listContainer: {
-    flex: 1,
-  },
-  emptyPosts: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 12,
-  },
-  footerLoading: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-});
 
 export default ProfileLikedPosts;

@@ -22,11 +22,15 @@ export interface RoutePoint {
   title: string;
   description?: string;
   image_url?: string;
+  /** 128×128 center-cropped preview; harita / küçük thumb. */
+  image_preview_url?: string | null;
   image_alignment?: RouteImageAlignment | null;
   image_width?: number | null;
   image_height?: number | null;
   latitude?: number;
   longitude?: number;
+  /** Reverse geocode / kullanıcı adres özeti (opsiyonel). */
+  location_label?: string | null;
   order_index: number;
   is_deleted?: boolean;
   is_hidden?: boolean;
@@ -38,6 +42,9 @@ export interface RoutePoint {
 interface ServerRoutePoint extends Omit<RoutePoint, 'client_id'> {
   // All properties from RoutePoint except client_id
 }
+
+/** Harita pin kaynağı — Faz 2'de gerçek durak koordinatları `gps` olur. */
+export type RouteLocationSource = 'gps' | 'city_center' | 'none';
 
 export interface RouteWithProfile extends RoutePoint {
   profiles: Profile;
@@ -52,6 +59,7 @@ export interface RouteWithProfile extends RoutePoint {
   like_count: number;
   did_like: boolean;
   comment_count: number;
+  location_source?: RouteLocationSource;
 }
 
 export interface GetRoutesProps {

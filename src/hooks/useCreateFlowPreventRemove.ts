@@ -24,13 +24,61 @@ function selectShouldPreventRemove(state: ReturnType<typeof useCreateRouteFlowSt
   return state.isDirty;
 }
 
+type CreateFlowNavigation = {
+  goBack: () => void;
+  navigate: (name: string, params?: object) => void;
+  canGoBack: () => boolean;
+  dispatch: (action: unknown) => void;
+};
+
+const goToPreviousWizardStep = (
+  navigation: CreateFlowNavigation,
+  wizardStep: WizardStep,
+): boolean => {
+  if (wizardStep === 'category') {
+    useCreateRouteFlowStore.getState().setWizardStep('stops');
+
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return true;
+    }
+
+    navigation.navigate('StopDetails');
+    return true;
+  }
+
+  if (wizardStep === 'stops') {
+    useCreateRouteFlowStore.getState().setWizardStep('photo');
+
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return true;
+    }
+
+    navigation.navigate('PhotoSelection');
+    return true;
+  }
+
+  return false;
+};
+
+const exitCreateFlow = (navigation: CreateFlowNavigation): void => {
+  if (navigation.canGoBack()) {
+    navigation.goBack();
+    return;
+  }
+
+  useCreateRouteFlowStore.getState().completeFlow();
+};
+
 export function useCreateFlowPreventRemove(wizardStep: WizardStep): void {
   const navigation = useNavigation();
   const shouldPrevent = useCreateRouteFlowStore(selectShouldPreventRemove);
+  const shouldPreventRemove = wizardStep === 'photo' && shouldPrevent;
 
-  usePreventRemove(shouldPrevent, ({ data }) => {
+  usePreventRemove(shouldPreventRemove, ({ data }) => {
     showCreateFlowExitAlert(
-      navigation as { goBack: () => void; navigate: (name: string, params?: object) => void },
+      navigation as CreateFlowNavigation,
       wizardStep,
       () => {
         navigation.dispatch(data.action);
@@ -44,25 +92,20 @@ export function useCreateFlowBackHandler(wizardStep: WizardStep): () => boolean 
   const shouldPrevent = useCreateRouteFlowStore(selectShouldPreventRemove);
 
   return useCallback(() => {
-    if (!shouldPrevent) {
-      if (navigation.canGoBack()) {
-        navigation.goBack();
-        return true;
-      }
+    if (wizardStep === 'stops' || wizardStep === 'category') {
+      return goToPreviousWizardStep(navigation as CreateFlowNavigation, wizardStep);
+    }
 
-      return false;
+    if (!shouldPrevent) {
+      exitCreateFlow(navigation as CreateFlowNavigation);
+      return true;
     }
 
     showCreateFlowExitAlert(
-      navigation as { goBack: () => void; navigate: (name: string, params?: object) => void },
+      navigation as CreateFlowNavigation,
       wizardStep,
       () => {
-        if (navigation.canGoBack()) {
-          navigation.goBack();
-          return;
-        }
-
-        useCreateRouteFlowStore.getState().completeFlow();
+        exitCreateFlow(navigation as CreateFlowNavigation);
       },
     );
 

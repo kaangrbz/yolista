@@ -4,13 +4,14 @@ import {
   ScrollView,
   Image,
   Dimensions,
-  StyleSheet,
   TouchableOpacity,
   Text,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Photo } from '../../screens/CreateRoute/PhotoSelectionScreen';
 import ImageViewer from '../ImageViewer';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface ImageCarouselProps {
   photos: Photo[];
@@ -25,6 +26,134 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
   currentIndex,
   onSwipe,
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+      backgroundColor: t.mediaBackdrop,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    imageContainer: {
+      width: screenWidth,
+      flex: 1,
+      position: 'relative',
+    },
+    image: {
+      width: '100%',
+      height: '100%',
+      resizeMode: 'cover',
+    },
+    overlay: {
+      position: 'absolute',
+      top: 14,
+      left: 14,
+      right: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    expandHint: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: t.overlayDark,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pageChip: {
+      backgroundColor: t.overlayDark,
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: 20,
+    },
+    pageChipText: {
+      color: t.onMedia,
+      fontSize: 13,
+      fontWeight: '600',
+      letterSpacing: 0.5,
+    },
+    navButton: {
+      position: 'absolute',
+      top: '50%',
+      marginTop: -20,
+      backgroundColor: t.overlayDark,
+      borderRadius: 20,
+      width: 40,
+      height: 40,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    prevButton: {
+      left: 16,
+    },
+    nextButton: {
+      right: 16,
+    },
+    dotsContainer: {
+      position: 'absolute',
+      bottom: 80,
+      left: 0,
+      right: 0,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+    },
+    dot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    },
+    activeDot: {
+      backgroundColor: t.onMedia,
+      width: 20,
+    },
+    thumbnailStrip: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 80,
+      backgroundColor: t.overlayDark,
+    },
+    thumbnailContainer: {
+      paddingHorizontal: 16,
+      alignItems: 'center',
+      height: '100%',
+    },
+    thumbnail: {
+      width: 60,
+      height: 60,
+      borderRadius: 8,
+      marginHorizontal: 4,
+      overflow: 'hidden',
+      borderWidth: 2,
+      borderColor: 'transparent',
+      position: 'relative',
+    },
+    activeThumbnail: {
+      borderColor: t.onMedia,
+    },
+    thumbnailImage: {
+      width: '100%',
+      height: '100%',
+      resizeMode: 'cover',
+    },
+    thumbnailOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: t.overlayDark,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+  }));
+
   const scrollViewRef = useRef<ScrollView>(null);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -39,7 +168,6 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
     setViewerVisible(true);
   };
 
-  // Auto scroll to current index when it changes
   useEffect(() => {
     if (scrollViewRef.current) {
       scrollViewRef.current.scrollTo({
@@ -49,7 +177,7 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
     }
   }, [currentIndex]);
 
-  const handleMomentumScrollEnd = (event: any) => {
+  const handleMomentumScrollEnd = (event: { nativeEvent: { contentOffset: { x: number } } }) => {
     const newIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
     if (newIndex !== currentIndex && newIndex >= 0 && newIndex < photos.length) {
       onSwipe(newIndex);
@@ -70,7 +198,6 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Main Image Carousel */}
       <ScrollView
         ref={scrollViewRef}
         horizontal
@@ -94,7 +221,7 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
               </View>
 
               <View style={styles.expandHint}>
-                <Icon name="arrow-expand" size={14} color="#fff" />
+                <Icon name="arrow-expand" size={14} color={theme.onMedia} />
               </View>
             </View>
           </TouchableOpacity>
@@ -108,12 +235,11 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
         onRequestClose={() => setViewerVisible(false)}
       />
 
-      {/* Navigation Arrows */}
       {currentIndex > 0 && (
         <TouchableOpacity
           style={[styles.navButton, styles.prevButton]}
           onPress={handlePrevious}>
-          <Icon name="chevron-left" size={24} color="#fff" />
+          <Icon name="chevron-left" size={24} color={theme.onMedia} />
         </TouchableOpacity>
       )}
 
@@ -121,11 +247,10 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
         <TouchableOpacity
           style={[styles.navButton, styles.nextButton]}
           onPress={handleNext}>
-          <Icon name="chevron-right" size={24} color="#fff" />
+          <Icon name="chevron-right" size={24} color={theme.onMedia} />
         </TouchableOpacity>
       )}
 
-      {/* Dots Indicator */}
       <View style={styles.dotsContainer}>
         {photos.map((_, index) => (
           <TouchableOpacity
@@ -138,7 +263,6 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
         ))}
       </View>
 
-      {/* Thumbnail Strip */}
       <View style={styles.thumbnailStrip}>
         <ScrollView
           horizontal
@@ -155,7 +279,7 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
               <Image source={{ uri: photo.uri }} style={styles.thumbnailImage} />
               {index === currentIndex && (
                 <View style={styles.thumbnailOverlay}>
-                  <Icon name="check" size={16} color="#fff" />
+                  <Icon name="check" size={16} color={theme.onMedia} />
                 </View>
               )}
             </TouchableOpacity>
@@ -165,130 +289,3 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  imageContainer: {
-    width: screenWidth,
-    flex: 1,
-    position: 'relative',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  overlay: {
-    position: 'absolute',
-    top: 14,
-    left: 14,
-    right: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  expandHint: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pageChip: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  pageChipText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  navButton: {
-    position: 'absolute',
-    top: '50%',
-    marginTop: -20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  prevButton: {
-    left: 16,
-  },
-  nextButton: {
-    right: 16,
-  },
-  dotsContainer: {
-    position: 'absolute',
-    bottom: 80,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  activeDot: {
-    backgroundColor: '#fff',
-    width: 20,
-  },
-  thumbnailStrip: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 80,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-  },
-  thumbnailContainer: {
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    height: '100%',
-  },
-  thumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginHorizontal: 4,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    position: 'relative',
-  },
-  activeThumbnail: {
-    borderColor: '#fff',
-  },
-  thumbnailImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  thumbnailOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});

@@ -1,3 +1,7 @@
+/**
+ * Semantic theme tokens for mobile UI.
+ * Rules and web mapping: docs/THEME_COLORS.md
+ */
 export type AppThemeId = 'light' | 'dark' | 'night';
 
 export interface AppThemeColors {
@@ -9,8 +13,22 @@ export interface AppThemeColors {
   textPrimary: string;
   textSecondary: string;
   textMuted: string;
+  /** Icons, links, map highlights — not filled primary buttons */
   accent: string;
   accentPositive: string;
+  /** Filled primary CTA (Devam, Yayınla) */
+  buttonPrimaryBg: string;
+  buttonPrimaryText: string;
+  /** Outline / secondary CTA (Atla, Taslaklar outline) */
+  buttonSecondaryBg: string;
+  buttonSecondaryText: string;
+  buttonSecondaryBorder: string;
+  /** Selected chips / preview tags */
+  chipSelectedBg: string;
+  chipSelectedText: string;
+  /** Photo carousel / viewer chrome */
+  mediaBackdrop: string;
+  onMedia: string;
   overlayDark: string;
   hairlineBorder: string;
   statusBarStyle: 'light-content' | 'dark-content';
@@ -34,36 +52,63 @@ export const APP_THEMES: Record<AppThemeId, AppThemeColors> = {
     textMuted: '#999999',
     accent: '#121212',
     accentPositive: '#4CAF50',
+    buttonPrimaryBg: '#121212',
+    buttonPrimaryText: '#ffffff',
+    buttonSecondaryBg: '#f8f9fa',
+    buttonSecondaryText: '#666666',
+    buttonSecondaryBorder: '#e0e0e0',
+    chipSelectedBg: '#121212',
+    chipSelectedText: '#ffffff',
+    mediaBackdrop: '#0a0a0a',
+    onMedia: '#ffffff',
     overlayDark: 'rgba(0, 0, 0, 0.55)',
     hairlineBorder: 'rgba(0, 0, 0, 0.08)',
     statusBarStyle: 'dark-content',
   },
   dark: {
     id: 'dark',
-    background: '#000000',
-    surfaceMuted: '#0a0a0a',
-    border: '#1a1a1a',
-    borderStrong: '#2a2a2a',
+    background: '#161616',
+    surfaceMuted: '#1f1f1f',
+    border: '#2b2b2b',
+    borderStrong: '#3a3a3a',
     textPrimary: '#f5f5f5',
     textSecondary: '#a3a3a3',
     textMuted: '#8a8a8a',
-    accent: '#f5f5f5',
+    accent: '#4dabf7',
     accentPositive: '#4ade80',
+    buttonPrimaryBg: '#2563eb',
+    buttonPrimaryText: '#ffffff',
+    buttonSecondaryBg: '#1f1f1f',
+    buttonSecondaryText: '#a3a3a3',
+    buttonSecondaryBorder: '#3a3a3a',
+    chipSelectedBg: '#2563eb',
+    chipSelectedText: '#ffffff',
+    mediaBackdrop: '#0a0a0a',
+    onMedia: '#ffffff',
     overlayDark: 'rgba(0, 0, 0, 0.72)',
     hairlineBorder: 'rgba(255, 255, 255, 0.08)',
     statusBarStyle: 'light-content',
   },
   night: {
     id: 'night',
-    background: '#060a12',
-    surfaceMuted: '#0c1220',
-    border: '#1e293b',
-    borderStrong: '#334155',
+    background: '#111827',
+    surfaceMuted: '#1a2332',
+    border: '#273549',
+    borderStrong: '#3d5168',
     textPrimary: '#cbd5e1',
     textSecondary: '#94a3b8',
     textMuted: '#64748b',
-    accent: '#cbd5e1',
+    accent: '#38bdf8',
     accentPositive: '#34d399',
+    buttonPrimaryBg: '#0284c7',
+    buttonPrimaryText: '#ffffff',
+    buttonSecondaryBg: '#1a2332',
+    buttonSecondaryText: '#94a3b8',
+    buttonSecondaryBorder: '#3d5168',
+    chipSelectedBg: '#0284c7',
+    chipSelectedText: '#ffffff',
+    mediaBackdrop: '#0a0a0a',
+    onMedia: '#ffffff',
     overlayDark: 'rgba(0, 0, 0, 0.65)',
     hairlineBorder: 'rgba(148, 163, 184, 0.12)',
     statusBarStyle: 'light-content',

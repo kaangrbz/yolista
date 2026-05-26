@@ -2,7 +2,7 @@
 
 `react-native-maps` ve `react-native-map-clustering` paketleri package.json'a eklendi.
 
-> **Harita provider stratejisi:** Her iki platformda da `PROVIDER_DEFAULT` + `mapType="none"` + `<UrlTile />` ile **Carto basemaps** (OpenStreetMap verisi) kullanılıyor. Google Maps veya Apple Maps temel katmanı yok → **iOS ve Android için API key gerekmez**, aynı görsel her iki platformda tutarlıdır.
+> **Harita provider stratejisi:** Android'de **Google Maps** (`PROVIDER_GOOGLE` + `AndroidManifest` API key), iOS'ta **Apple MapKit** (`PROVIDER_DEFAULT`). Özel raster tile (Carto/Esri) yok; `mapType` ile light / dark / satellite döngüsü kullanılır.
 
 ## 1. Paketleri yükle
 
@@ -19,9 +19,17 @@ cd ios && pod install && cd ..
 > rm -rf ~/Library/Developer/Xcode/DerivedData
 > ```
 
-## 2. Android — Konum İzinleri
+## 2. Android — Google Maps & Konum
 
-Google Maps API key **gerekmiyor** (Carto raster tile'larını `UrlTile` üzerinden çekiyoruz). Sadece konum izinleri Android 12+ için her ikisi de declare edilmiş durumda:
+`AndroidManifest.xml` içinde Google Maps API key tanımlı:
+
+```xml
+<meta-data
+  android:name="com.google.android.geo.API_KEY"
+  android:value="YOUR_KEY" />
+```
+
+Konum izinleri Android 12+ için her ikisi de declare edilmiş durumda:
 
 ```xml
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -36,30 +44,20 @@ Google Maps API key **gerekmiyor** (Carto raster tile'larını `UrlTile` üzerin
 | 29+ (Android 10) | `ACCESS_BACKGROUND_LOCATION` ayrı bir runtime permission. Faz 1 sadece foreground; background ileride incremental request olarak eklenebilir. |
 | 31+ (Android 12) | `request(ACCESS_FINE_LOCATION)` dialog'unda kullanıcıya **Precise / Approximate / Deny** seçimi sunulur. Approximate seçilirse FINE denied döner ama COARSE granted olur; library bunu da `granted` kabul eder. |
 | 33+ (Android 13) | Foto akışlarında `READ_MEDIA_IMAGES` + `READ_MEDIA_VIDEO` çoklu istek (zaten declare edilmiş). |
+| 29+ (Android 10) | EXIF GPS için `ACCESS_MEDIA_LOCATION` — `requestPhotosWithExif()` / `requestMediaLocation()`. |
 | 34+ (Android 14) | `READ_MEDIA_VISUAL_USER_SELECTED` (kısmi foto erişimi) henüz desteklenmiyor — gelecek iş. |
 | 37+ (Android 17, geleceğe yönelik) | Yeni "location button" Ekim 2026 enforcement; Faz 5 kapsamında değerlendirilecek. |
 
-## 3. Tile sağlayıcısı (OSM / Carto / Esri)
+## 3. Harita stilleri (native katmanlar)
 
-`src/constants/mapStyles.ts` içinde 3 stil tanımlı (`MAP_STYLE_CYCLE` sırasıyla cycle yapılır):
+`src/constants/mapStyles.ts` + `src/constants/mapViewConfig.ts`:
 
-| Mod | Kaynak | Açıklama |
+| Mod | Android (Google) | iOS (Apple) |
 | --- | --- | --- |
-| `light` | Carto basemaps `light_all` | Varsayılan minimal açık tema |
-| `dark` | Carto basemaps `dark_all` | Koyu tema |
-| `satellite` | Esri World Imagery + Reference labels | Uydu görüntüsü, üzerine şehir/yer adı overlay'i |
+| `light` | `mapType="standard"` | `mapType="standard"` |
+| `satellite` | `mapType="hybrid"` (uydu + etiketler) | `mapType="hybrid"` |
 
-`MapStyleToggle` FAB'ı her dokunuşta sırada bir sonraki moda geçer; sadece aktif modun ikonunu gösterir. Yeni stil eklemek için `tileSources`'a entry + `MAP_STYLE_CYCLE`'a item eklemek yeterli.
-
-Bir stilin `overlayUrlTemplate` alanı varsa (örn. satellite), base tile'ın üstüne şeffaf ikinci bir `UrlTile` çizilir — yer isimleri uydu üzerinde okunur kalır.
-
-### Production notları
-
-- Carto basemaps anonim erişime izin verir; attribution UI'da otomatik gösteriliyor.
-- Esri World Imagery free tier'ı ücretsizdir ama yüksek trafik için kendi anahtarına geçilmesi önerilir.
-- OpenTopoMap volunteer hostlu; production'da kendi caching/proxy katmanı tavsiye edilir.
-- Yüksek trafikte rate limit'e takılmamak için MapTiler / Stadia / kendi Carto plan'ına geçilebilir; sadece `urlTemplate`'i değiştirmek yeterli.
-- **Lisans gereği attribution kaldırılmamalı** — `mapStyles.ts` her stil için doğru attribution metnini içerir; ekranda otomatik render edilir.
+`MapStyleToggle` FAB'ı her dokunuşta sıradaki moda geçer. Attribution Google/Apple tarafından harita üzerinde otomatik gösterilir.
 
 ## 3.1. Yer araması (Nominatim)
 

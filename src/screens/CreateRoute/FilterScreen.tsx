@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
@@ -15,6 +14,8 @@ import { Photo } from './PhotoSelectionScreen';
 import { RouteStop } from './StopDetailsScreen';
 import { Category, City } from './CategorySelectionScreen';
 import { publishRouteFromCreateFlow } from '../../utils/createFlowPublish';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 const DEMO_FILTERS = [
   { id: 'none', name: 'Orijinal', icon: 'image' },
@@ -28,6 +29,7 @@ const DEMO_FILTERS = [
 export const FilterScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const theme = useAppTheme();
   const {
     selectedPhotos,
     routeStops,
@@ -42,6 +44,190 @@ export const FilterScreen = () => {
 
   const [selectedFilter, setSelectedFilter] = useState('none');
   const [isEnqueueing, setIsEnqueueing] = useState(false);
+
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    header: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: t.border,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: t.textPrimary,
+      marginBottom: 4,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: t.textSecondary,
+      marginBottom: 12,
+    },
+    devNotice: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.surfaceMuted,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: t.borderStrong,
+    },
+    devNoticeText: {
+      fontSize: 12,
+      color: t.textSecondary,
+      marginLeft: 8,
+      fontWeight: '500',
+    },
+    content: {
+      flex: 1,
+      paddingHorizontal: 20,
+    },
+    filtersSection: {
+      marginTop: 24,
+      marginBottom: 24,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: t.textPrimary,
+      marginBottom: 16,
+    },
+    filtersScrollView: {
+      marginHorizontal: -20,
+    },
+    filtersContainer: {
+      paddingHorizontal: 20,
+      gap: 12,
+    },
+    filterOption: {
+      alignItems: 'center',
+      position: 'relative',
+    },
+    filterIconContainer: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      backgroundColor: t.surfaceMuted,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 8,
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    filterIconContainerSelected: {
+      backgroundColor: t.buttonPrimaryBg,
+      borderColor: t.buttonPrimaryBg,
+    },
+    filterOptionDisabled: {
+      opacity: 0.5,
+    },
+    filterText: {
+      fontSize: 12,
+      color: t.textSecondary,
+      textAlign: 'center',
+      fontWeight: '500',
+    },
+    filterTextSelected: {
+      color: t.accentPositive,
+      fontWeight: '600',
+    },
+    filterTextDisabled: {
+      color: t.textMuted,
+    },
+    comingSoonBadge: {
+      position: 'absolute',
+      top: -4,
+      right: -4,
+      backgroundColor: t.textMuted,
+      borderRadius: 8,
+      paddingHorizontal: 4,
+      paddingVertical: 2,
+    },
+    comingSoonText: {
+      fontSize: 8,
+      color: t.onMedia,
+      fontWeight: '600',
+    },
+    summarySection: {
+      backgroundColor: t.surfaceMuted,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 24,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    summaryTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: t.textPrimary,
+      marginBottom: 16,
+    },
+    summaryGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 16,
+    },
+    summaryItem: {
+      width: '45%',
+      alignItems: 'center',
+      backgroundColor: t.background,
+      borderRadius: 8,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    summaryLabel: {
+      fontSize: 12,
+      color: t.textSecondary,
+      marginTop: 4,
+    },
+    summaryValue: {
+      fontSize: 14,
+      color: t.textPrimary,
+      fontWeight: '600',
+      marginTop: 2,
+    },
+    footer: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderTopWidth: 1,
+      borderTopColor: t.border,
+      backgroundColor: t.background,
+    },
+    buttonRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    button: {
+      flex: 1,
+      paddingVertical: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'center',
+    },
+    skipButton: {
+      backgroundColor: t.buttonSecondaryBg,
+      borderWidth: 1,
+      borderColor: t.buttonSecondaryBorder,
+    },
+    publishButton: {
+      backgroundColor: t.buttonPrimaryBg,
+    },
+    buttonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: t.buttonPrimaryText,
+    },
+    skipButtonText: {
+      color: t.buttonSecondaryText,
+    },
+  }));
 
   const handleFilterSelect = (filterId: string) => {
     setSelectedFilter(filterId);
@@ -63,36 +249,31 @@ export const FilterScreen = () => {
   };
 
   const handleSkip = () => {
-    handlePublish(); // Skip filters and publish directly
+    handlePublish();
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Filtreler</Text>
         <Text style={styles.subtitle}>
           Fotoğraflarınıza filtre uygulayın
         </Text>
 
-        {/* Development Notice */}
         <View style={styles.devNotice}>
-          <Icon name="wrench" size={16} color="#ff9800" />
+          <Icon name="wrench" size={16} color={theme.textSecondary} />
           <Text style={styles.devNoticeText}>
             Bu özellik geliştirme aşamasındadır
           </Text>
         </View>
       </View>
 
-      {/* Content */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Filter Preview */}
         <FilterPreview
           photos={selectedPhotos}
           selectedFilter={selectedFilter}
         />
 
-        {/* Filter Options */}
         <View style={styles.filtersSection}>
           <Text style={styles.sectionTitle}>Filtre Seçenekleri</Text>
           <ScrollView
@@ -103,13 +284,9 @@ export const FilterScreen = () => {
             {DEMO_FILTERS.map((filter) => (
               <TouchableOpacity
                 key={filter.id}
-                style={[
-                  styles.filterOption,
-                  selectedFilter === filter.id && styles.filterOptionSelected,
-                ]}
+                style={styles.filterOption}
                 onPress={() => handleFilterSelect(filter.id)}
-                disabled={filter.id !== 'none'} // Only allow 'none' for demo
-              >
+                disabled={filter.id !== 'none'}>
                 <View style={[
                   styles.filterIconContainer,
                   selectedFilter === filter.id && styles.filterIconContainerSelected,
@@ -120,10 +297,10 @@ export const FilterScreen = () => {
                     size={24}
                     color={
                       filter.id !== 'none'
-                        ? '#ccc'
+                        ? theme.textMuted
                         : selectedFilter === filter.id
-                        ? '#fff'
-                        : '#666'
+                        ? theme.buttonPrimaryText
+                        : theme.textSecondary
                     }
                   />
                 </View>
@@ -144,29 +321,28 @@ export const FilterScreen = () => {
           </ScrollView>
         </View>
 
-        {/* Final Summary */}
         <View style={styles.summarySection}>
           <Text style={styles.summaryTitle}>Rota Özeti</Text>
           <View style={styles.summaryGrid}>
             <View style={styles.summaryItem}>
-              <Icon name="image" size={20} color="#4CAF50" />
+              <Icon name="image" size={20} color={theme.accentPositive} />
               <Text style={styles.summaryLabel}>Fotoğraf</Text>
               <Text style={styles.summaryValue}>{selectedPhotos.length}</Text>
             </View>
             <View style={styles.summaryItem}>
-              <Icon name="map-marker" size={20} color="#4CAF50" />
+              <Icon name="map-marker" size={20} color={theme.accentPositive} />
               <Text style={styles.summaryLabel}>Durak</Text>
               <Text style={styles.summaryValue}>{routeStops.length}</Text>
             </View>
             <View style={styles.summaryItem}>
-              <Icon name="tag" size={20} color="#4CAF50" />
+              <Icon name="tag" size={20} color={theme.accentPositive} />
               <Text style={styles.summaryLabel}>Kategori</Text>
               <Text style={styles.summaryValue}>
                 {selectedCategory ? selectedCategory.name : 'Yok'}
               </Text>
             </View>
             <View style={styles.summaryItem}>
-              <Icon name="city" size={20} color="#4CAF50" />
+              <Icon name="city" size={20} color={theme.accentPositive} />
               <Text style={styles.summaryLabel}>Şehir</Text>
               <Text style={styles.summaryValue}>
                 {selectedCity ? selectedCity.name : 'Yok'}
@@ -176,7 +352,6 @@ export const FilterScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Footer */}
       <View style={styles.footer}>
         <View style={styles.buttonRow}>
           <TouchableOpacity
@@ -193,10 +368,10 @@ export const FilterScreen = () => {
             onPress={handlePublish}
             disabled={isEnqueueing}>
             {isEnqueueing ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={theme.buttonPrimaryText} />
             ) : (
               <>
-                <Icon name="send" size={18} color="#fff" />
+                <Icon name="send" size={18} color={theme.buttonPrimaryText} />
                 <Text style={[styles.buttonText, { marginLeft: 8 }]}>
                   Yayınla
                 </Text>
@@ -208,195 +383,3 @@ export const FilterScreen = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 12,
-  },
-  devNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff8e1',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ffcc02',
-  },
-  devNoticeText: {
-    fontSize: 12,
-    color: '#ff9800',
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  filtersSection: {
-    marginTop: 24,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 16,
-  },
-  filtersScrollView: {
-    marginHorizontal: -20,
-  },
-  filtersContainer: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  filterOption: {
-    alignItems: 'center',
-    position: 'relative',
-  },
-  filterOptionSelected: {
-    // Selected styles handled in child components
-  },
-  filterOptionDisabled: {
-    opacity: 0.5,
-  },
-  filterIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#f8f9fa',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  filterIconContainerSelected: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
-  },
-  filterText: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  filterTextSelected: {
-    color: '#4CAF50',
-    fontWeight: '600',
-  },
-  filterTextDisabled: {
-    color: '#ccc',
-  },
-  comingSoonBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#ff9800',
-    borderRadius: 8,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-  },
-  comingSoonText: {
-    fontSize: 8,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  summarySection: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  summaryTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 16,
-  },
-  summaryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-  },
-  summaryItem: {
-    width: '45%',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  summaryLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
-  summaryValue: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    backgroundColor: '#fff',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  skipButton: {
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  publishButton: {
-    backgroundColor: '#4CAF50',
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  skipButtonText: {
-    color: '#666',
-  },
-});

@@ -10,17 +10,31 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteStop } from '../../screens/CreateRoute/StopDetailsScreen';
 import {
   STOP_DESCRIPTION_MAX_LENGTH,
-  STOP_TITLE_MAX_LENGTH,
 } from '../../constants/routeContentLimits';
+import { StopAdvancedOptions } from './StopAdvancedOptions';
+import { StopMiniMap } from './StopMiniMap';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface StopFormProps {
   stop: RouteStop;
   onUpdate: (field: keyof RouteStop, value: unknown) => void;
+  onRequestLocation?: () => void;
+  onClearLocation?: () => void;
+  locationSummary?: string | null;
+  locationLoading?: boolean;
+  compact?: boolean;
 }
 
-export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
+export const StopForm: React.FC<StopFormProps> = ({
+  stop,
+  onUpdate,
+  onRequestLocation,
+  onClearLocation,
+  locationSummary,
+  locationLoading = false,
+  compact = false,
+}) => {
   const theme = useAppTheme();
   const styles = useThemedStyles((t) => ({
     container: {
@@ -28,7 +42,7 @@ export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
       paddingVertical: 8,
     },
     inputGroup: {
-      marginBottom: 20,
+      marginBottom: 12,
     },
     labelContainer: {
       flexDirection: 'row',
@@ -58,8 +72,8 @@ export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
       backgroundColor: t.background,
     },
     textArea: {
-      minHeight: 120,
-      maxHeight: 220,
+      minHeight: 140,
+      maxHeight: 240,
       paddingTop: 12,
     },
     charCount: {
@@ -74,6 +88,7 @@ export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
       padding: 14,
       borderWidth: 1,
       borderColor: t.border,
+      marginTop: 8,
     },
     locationHeader: {
       flexDirection: 'row',
@@ -99,6 +114,15 @@ export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
       color: t.textPrimary,
       marginTop: 4,
     },
+    editLocationButton: {
+      marginTop: 8,
+      alignSelf: 'flex-start',
+    },
+    editLocationText: {
+      fontSize: 13,
+      color: t.accent,
+      fontWeight: '600',
+    },
     clearLocationButton: {
       marginTop: 8,
       alignSelf: 'flex-start',
@@ -108,53 +132,73 @@ export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
       color: '#c62828',
       fontWeight: '500',
     },
+    addLocationButton: {
+      marginTop: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: t.borderStrong,
+      borderStyle: 'dashed',
+      backgroundColor: t.surfaceMuted,
+      gap: 8,
+    },
+    addLocationText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: t.textPrimary,
+    },
+    addLocationHint: {
+      fontSize: 12,
+      color: t.textSecondary,
+      marginTop: 6,
+      lineHeight: 18,
+    },
   }));
 
   return (
     <View style={styles.container}>
-      <View style={styles.inputGroup}>
-        <View style={styles.labelContainer}>
-          <Icon name="text-short" size={16} color={theme.textSecondary} />
-          <Text style={styles.label}>Başlık</Text>
-          <Text style={styles.optional}>opsiyonel</Text>
-        </View>
-        <TextInput
-          style={styles.input}
-          value={stop.title}
-          onChangeText={(text) => onUpdate('title', text)}
-          placeholder="Örn: Galata, sahilde gün batımı…"
-          placeholderTextColor={theme.textMuted}
-          maxLength={STOP_TITLE_MAX_LENGTH}
-        />
-        <Text style={styles.charCount}>
-          {stop.title.length}/{STOP_TITLE_MAX_LENGTH}
-        </Text>
-      </View>
+      {!compact ? (
+        <>
+          <View style={styles.inputGroup}>
+            <View style={styles.labelContainer}>
+              <Icon name="text" size={16} color={theme.textSecondary} />
+              <Text style={styles.label}>Açıklama</Text>
+              <Text style={styles.optional}>opsiyonel</Text>
+            </View>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={stop.description}
+              onChangeText={(text) => onUpdate('description', text)}
+              placeholder="Bu kare hakkında not, deneyim veya ipucu…"
+              placeholderTextColor={theme.textMuted}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+              maxLength={STOP_DESCRIPTION_MAX_LENGTH}
+            />
+            <Text style={styles.charCount}>
+              {stop.description.length}/{STOP_DESCRIPTION_MAX_LENGTH}
+            </Text>
+          </View>
 
-      <View style={styles.inputGroup}>
-        <View style={styles.labelContainer}>
-          <Icon name="text" size={16} color={theme.textSecondary} />
-          <Text style={styles.label}>Not</Text>
-          <Text style={styles.optional}>opsiyonel</Text>
-        </View>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={stop.description}
-          onChangeText={(text) => onUpdate('description', text)}
-          placeholder="Bu karede neler var, kısa bir ipucu…"
-          placeholderTextColor={theme.textMuted}
-          multiline
-          numberOfLines={4}
-          textAlignVertical="top"
-          maxLength={STOP_DESCRIPTION_MAX_LENGTH}
-        />
-        <Text style={styles.charCount}>
-          {stop.description.length}/{STOP_DESCRIPTION_MAX_LENGTH}
-        </Text>
-      </View>
+          <StopAdvancedOptions
+            hint={stop.title}
+            onHintChange={(text) => onUpdate('title', text)}
+          />
+        </>
+      ) : null}
 
       {stop.coordinate ? (
         <View style={styles.locationInfo}>
+          <StopMiniMap
+            latitude={stop.coordinate.latitude}
+            longitude={stop.coordinate.longitude}
+          />
+
           <View style={styles.locationHeader}>
             <Icon name="map-marker" size={16} color={theme.textSecondary} />
             <Text style={styles.locationLabel}>Konum</Text>
@@ -162,14 +206,32 @@ export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
 
           <View style={styles.locationDetails}>
             <Text style={styles.coordinatesText}>
-              {stop.coordinate.latitude.toFixed(5)}, {stop.coordinate.longitude.toFixed(5)}
+              {stop.coordinate.latitude.toFixed(5)},{' '}
+              {stop.coordinate.longitude.toFixed(5)}
             </Text>
-            {stop.address ? (
-              <Text style={styles.addressText}>{stop.address}</Text>
+            {locationLoading ? (
+              <Text style={styles.addressText}>Adres aranıyor…</Text>
+            ) : stop.address || locationSummary ? (
+              <Text style={styles.addressText}>
+                {stop.address || locationSummary}
+              </Text>
+            ) : null}
+            {onRequestLocation ? (
+              <TouchableOpacity
+                style={styles.editLocationButton}
+                onPress={onRequestLocation}
+              >
+                <Text style={styles.editLocationText}>Konumu düzenle</Text>
+              </TouchableOpacity>
             ) : null}
             <TouchableOpacity
               style={styles.clearLocationButton}
               onPress={() => {
+                if (onClearLocation) {
+                  onClearLocation();
+                  return;
+                }
+
                 onUpdate('coordinate', undefined);
                 onUpdate('address', undefined);
               }}>
@@ -177,7 +239,28 @@ export const StopForm: React.FC<StopFormProps> = ({ stop, onUpdate }) => {
             </TouchableOpacity>
           </View>
         </View>
-      ) : null}
+      ) : (
+        <View style={styles.inputGroup}>
+          <View style={styles.labelContainer}>
+            <Icon name="map-marker-outline" size={16} color={theme.textSecondary} />
+            <Text style={styles.label}>Konum</Text>
+            <Text style={styles.optional}>opsiyonel</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.addLocationButton}
+            onPress={onRequestLocation}
+            disabled={!onRequestLocation}
+          >
+            <Icon name="map-marker-plus" size={18} color={theme.accent} />
+            <Text style={styles.addLocationText}>Konum seç</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.addLocationHint}>
+            Haritada crosshair ile seç veya adres ara.
+          </Text>
+        </View>
+      )}
     </View>
   );
 };

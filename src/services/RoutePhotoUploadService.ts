@@ -1,8 +1,8 @@
 import RNFS from 'react-native-fs';
 import { supabase } from '../lib/supabase';
-import { resizeImage } from '../utils/imageUtils';
+import { resizeImage, resizeImageCover, ROUTE_IMAGE_PREVIEW_SIZE } from '../utils/imageUtils';
 import type { CreateFlowPhoto } from '../types/createRouteFlowTypes';
-import { uploadRoutePhotoToStorage } from './routePhotoStorage';
+import { uploadRoutePhotoWithPreview } from './routePhotoStorage';
 
 const CREATE_DRAFT_ROOT = `${RNFS.DocumentDirectoryPath}/route_create_drafts`;
 const MAX_CONCURRENT_UPLOADS = 2;
@@ -57,6 +57,38 @@ export async function prepareRoutePhotoLocal(
   return localPathToFileUri(destPath);
 }
 
+export async function prepareRoutePhotoPreview(
+  jobId: string,
+  photoId: string,
+  sourceUri: string,
+): Promise<string> {
+  await ensureCreateDraftRoot();
+  const jobDir = `${CREATE_DRAFT_ROOT}/${jobId}`;
+  const jobDirExists = await RNFS.exists(jobDir);
+
+  if (!jobDirExists) {
+    await RNFS.mkdir(jobDir);
+  }
+
+  const destPath = `${jobDir}/${photoId}_preview.jpg`;
+  const cropped = await resizeImageCover(sourceUri, ROUTE_IMAGE_PREVIEW_SIZE, 'JPEG', 80, photoId);
+
+  if (!cropped?.uri) {
+    throw new Error('Fotoğraf önizlemesi oluşturulamadı');
+  }
+
+  const croppedPath = cropped.uri.replace(/^file:\/\//, '');
+  const destExists = await RNFS.exists(destPath);
+
+  if (destExists) {
+    await RNFS.unlink(destPath);
+  }
+
+  await RNFS.copyFile(croppedPath, destPath);
+
+  return localPathToFileUri(destPath);
+}
+
 type PhotoPatch = Partial<CreateFlowPhoto> & { id: string };
 
 async function runUploadPipeline(
@@ -69,6 +101,7 @@ async function runUploadPipeline(
 
   try {
     const processedUri = await prepareRoutePhotoLocal(jobId, photo.id, photo.uri);
+    const previewUri = await prepareRoutePhotoPreview(jobId, photo.id, photo.uri);
 
     onPatch({
       id: photo.id,
@@ -76,12 +109,17 @@ async function runUploadPipeline(
       processedLocalUri: processedUri,
     });
 
-    const { fileName } = await uploadRoutePhotoToStorage(userId, processedUri);
+    const { fileName, previewFileName } = await uploadRoutePhotoWithPreview(
+      userId,
+      processedUri,
+      previewUri,
+    );
 
     onPatch({
       id: photo.id,
       uploadStatus: 'done',
       storageFileName: fileName,
+      storagePreviewFileName: previewFileName,
       uploadError: undefined,
     });
   } catch (error) {

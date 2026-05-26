@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CachedImage from '../common/CachedImage';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 import ProfileHeaderSkeleton from './ProfileHeaderSkeleton';
 
 const DEFAULT_HEADER_BACKGROUND = '#667eea';
@@ -25,6 +26,38 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   userId,
   loading = false,
 }) => {
+  const styles = useThemedStyles((t) => ({
+    headerContainer: {
+      position: 'relative',
+      height: 200,
+    },
+    headerTouchable: {
+      width: '100%',
+      height: '100%',
+    },
+    headerImage: {
+      width: '100%',
+      height: '100%',
+    },
+    headerPlaceholder: {
+      width: '100%',
+      height: '100%',
+      backgroundColor: DEFAULT_HEADER_BACKGROUND,
+    },
+    actionButtons: {
+      position: 'absolute',
+      top: 16,
+      right: 16,
+      flexDirection: 'row',
+      gap: 8,
+    },
+    actionButton: {
+      backgroundColor: t.overlayDark,
+      padding: 8,
+      borderRadius: 20,
+    },
+  }));
+
   if (loading) {
     return <ProfileHeaderSkeleton />;
   }
@@ -73,37 +106,5 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  headerContainer: {
-    position: 'relative',
-    height: 200,
-  },
-  headerTouchable: {
-    width: '100%',
-    height: '100%',
-  },
-  headerImage: {
-    width: '100%',
-    height: '100%',
-  },
-  headerPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: DEFAULT_HEADER_BACKGROUND,
-  },
-  actionButtons: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 8,
-    borderRadius: 20,
-  },
-});
 
 export default ProfileHeader;

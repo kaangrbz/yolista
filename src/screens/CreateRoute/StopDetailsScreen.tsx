@@ -1,20 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   SafeAreaView,
   Alert,
-  Dimensions,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { ImageCarousel } from '../../components/route/ImageCarousel';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { StopForm } from '../../components/route/StopForm';
+import { RouteEditorMap } from '../../components/route/RouteEditorMap';
+import { StopPhotoStrip } from '../../components/route/StopPhotoStrip';
+import { LocationProgressChip } from '../../components/route/LocationProgressChip';
+import { StopReorderSheet } from '../../components/route/StopReorderSheet';
+import { WizardStepIndicator } from '../../components/createFlow/WizardStepIndicator';
 import KeyboardAwareContainer from '../../components/common/KeyboardAwareContainer';
+import { useAppTheme } from '../../context/AppThemeContext';
+import type { CreateRouteStackParamList } from '../../navigation/CreateRouteStack';
 import { useThemedStyles } from '../../theme/useThemedStyles';
 import { useCreateRouteFlowStore } from '../../store/createRouteFlowStore';
 import { useCreateFlowPreventRemove } from '../../hooks/useCreateFlowPreventRemove';
 import { useCreateFlowAndroidBack } from '../../hooks/useCreateFlowAndroidBack';
+import { useReverseGeocode } from '../../hooks/useReverseGeocode';
+import GeocodingService from '../../services/GeocodingService';
 
 export interface RouteStop {
   id: string;
@@ -28,20 +37,36 @@ export interface RouteStop {
   address?: string;
 }
 
-const { height: screenHeight } = Dimensions.get('window');
+type DetailsMode = 'locate' | 'details';
+type StopDetailsNavigationProp = NativeStackNavigationProp<
+  CreateRouteStackParamList,
+  'StopDetails'
+>;
 
 export const StopDetailsScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<StopDetailsNavigationProp>();
   const selectedPhotos = useCreateRouteFlowStore((state) => state.photos);
   const routeStops = useCreateRouteFlowStore((state) => state.routeStops);
   const setRouteStops = useCreateRouteFlowStore((state) => state.setRouteStops);
+  const setStopLocation = useCreateRouteFlowStore((state) => state.setStopLocation);
+  const clearStopLocation = useCreateRouteFlowStore((state) => state.clearStopLocation);
+  const reorderPhotos = useCreateRouteFlowStore((state) => state.reorderPhotos);
   const setWizardStep = useCreateRouteFlowStore((state) => state.setWizardStep);
 
-  const [currentStopIndex, setCurrentStopIndex] = useState(0);
+  const [currentStopIndex, setCurrentStopIndex] = useState<number | null>(null);
+  const [detailsMode, setDetailsMode] = useState<DetailsMode>('locate');
+  const [isReorderVisible, setIsReorderVisible] = useState(false);
 
   useCreateFlowPreventRemove('stops');
   useCreateFlowAndroidBack('stops');
 
+  useFocusEffect(
+    useCallback(() => {
+      setWizardStep('stops');
+    }, [setWizardStep]),
+  );
+
+  const theme = useAppTheme();
   const styles = useThemedStyles((t) => ({
     container: {
       flex: 1,
@@ -56,42 +81,99 @@ export const StopDetailsScreen = () => {
     header: {
       paddingHorizontal: 20,
       paddingTop: 8,
-      paddingBottom: 14,
+      paddingBottom: 12,
       borderBottomWidth: 1,
       borderBottomColor: t.border,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    titleBlock: {
+      flex: 1,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    iconButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.surfaceMuted,
+      borderWidth: 1,
+      borderColor: t.border,
     },
     title: {
       fontSize: 22,
       fontWeight: '700',
       color: t.textPrimary,
-      marginBottom: 6,
     },
     subtitle: {
-      fontSize: 15,
+      fontSize: 14,
       color: t.textSecondary,
-      lineHeight: 22,
+      lineHeight: 20,
+      marginTop: 4,
+    },
+    modeToggle: {
+      flexDirection: 'row',
+      marginHorizontal: 20,
+      marginTop: 12,
+      marginBottom: 4,
+      padding: 4,
+      borderRadius: 12,
+      backgroundColor: t.surfaceMuted,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    modeButton: {
+      flex: 1,
+      paddingVertical: 8,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    modeButtonActive: {
+      backgroundColor: t.background,
+    },
+    modeButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: t.textSecondary,
+    },
+    modeButtonTextActive: {
+      color: t.textPrimary,
     },
     keyboardContainer: {
       flex: 1,
+    },
+    locateBody: {
+      flex: 1,
+    },
+    bottomDock: {
+      borderTopWidth: 1,
+      borderTopColor: t.border,
+      backgroundColor: t.background,
     },
     scrollContent: {
       flexGrow: 1,
       paddingBottom: 24,
     },
-    carouselContainer: {
-      height: screenHeight * 0.36,
-      backgroundColor: '#000000',
+    mapContainer: {
       marginHorizontal: 20,
-      marginTop: 16,
-      borderRadius: 16,
-      overflow: 'hidden',
-      marginBottom: 12,
+      marginTop: 12,
+    },
+    mapContainerExpanded: {
+      flex: 1,
+      marginTop: 0,
     },
     formContainer: {
-      minHeight: 200,
       paddingHorizontal: 20,
-      paddingVertical: 12,
-      flex: 1,
+      paddingTop: 12,
     },
     footer: {
       paddingHorizontal: 20,
@@ -100,33 +182,16 @@ export const StopDetailsScreen = () => {
       borderTopColor: t.border,
       backgroundColor: t.background,
     },
-    buttonRow: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-    button: {
-      flex: 1,
+    continueButton: {
       paddingVertical: 16,
       borderRadius: 12,
       alignItems: 'center',
-    },
-    skipButton: {
-      backgroundColor: t.surfaceMuted,
-      borderWidth: 1,
-      borderColor: t.borderStrong,
-    },
-    continueButton: {
-      backgroundColor: t.accent,
-    },
-    buttonText: {
-      fontSize: 16,
-      fontWeight: '600',
+      backgroundColor: t.buttonPrimaryBg,
     },
     continueButtonText: {
-      color: t.background,
-    },
-    skipButtonText: {
-      color: t.textSecondary,
+      fontSize: 16,
+      fontWeight: '600',
+      color: t.buttonPrimaryText,
     },
   }));
 
@@ -162,22 +227,118 @@ export const StopDetailsScreen = () => {
     }
   }, [selectedPhotos, setRouteStops]);
 
-  const currentStop = routeStops[currentStopIndex];
-  const currentPhoto = selectedPhotos.find((photo) => photo.id === currentStop?.photoId);
+  const currentStop =
+    currentStopIndex === null ? undefined : routeStops[currentStopIndex];
 
-  const handleStopUpdate = (stopId: string, field: keyof RouteStop, value: unknown) => {
-    setRouteStops(
-      routeStops.map((stop) =>
-        stop.id === stopId ? { ...stop, [field]: value } : stop,
-      ),
-    );
-  };
+  const locatedCount = useMemo(
+    () => routeStops.filter((stop) => stop.coordinate).length,
+    [routeStops],
+  );
 
-  const handleSwipeToStop = (index: number) => {
-    if (index >= 0 && index < routeStops.length) {
-      setCurrentStopIndex(index);
+  const detailsStop = currentStop ?? routeStops[0];
+
+  const { shortAddress, loading: reverseLoading } = useReverseGeocode({
+    latitude: detailsStop?.coordinate?.latitude,
+    longitude: detailsStop?.coordinate?.longitude,
+    enabled:
+      detailsMode === 'details' &&
+      !!detailsStop?.coordinate &&
+      !detailsStop.address,
+  });
+
+  const handleStopUpdate = useCallback(
+    (stopId: string, field: keyof RouteStop, value: unknown) => {
+      setRouteStops(
+        routeStops.map((stop) =>
+          stop.id === stopId ? { ...stop, [field]: value } : stop,
+        ),
+      );
+    },
+    [routeStops, setRouteStops],
+  );
+
+  const assignLocation = useCallback(
+    async (
+      stopId: string,
+      coordinate: { latitude: number; longitude: number },
+    ) => {
+      setStopLocation(stopId, coordinate);
+
+      const reverse = await GeocodingService.reverseGeocode(
+        coordinate.latitude,
+        coordinate.longitude,
+      );
+
+      if (reverse?.shortName) {
+        setRouteStops(
+          useCreateRouteFlowStore.getState().routeStops.map((stop) =>
+            stop.id === stopId
+              ? { ...stop, address: reverse.shortName }
+              : stop,
+          ),
+        );
+      }
+    },
+    [setRouteStops, setStopLocation],
+  );
+
+  const handleLocationAssign = useCallback(
+    (coordinate: { latitude: number; longitude: number }) => {
+      if (!currentStop) {
+        return;
+      }
+
+      void assignLocation(currentStop.id, coordinate);
+    },
+    [assignLocation, currentStop],
+  );
+
+  const handleSelectStop = useCallback((
+    index: number,
+    options?: { allowDeselect?: boolean },
+  ) => {
+    if (index < 0 || index >= routeStops.length) {
+      return;
     }
-  };
+
+    setCurrentStopIndex((prev) => {
+      const allowDeselect = options?.allowDeselect !== false;
+
+      if (allowDeselect && detailsMode === 'locate' && prev === index) {
+        return null;
+      }
+
+      return index;
+    });
+  }, [detailsMode, routeStops.length]);
+
+  const handleReorderPhotos = useCallback((fromIndex: number, toIndex: number) => {
+    reorderPhotos(fromIndex, toIndex);
+
+    setCurrentStopIndex((prev) => {
+      if (prev === null) {
+        return null;
+      }
+
+      if (prev === fromIndex) {
+        return toIndex;
+      }
+
+      if (fromIndex < prev && toIndex >= prev) {
+        return prev - 1;
+      }
+
+      if (fromIndex > prev && toIndex <= prev) {
+        return prev + 1;
+      }
+
+      return prev;
+    });
+  }, [reorderPhotos]);
+
+  const openLocationPicker = useCallback((stopId: string) => {
+    navigation.navigate('LocationPicker', { stopId });
+  }, [navigation]);
 
   const handleContinue = () => {
     if (selectedPhotos.length === 0) {
@@ -186,25 +347,10 @@ export const StopDetailsScreen = () => {
     }
 
     setWizardStep('category');
-
-    (navigation as { navigate: (name: string) => void }).navigate('CategorySelection');
+    navigation.navigate('CategorySelection');
   };
 
-  const handleSkip = () => {
-    const minimalStops = selectedPhotos.map((photo, index) => ({
-      id: `stop_${photo.id}`,
-      photoId: photo.id,
-      title: `Nokta ${index + 1}`,
-      description: '',
-    }));
-
-    setRouteStops(minimalStops);
-    setWizardStep('category');
-
-    (navigation as { navigate: (name: string) => void }).navigate('CategorySelection');
-  };
-
-  if (!currentStop || !currentPhoto || selectedPhotos.length === 0) {
+  if (selectedPhotos.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
         <Text style={styles.loadingText}>Yükleniyor…</Text>
@@ -215,54 +361,145 @@ export const StopDetailsScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Detaylar</Text>
-        <Text style={styles.subtitle}>
-          Her fotoğraf için isteğe bağlı başlık ve not ekleyebilirsin.
-        </Text>
-      </View>
-
-      <KeyboardAwareContainer
-        style={styles.keyboardContainer}
-        keyboardVerticalOffset={88}
-        scrollViewProps={{
-          contentContainerStyle: styles.scrollContent,
-        }}
-      >
-        <View style={styles.carouselContainer}>
-          <ImageCarousel
-            photos={selectedPhotos}
-            currentIndex={currentStopIndex}
-            onSwipe={handleSwipeToStop}
-          />
-        </View>
-
-        <View style={styles.formContainer}>
-          <StopForm
-            stop={currentStop}
-            onUpdate={(field, value) => handleStopUpdate(currentStop.id, field, value)}
-          />
-        </View>
-
-        <View style={styles.footer}>
-          <View style={styles.buttonRow}>
+        <View style={styles.titleRow}>
+          <View style={styles.titleBlock}>
+            <Text style={styles.title}>Detaylar</Text>
+          </View>
+          <View style={styles.headerActions}>
             <TouchableOpacity
-              style={[styles.button, styles.skipButton]}
-              onPress={handleSkip}>
-              <Text style={[styles.buttonText, styles.skipButtonText]}>
-                Atla
-              </Text>
+              style={styles.iconButton}
+              onPress={() => setIsReorderVisible(true)}
+            >
+              <Icon name="sort" size={18} color={theme.textSecondary} />
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.button, styles.continueButton]}
-              onPress={handleContinue}>
-              <Text style={[styles.buttonText, styles.continueButtonText]}>
-                Devam
-              </Text>
-            </TouchableOpacity>
+            <LocationProgressChip
+              locatedCount={locatedCount}
+              totalCount={routeStops.length}
+            />
           </View>
         </View>
-      </KeyboardAwareContainer>
+        <Text style={styles.subtitle}>
+          Her fotoğrafa isteğe bağlı konum ve metin ekle. Rota çizgisi sonra belirlenir.
+        </Text>
+        <WizardStepIndicator currentStep="stops" />
+      </View>
+
+      <View style={styles.modeToggle}>
+        <TouchableOpacity
+          style={[
+            styles.modeButton,
+            detailsMode === 'locate' && styles.modeButtonActive,
+          ]}
+          onPress={() => setDetailsMode('locate')}
+        >
+          <Text
+            style={[
+              styles.modeButtonText,
+              detailsMode === 'locate' && styles.modeButtonTextActive,
+            ]}
+          >
+            Konumlandır
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.modeButton,
+            detailsMode === 'details' && styles.modeButtonActive,
+          ]}
+          onPress={() => setDetailsMode('details')}
+        >
+          <Text
+            style={[
+              styles.modeButtonText,
+              detailsMode === 'details' && styles.modeButtonTextActive,
+            ]}
+          >
+            Detaylar
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {detailsMode === 'locate' ? (
+        <>
+          <View style={styles.locateBody}>
+            <View style={styles.mapContainerExpanded}>
+              <RouteEditorMap
+                stops={routeStops}
+                activeStopIndex={currentStopIndex}
+                layout="expanded"
+                onActiveStopChange={handleSelectStop}
+                onLocationAssign={handleLocationAssign}
+              />
+            </View>
+
+            <View style={styles.bottomDock}>
+              <StopPhotoStrip
+                photos={selectedPhotos}
+                stops={routeStops}
+                activeIndex={currentStopIndex}
+                onSelect={handleSelectStop}
+              />
+            </View>
+          </View>
+
+          <View style={styles.footer}>
+            <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+              <Text style={styles.continueButtonText}>Devam</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      ) : (
+        <KeyboardAwareContainer
+          style={styles.keyboardContainer}
+          keyboardVerticalOffset={88}
+          scrollViewProps={{
+            contentContainerStyle: styles.scrollContent,
+          }}
+        >
+          <View style={styles.mapContainer}>
+            <RouteEditorMap
+              stops={routeStops}
+              activeStopIndex={currentStopIndex}
+              readOnly
+              layout="compact"
+              onActiveStopChange={handleSelectStop}
+              onLocationAssign={handleLocationAssign}
+            />
+          </View>
+
+          <StopPhotoStrip
+            photos={selectedPhotos}
+            stops={routeStops}
+            activeIndex={currentStopIndex}
+            onSelect={handleSelectStop}
+          />
+
+          <View style={styles.formContainer}>
+            <StopForm
+              stop={detailsStop}
+              locationSummary={shortAddress}
+              locationLoading={reverseLoading}
+              onRequestLocation={() => openLocationPicker(detailsStop.id)}
+              onClearLocation={() => clearStopLocation(detailsStop.id)}
+              onUpdate={(field, value) => handleStopUpdate(detailsStop.id, field, value)}
+            />
+          </View>
+
+          <View style={styles.footer}>
+            <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+              <Text style={styles.continueButtonText}>Devam</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAwareContainer>
+      )}
+
+      <StopReorderSheet
+        visible={isReorderVisible}
+        photos={selectedPhotos}
+        onClose={() => setIsReorderVisible(false)}
+        onReorder={handleReorderPhotos}
+      />
     </SafeAreaView>
   );
 };

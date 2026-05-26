@@ -96,6 +96,89 @@ const enrichRoutes = async (
   })) as RouteWithProfile[];
 };
 
+
+const applyLocationMetadata = (row: any): RouteWithProfile => {
+  const hasGps =
+    typeof row.latitude === 'number' && typeof row.longitude === 'number';
+
+  if (hasGps) {
+    return {
+      ...row,
+      location_source: 'gps' as const,
+    };
+  }
+
+  if (row.city_id != null) {
+    const cityCenter = getCityCenter(row.city_id);
+
+    if (cityCenter) {
+      return {
+        ...row,
+        latitude: cityCenter.latitude,
+        longitude: cityCenter.longitude,
+        location_source: 'city_center' as const,
+      };
+    }
+  }
+
+  return {
+    ...row,
+    latitude: undefined,
+    longitude: undefined,
+    location_source: 'none' as const,
+  };
+};
+
+const fetchViaRpc = async (
+  bbox: BoundingBox,
+  categoryId?: number,
+  limit = 200,
+): Promise<any[] | null> => {
+  const { data, error } = await supabase.rpc('routes_in_bbox', {
+    min_lat: bbox.minLat,
+    max_lat: bbox.maxLat,
+    min_lng: bbox.minLng,
+    max_lng: bbox.maxLng,
+    p_category_id: categoryId && categoryId !== 0 ? categoryId : null,
+    result_limit: limit,
+  });
+
+  if (error) {
+    if (
+      error.code === 'PGRST202' ||
+      error.message.includes('routes_in_bbox')
+    ) {
+      return null;
+    }
+
+    throw error;
+  }
+
+  if (!Array.isArray(data) || data.length === 0) {
+    return data ?? [];
+  }
+
+  const ids = data.map((row: { id: string }) => row.id);
+
+  const { data: enriched, error: enrichError } = await supabase
+    .from('routes')
+    .select(`
+      *,
+      profiles (*),
+      cities (*),
+      categories (*)
+    `)
+    .in('id', ids)
+    .order('created_at', { ascending: false });
+
+  if (enrichError) {
+    console.warn('RouteDiscoveryService RPC enrich fallback:', enrichError);
+    return null;
+  }
+
+  return enriched || [];
+};
+
 export const RouteDiscoveryService = {
   /**
    * Belirli bir bbox içindeki ana rotaları döndürür.
@@ -118,62 +201,55 @@ export const RouteDiscoveryService = {
 
     const cityIdsInBbox = getCityIdsInBbox(bbox);
 
-    // Rotalar: ya kendi lat/lng'leri bbox içinde, ya da lat/lng yok ama
-    // city_id bbox'taki şehirlerden birine işaret ediyor (eski kayıtlar için fallback).
-    const orFilters: string[] = [
-      `and(latitude.gte.${bbox.minLat},latitude.lte.${bbox.maxLat},longitude.gte.${bbox.minLng},longitude.lte.${bbox.maxLng})`,
-    ];
+    let rows: any[] | null = null;
 
-    if (cityIdsInBbox.length > 0) {
-      orFilters.push(
-        `and(latitude.is.null,city_id.in.(${cityIdsInBbox.join(',')}))`,
-      );
+    try {
+      rows = await fetchViaRpc(bbox, filters?.categoryId, limit);
+    } catch (rpcError) {
+      console.warn('RouteDiscoveryService RPC unavailable, using client query:', rpcError);
     }
 
-    let query = supabase
-      .from('routes')
-      .select(`
-        *,
-        profiles (*),
-        cities (*),
-        categories (*)
-      `)
-      .eq('is_deleted', false)
-      .eq('is_hidden', false)
-      .eq('order_index', 0)
-      .or(orFilters.join(','))
-      .order('created_at', { ascending: false })
-      .limit(limit);
+    if (rows === null) {
+      const orFilters: string[] = [
+        `and(latitude.gte.${bbox.minLat},latitude.lte.${bbox.maxLat},longitude.gte.${bbox.minLng},longitude.lte.${bbox.maxLng})`,
+      ];
 
-    if (filters?.categoryId && filters.categoryId !== 0) {
-      query = query.eq('category_id', filters.categoryId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('RouteDiscoveryService.fetchRoutesInBoundingBox:', error);
-      throw new Error(`Failed to fetch routes in viewport: ${error.message}`);
-    }
-
-    let rows = (data || []).map((row: any) => {
-      if (
-        (typeof row.latitude !== 'number' || typeof row.longitude !== 'number') &&
-        row.city_id != null
-      ) {
-        const cityCenter = getCityCenter(row.city_id);
-
-        if (cityCenter) {
-          return {
-            ...row,
-            latitude: cityCenter.latitude,
-            longitude: cityCenter.longitude,
-          };
-        }
+      if (cityIdsInBbox.length > 0) {
+        orFilters.push(
+          `and(latitude.is.null,city_id.in.(${cityIdsInBbox.join(',')}))`,
+        );
       }
 
-      return row;
-    });
+      let query = supabase
+        .from('routes')
+        .select(`
+          *,
+          profiles (*),
+          cities (*),
+          categories (*)
+        `)
+        .eq('is_deleted', false)
+        .eq('is_hidden', false)
+        .eq('order_index', 0)
+        .or(orFilters.join(','))
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (filters?.categoryId && filters.categoryId !== 0) {
+        query = query.eq('category_id', filters.categoryId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('RouteDiscoveryService.fetchRoutesInBoundingBox:', error);
+        throw new Error(`Failed to fetch routes in viewport: ${error.message}`);
+      }
+
+      rows = data || [];
+    }
+
+    rows = rows.map(applyLocationMetadata);
 
     if (
       filters?.maxDistanceKm &&

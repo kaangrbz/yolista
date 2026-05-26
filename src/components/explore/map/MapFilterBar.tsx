@@ -112,14 +112,28 @@ export const MapFilterBar: React.FC<MapFilterBarProps> = ({
   };
 
   const handleDistancePress = (distanceKm: number) => {
-    const nextDistance = filters.maxDistanceKm === distanceKm ? null : distanceKm;
+    const isActive = filters.nearMe && filters.maxDistanceKm === distanceKm;
 
-    onFiltersChange({ ...filters, maxDistanceKm: nextDistance });
+    if (isActive) {
+      onFiltersChange({ ...filters, nearMe: false, maxDistanceKm: null });
+      return;
+    }
+
+    onFiltersChange({ ...filters, nearMe: true, maxDistanceKm: distanceKm });
   };
 
   const handleNearMeToggle = () => {
-    onFiltersChange({ ...filters, nearMe: !filters.nearMe });
+    const isActive = filters.nearMe && filters.maxDistanceKm === null;
+
+    if (isActive) {
+      onFiltersChange({ ...filters, nearMe: false });
+      return;
+    }
+
+    onFiltersChange({ ...filters, nearMe: true, maxDistanceKm: null });
   };
+
+  const isNearMeActive = filters.nearMe && filters.maxDistanceKm === null;
 
   return (
     <View style={styles.container} pointerEvents="box-none">
@@ -131,7 +145,7 @@ export const MapFilterBar: React.FC<MapFilterBarProps> = ({
         <Chip
           label="Etrafımdakiler"
           iconName="crosshairs-gps"
-          active={filters.nearMe}
+          active={isNearMeActive}
           onPress={handleNearMeToggle}
         />
 
@@ -139,7 +153,7 @@ export const MapFilterBar: React.FC<MapFilterBarProps> = ({
           <Chip
             key={`distance-${distance}`}
             label={`${distance} km`}
-            active={filters.maxDistanceKm === distance}
+            active={filters.nearMe && filters.maxDistanceKm === distance}
             onPress={() => handleDistancePress(distance)}
           />
         ))}

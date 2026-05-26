@@ -7,22 +7,20 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import BottomSheet, {
   BottomSheetFlatList,
-  BottomSheetView,
 } from '@gorhom/bottom-sheet';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../../model/routes.model';
 import { BOTTOM_SHEET_SNAP_POINTS } from '../../../constants/mapDefaults';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
-import MapRouteCard from './MapRouteCard';
 import MapRouteRow from './MapRouteRow';
+import MapSelectedRouteStops from './MapSelectedRouteStops';
 import MapWeatherBadge from './MapWeatherBadge';
 
 export type BottomSheetSnap = 'small' | 'medium' | 'large';
@@ -36,7 +34,14 @@ interface MapBottomSheetProps {
   routes: RouteWithProfile[];
   loading: boolean;
   selectedRouteId: string | null;
+  selectedRoute: RouteWithProfile | null;
+  selectedRouteStops: RouteWithProfile[];
+  showRouteStopsPanel?: boolean;
+  activeStopId?: string | null;
+  stopsLoading: boolean;
   onSelectRoute: (route: RouteWithProfile) => void;
+  onStopPress?: (stop: RouteWithProfile) => void;
+  onDismissRouteStops?: () => void;
   onSnapChange?: (snap: BottomSheetSnap) => void;
   /** Hava durumu rozeti için aktif konum (genelde haritanın merkezi). */
   weatherLatitude?: number | null;
@@ -67,13 +72,112 @@ const snapNameFromIndex = (index: number): BottomSheetSnap => {
   return 'medium';
 };
 
+type MapBottomSheetListHeaderProps = {
+  loading: boolean;
+  headerHint: string;
+  showSelectedRouteStops: boolean;
+  selectedRouteStops: RouteWithProfile[];
+  showRouteStopsPanel: boolean;
+  stopsLoading: boolean;
+  selectedRoute: RouteWithProfile | null;
+  activeStopId: string | null;
+  onStopPress?: (stop: RouteWithProfile) => void;
+  onDismissRouteStops?: () => void;
+  routes: RouteWithProfile[];
+  isViewingSelectedRoute: boolean;
+  sectionTitle: string;
+  weatherLatitude?: number | null;
+  weatherLongitude?: number | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  styles: Record<string, any>;
+  textSecondary: string;
+};
+
+const MapBottomSheetListHeader: React.FC<MapBottomSheetListHeaderProps> = ({
+  loading,
+  headerHint,
+  showSelectedRouteStops,
+  selectedRouteStops,
+  showRouteStopsPanel,
+  stopsLoading,
+  selectedRoute,
+  activeStopId,
+  onStopPress,
+  onDismissRouteStops,
+  routes,
+  isViewingSelectedRoute,
+  sectionTitle,
+  weatherLatitude,
+  weatherLongitude,
+  styles,
+  textSecondary,
+}) => (
+  <View>
+    <View style={styles.header}>
+      <View style={styles.headerTopRow}>
+        <View style={styles.headerTitleGroup}>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            Paylaşılan Rotalar
+          </Text>
+          {loading ? (
+            <ActivityIndicator
+              size="small"
+              color={textSecondary}
+              style={styles.headerTitleLoader}
+            />
+          ) : null}
+        </View>
+
+        <MapWeatherBadge
+          latitude={weatherLatitude}
+          longitude={weatherLongitude}
+        />
+      </View>
+
+      <View style={styles.headerSubtitleRow}>
+        <Icon name="map-search-outline" size={12} color={textSecondary} />
+        <Text style={styles.headerHint}>{headerHint}</Text>
+      </View>
+    </View>
+
+    {showSelectedRouteStops ? (
+      <MapSelectedRouteStops
+        stops={selectedRouteStops}
+        loading={stopsLoading}
+        selectedRoute={selectedRoute}
+        activeStopId={activeStopId}
+        onStopPress={onStopPress}
+        onClearSelection={onDismissRouteStops}
+      />
+    ) : null}
+
+    {!(isViewingSelectedRoute && routes.length === 0) ? (
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionHeaderTitle}>{sectionTitle}</Text>
+        {routes.length > 0 ? (
+          <Text style={styles.sectionHeaderHint}>
+            {routes.length} sonuç
+          </Text>
+        ) : null}
+      </View>
+    ) : null}
+  </View>
+);
+
 export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetProps>(
   (
     {
       routes,
       loading,
       selectedRouteId,
+      selectedRoute,
+      selectedRouteStops,
+      showRouteStopsPanel = true,
+      activeStopId = null,
+      stopsLoading,
       onSelectRoute,
+      onStopPress,
+      onDismissRouteStops,
       onSnapChange,
       weatherLatitude,
       weatherLongitude,
@@ -110,33 +214,37 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: 12,
       },
-      headerTitleWrapper: {
+      headerTitleGroup: {
         flex: 1,
-        paddingRight: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        minWidth: 0,
       },
       headerTitle: {
         fontSize: 18,
         fontWeight: '800',
         color: t.textPrimary,
         letterSpacing: -0.2,
+        flexShrink: 1,
+      },
+      headerTitleLoader: {
+        width: 16,
+        height: 16,
+        transform: [{ scale: 0.7 }],
       },
       headerSubtitleRow: {
         flexDirection: 'row',
         alignItems: 'center',
         marginTop: 3,
+        gap: 4,
+        minHeight: 16,
       },
       headerHint: {
         fontSize: 12,
         color: t.textSecondary,
-        marginLeft: 4,
-      },
-      horizontalWrapper: {
-        paddingVertical: 10,
-      },
-      horizontalContent: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
       },
       sectionHeader: {
         flexDirection: 'row',
@@ -190,11 +298,16 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
     }));
 
     const sheetRef = useRef<BottomSheet>(null);
-    const horizontalListRef = useRef<FlatList<RouteWithProfile>>(null);
+    const verticalListRef = useRef<any>(null);
 
     const snapPoints = useMemo(() => [...BOTTOM_SHEET_SNAP_POINTS], []);
 
-    const currentSnapRef = useRef<BottomSheetSnap>('medium');
+    const isViewingSelectedRoute = Boolean(
+      selectedRouteId && (stopsLoading || selectedRouteStops.length > 0),
+    );
+
+    const showSelectedRouteStops =
+      showRouteStopsPanel && (stopsLoading || selectedRouteStops.length > 0);
 
     useImperativeHandle(
       ref,
@@ -209,13 +322,11 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
             return;
           }
 
-          if (currentSnapRef.current === 'medium') {
-            horizontalListRef.current?.scrollToIndex({
-              index,
-              animated: true,
-              viewPosition: 0.5,
-            });
-          }
+          verticalListRef.current?.scrollToIndex({
+            index,
+            animated: true,
+            viewPosition: 0.5,
+          });
         },
       }),
       [routes],
@@ -223,24 +334,9 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
 
     const handleSheetChange = useCallback(
       (index: number) => {
-        const snap = snapNameFromIndex(index);
-        currentSnapRef.current = snap;
-        onSnapChange?.(snap);
+        onSnapChange?.(snapNameFromIndex(index));
       },
       [onSnapChange],
-    );
-
-    const renderHorizontalItem = useCallback(
-      ({ item }: { item: RouteWithProfile }) => {
-        return (
-          <MapRouteCard
-            route={item}
-            selected={item.id === selectedRouteId}
-            onPress={() => onSelectRoute(item)}
-          />
-        );
-      },
-      [onSelectRoute, selectedRouteId],
     );
 
     const renderVerticalItem = useCallback(
@@ -261,7 +357,104 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       [],
     );
 
+    const headerHint = useMemo(() => {
+      if (isViewingSelectedRoute && routes.length === 0) {
+        return 'Seçili rotanın duraklarını inceliyorsun';
+      }
+
+      if (routes.length === 0) {
+        return 'Haritayı kaydır veya uzaklaştır';
+      }
+
+      if (isViewingSelectedRoute) {
+        return `Bu bölgede ${routes.length} rota · seçili rota açık`;
+      }
+
+      return `Bu bölgede ${routes.length} rota`;
+    }, [isViewingSelectedRoute, routes.length]);
+
+    const sectionTitle = isViewingSelectedRoute
+      ? 'Bu bölgedeki rotalar'
+      : 'Tüm rotalar';
+
     const renderRowSeparator = useCallback(() => <View style={styles.rowDivider} />, [styles.rowDivider]);
+
+    const listHeaderPropsRef = useRef<MapBottomSheetListHeaderProps>({
+      loading,
+      headerHint,
+      showSelectedRouteStops,
+      selectedRouteStops,
+      showRouteStopsPanel,
+      stopsLoading,
+      selectedRoute,
+      activeStopId,
+      onStopPress,
+      onDismissRouteStops,
+      routes,
+      isViewingSelectedRoute,
+      sectionTitle,
+      weatherLatitude,
+      weatherLongitude,
+      styles,
+      textSecondary: theme.textSecondary,
+    });
+
+    listHeaderPropsRef.current = {
+      loading,
+      headerHint,
+      showSelectedRouteStops,
+      selectedRouteStops,
+      showRouteStopsPanel,
+      stopsLoading,
+      selectedRoute,
+      activeStopId,
+      onStopPress,
+      onDismissRouteStops,
+      routes,
+      isViewingSelectedRoute,
+      sectionTitle,
+      weatherLatitude,
+      weatherLongitude,
+      styles,
+      textSecondary: theme.textSecondary,
+    };
+
+    const renderListHeader = useCallback(
+      () => <MapBottomSheetListHeader {...listHeaderPropsRef.current} />,
+      [],
+    );
+
+    const renderListEmpty = useCallback(() => {
+      if (loading) {
+        return null;
+      }
+
+      if (isViewingSelectedRoute) {
+        return null;
+      }
+
+      return (
+        <View style={styles.emptyState}>
+          <Icon
+            name="map-marker-off-outline"
+            size={36}
+            color={theme.textMuted}
+          />
+          <Text style={styles.emptyTitle}>Bu bölgede rota yok</Text>
+          <Text style={styles.emptyText}>
+            Haritayı kaydırarak veya uzaklaştırarak başka bölgelere bak.
+            Yakındaki rotaları görmek için arama çubuğunu da kullanabilirsin.
+          </Text>
+        </View>
+      );
+    }, [
+      isViewingSelectedRoute,
+      loading,
+      styles.emptyState,
+      styles.emptyText,
+      styles.emptyTitle,
+      theme.textMuted,
+    ]);
 
     return (
       <BottomSheet
@@ -274,81 +467,16 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
         handleStyle={styles.handle}
         backgroundStyle={styles.background}
       >
-        <BottomSheetView style={styles.header}>
-          <View style={styles.headerTopRow}>
-            <View style={styles.headerTitleWrapper}>
-              <Text style={styles.headerTitle}>Paylaşılan Rotalar</Text>
-              <View style={styles.headerSubtitleRow}>
-                <Icon
-                  name="map-search-outline"
-                  size={12}
-                  color={theme.textSecondary}
-                />
-                <Text style={styles.headerHint}>
-                  {loading
-                    ? 'Bu bölge yükleniyor...'
-                    : `Bu bölgede ${routes.length} rota`}
-                </Text>
-              </View>
-            </View>
-
-            <MapWeatherBadge
-              latitude={weatherLatitude}
-              longitude={weatherLongitude}
-            />
-          </View>
-        </BottomSheetView>
-
-        {routes.length > 0 ? (
-          <View style={styles.horizontalWrapper}>
-            <FlatList
-              ref={horizontalListRef}
-              data={routes}
-              keyExtractor={keyExtractor}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalContent}
-              renderItem={renderHorizontalItem}
-              onScrollToIndexFailed={() => undefined}
-            />
-          </View>
-        ) : null}
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionHeaderTitle}>Tüm rotalar</Text>
-          {routes.length > 0 ? (
-            <Text style={styles.sectionHeaderHint}>
-              {routes.length} sonuç
-            </Text>
-          ) : null}
-        </View>
-
         <BottomSheetFlatList
+          ref={verticalListRef}
           data={routes}
           keyExtractor={keyExtractor}
           renderItem={renderVerticalItem}
           ItemSeparatorComponent={renderRowSeparator}
+          ListHeaderComponent={renderListHeader}
+          ListEmptyComponent={renderListEmpty}
           contentContainerStyle={styles.verticalContent}
-          ListEmptyComponent={
-            loading ? (
-              <View style={styles.emptyState}>
-                <ActivityIndicator size="small" color={theme.textSecondary} />
-                <Text style={styles.emptyText}>Rotalar yükleniyor...</Text>
-              </View>
-            ) : (
-              <View style={styles.emptyState}>
-                <Icon
-                  name="map-marker-off-outline"
-                  size={36}
-                  color={theme.textMuted}
-                />
-                <Text style={styles.emptyTitle}>Bu bölgede rota yok</Text>
-                <Text style={styles.emptyText}>
-                  Haritayı kaydırarak veya uzaklaştırarak başka bölgelere bak.
-                </Text>
-              </View>
-            )
-          }
+          onScrollToIndexFailed={() => undefined}
         />
       </BottomSheet>
     );

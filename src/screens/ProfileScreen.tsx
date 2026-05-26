@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
-  SafeAreaView,
-  RefreshControl,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import ThemedRefreshControl from '../components/common/ThemedRefreshControl';
+import { useThemedScrollSurface } from '../theme/useThemedScrollSurface';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/alert';
@@ -45,6 +45,7 @@ import {
   ProfileLikedPosts,
   ProfileSettingsModal,
 } from '../components/profile';
+import { useThemedStyles } from '../theme/useThemedStyles';
 
 interface ProfileScreenProps {
   route?: {
@@ -114,6 +115,32 @@ const mergeRoutesById = (previous: RouteWithProfile[], next: RouteWithProfile[])
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const { reloadAuth, user: authUser, isEmailConfirmed } = useAuth();
+  const scrollSurface = useThemedScrollSurface();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    errorContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: t.background,
+    },
+    errorText: {
+      fontSize: 18,
+      color: t.textSecondary,
+    },
+    scrollView: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    tabContent: {
+      flex: 1,
+      minHeight: 500,
+      backgroundColor: t.background,
+    },
+  }));
 
   const routeParams = route?.params || {};
   const [isProfileLoading, setIsProfileLoading] = useState(true);
@@ -721,18 +748,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <ScrollView
-        style={styles.scrollView}
+        style={scrollSurface.style}
+        contentContainerStyle={scrollSurface.contentContainerStyle}
         onScroll={handleProfileScroll}
         scrollEventThrottle={400}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#1DA1F2']}
-            tintColor="#1DA1F2"
-          />
+          <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         <ProfileHeader
@@ -872,30 +895,5 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  errorText: {
-    fontSize: 18,
-    color: '#666',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  tabContent: {
-    flex: 1,
-    minHeight: 500, // Increased minimum height
-    // paddingTop: 10,
-  },
-});
 
 export default ProfileScreen;

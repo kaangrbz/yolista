@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
+import { View, Animated } from 'react-native';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface SkeletonLoaderProps {
   width?: number | string;
@@ -15,6 +16,16 @@ const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
   style,
 }) => {
   const opacity = useRef(new Animated.Value(0.3)).current;
+  const styles = useThemedStyles((t) => ({
+    container: {
+      backgroundColor: t.surfaceMuted,
+      overflow: 'hidden',
+    },
+    shimmer: {
+      flex: 1,
+      backgroundColor: t.borderStrong,
+    },
+  }));
 
   useEffect(() => {
     const animate = () => {
@@ -30,7 +41,7 @@ const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
             duration: 800,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       ).start();
     };
 
@@ -64,16 +75,5 @@ const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#f0f0f0',
-    overflow: 'hidden',
-  },
-  shimmer: {
-    flex: 1,
-    backgroundColor: '#e0e0e0',
-  },
-});
 
 export default SkeletonLoader;

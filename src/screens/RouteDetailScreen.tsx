@@ -1,20 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { RouteDetailHeader } from '../components/header/Header';
 import UniversalPost from '../components/UniversalPost';
+import ThemedScrollView from '../components/common/ThemedScrollView';
+import { useThemedStyles } from '../theme/useThemedStyles';
+
+const ROUTE_DETAIL_HEADER_HEIGHT = 52;
 
 export const RouteDetailScreen = ({ navigation, route }: { navigation: any, route: { params: { routeId: string } } }) => {
   const [userId, setUserId] = useState<string | null>(null);
   const routeId = route.params.routeId;
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+  }));
 
-  // Fetch current user ID
   useEffect(() => {
     const fetchUserId = async () => {
       try {
@@ -31,32 +34,23 @@ export const RouteDetailScreen = ({ navigation, route }: { navigation: any, rout
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <RouteDetailHeader navigation={navigation} />
 
-      <ScrollView
-        style={styles.scrollView}
+      <ThemedScrollView
+        reservedTop={ROUTE_DETAIL_HEADER_HEIGHT}
         showsVerticalScrollIndicator={false}
         bounces={true}
+        alwaysBounceVertical={true}
       >
         <UniversalPost
           postId={routeId}
           userId={userId}
           showFullScreen={true}
         />
-      </ScrollView>
+      </ThemedScrollView>
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  scrollView: {
-    flex: 1,
-  },
-});
 
 export default RouteDetailScreen;

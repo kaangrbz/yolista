@@ -1,9 +1,7 @@
 // keyboard-aware-ignore: harita üstünde absolute pozisyonlanmış arama çubuğu; klavye kaldırma davranışı uygun değil
 import React, {
   useCallback,
-  useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import {
@@ -16,9 +14,9 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import GeocodingService, {
-  GeocodingResult,
-} from '../../../services/GeocodingService';
+import { GeocodingResult } from '../../../services/GeocodingService';
+import { useAddressSearch } from '../../../hooks/useAddressSearch';
+import { iconForGeocodingType } from '../../../utils/geocodingDisplay';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
 
@@ -27,38 +25,18 @@ interface MapSearchBarProps {
   placeholder?: string;
 }
 
-const DEBOUNCE_MS = 350;
-const MIN_QUERY_LENGTH = 2;
-
-const iconForType = (type: string): string => {
-  if (/(city|town|village|hamlet|municipality)/i.test(type)) {
-    return 'city';
-  }
-
-  if (/(museum|castle|monument|memorial|ruins|archaeolog|historic)/i.test(type)) {
-    return 'castle';
-  }
-
-  if (/(park|forest|nature|peak|mountain)/i.test(type)) {
-    return 'tree';
-  }
-
-  if (/(restaurant|cafe|bar|food)/i.test(type)) {
-    return 'silverware-fork-knife';
-  }
-
-  if (/(hotel|hostel|guest_house)/i.test(type)) {
-    return 'bed';
-  }
-
-  return 'map-marker-outline';
-};
-
 export const MapSearchBar: React.FC<MapSearchBarProps> = ({
   onResultPress,
   placeholder = 'Şehir, tarihi yer, mekan ara...',
 }) => {
   const theme = useAppTheme();
+  const { query, setQuery, results, loading, clear, minQueryLength } = useAddressSearch();
+  const [focused, setFocused] = useState(false);
+
+  const showResults = useMemo(() => {
+    return focused && query.trim().length >= minQueryLength;
+  }, [focused, minQueryLength, query]);
+
   const styles = useThemedStyles((t) => ({
     container: {
       flex: 1,
@@ -146,57 +124,9 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
     },
   }));
 
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<GeocodingResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [focused, setFocused] = useState(false);
-
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const requestIdRef = useRef(0);
-
-  const showResults = useMemo(() => {
-    return focused && query.trim().length >= MIN_QUERY_LENGTH;
-  }, [focused, query]);
-
-  useEffect(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-
-    const trimmed = query.trim();
-
-    if (trimmed.length < MIN_QUERY_LENGTH) {
-      setResults([]);
-      setLoading(false);
-
-      return;
-    }
-
-    setLoading(true);
-
-    timerRef.current = setTimeout(async () => {
-      const requestId = ++requestIdRef.current;
-      const items = await GeocodingService.search(trimmed);
-
-      if (requestId !== requestIdRef.current) {
-        return;
-      }
-
-      setResults(items);
-      setLoading(false);
-    }, DEBOUNCE_MS);
-
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, [query]);
-
   const handleClear = useCallback(() => {
-    setQuery('');
-    setResults([]);
-  }, []);
+    clear();
+  }, [clear]);
 
   const handleSelect = useCallback(
     (item: GeocodingResult) => {
@@ -217,7 +147,7 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
         >
           <View style={styles.resultIconWrapper}>
             <Icon
-              name={iconForType(item.type)}
+              name={iconForGeocodingType(item.type)}
               size={16}
               color={theme.textSecondary}
             />

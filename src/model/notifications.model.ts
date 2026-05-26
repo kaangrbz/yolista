@@ -1,40 +1,67 @@
-import { NOTIFICATION_RATE_LIMITS } from '../config/notificationConfig';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/alert';
 
-export type NotificationEntityType = 'follow' | 'like' | 'comment' | 'mention';
+export type NotificationNavTarget = 'profile' | 'route' | 'none';
+
+export interface NotificationTypeMeta {
+  key: string;
+  label: string;
+  icon_name: string;
+  color: string;
+  nav_target: NotificationNavTarget;
+  rate_limit_ms: number | null;
+}
 
 export interface NotificationType {
-    id: number,
-    recipient_id: string,
-    sender_id: string,
-    entity_id: string,
-    entity_type: NotificationEntityType,
-    message: string,
-    created_at: string,
-    is_read: boolean,
-    profiles: {
-        id: string,
-        full_name: string,
-        username: string,
-        image_url: string,
-        image_preview_url?: string | null,
-        is_verified: boolean,
-        is_deleted: boolean,
-    } | null;
+  id: number;
+  recipient_id: string;
+  sender_id: string;
+  entity_id: string;
+  entity_type: string;
+  message: string;
+  created_at: string;
+  is_read: boolean;
+  notification_types: NotificationTypeMeta | null;
+  profiles: {
+    id: string;
+    full_name: string;
+    username: string;
+    image_url: string;
+    image_preview_url?: string | null;
+    is_verified: boolean;
+    is_deleted: boolean;
+  } | null;
+}
+
+function unwrapNotificationTypeMeta(
+  value: NotificationTypeMeta | NotificationTypeMeta[] | null | undefined,
+): NotificationTypeMeta | null {
+  if (!value) {
+    return null;
+  }
+
+  return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
 const NotificationModel = {
-  /**
-   * Fetch notifications for a specific user
-   * @param {string} userId - The recipient ID of the user
-   * @returns {Promise<any[]>} List of notifications with profile data
-   */
-  async getNotifications({ userId, lastCreatedAt }: { userId: string, lastCreatedAt?: string | null }): Promise<NotificationType[]> {
-    const query = supabase
+  async getNotifications({
+    userId,
+  }: {
+    userId: string;
+    lastCreatedAt?: string | null;
+  }): Promise<NotificationType[]> {
+    const { data, error } = await supabase
       .from('notifications')
       .select(`
         *,
+        notification_types (
+          key,
+          label,
+          icon_name,
+          color,
+          nav_target,
+          rate_limit_ms
+        ),
         profiles!notifications_sender_id_fkey (
           id,
           full_name,
@@ -46,30 +73,20 @@ const NotificationModel = {
         )
       `)
       .eq('recipient_id', userId)
-      .order('created_at', { ascending: false });
-
-    // if (lastCreatedAt) {
-    //   query.gte("created_at", lastCreatedAt);
-    // }
-
-    const { data, error } = await query.limit(50);
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (error) {
       showToast('error', 'Bildirimler alınamadı');
       throw error;
     }
-    return data as NotificationType[];
+
+    return (data ?? []).map((row) => ({
+      ...row,
+      notification_types: unwrapNotificationTypeMeta(row.notification_types),
+    })) as NotificationType[];
   },
 
-  /**
-   * Create a new notification
-   * @param {string} senderId - The ID of the sender (optional)
-   * @param {string} recipientId - The ID of the recipient
-   * @param {string} entityId - The ID of the related entity (optional)
-   * @param {string} entityType - The type of the related entity
-   * @param {string} message - Notification message (optional)
-   * @returns {Promise<any>} Created notification object
-   */
   async createNotification({
     senderId,
     recipientId,
@@ -80,20 +97,26 @@ const NotificationModel = {
     senderId?: string;
     recipientId: string;
     entityId?: string;
-    entityType: NotificationEntityType;
+    entityType: string;
     message?: string;
   }) {
-    // Prevent users from sending notifications to themselves
     if (senderId && senderId === recipientId) {
       return null;
     }
 
-    // Rate limit uygulanacak tipler
-    const rateLimitTypes = ['follow'];
+    const { data: typeRow, error: typeError } = await supabase
+      .from('notification_types')
+      .select('rate_limit_ms')
+      .eq('key', entityType)
+      .eq('is_active', true)
+      .maybeSingle();
 
-    if (senderId && rateLimitTypes.includes(entityType)) {
-      const limitMs = NOTIFICATION_RATE_LIMITS[entityType as keyof typeof NOTIFICATION_RATE_LIMITS];
+    if (typeError) {
+      showToast('error', 'Bildirim tipi kontrol edilemedi');
+      throw typeError;
+    }
 
+    if (senderId && typeRow?.rate_limit_ms) {
       const { data: recentNotifications, error: fetchError } = await supabase
         .from('notifications')
         .select('created_at')
@@ -109,15 +132,14 @@ const NotificationModel = {
       }
 
       if (
-        recentNotifications.length > 0 &&
-        new Date().getTime() - new Date(recentNotifications[0].created_at).getTime() < limitMs
+        recentNotifications.length > 0
+        && Date.now() - new Date(recentNotifications[0].created_at).getTime()
+          < typeRow.rate_limit_ms
       ) {
-        // Süre içinde bildirim varsa yeni bildirim oluşturma
         return null;
       }
     }
 
-    // Bildirimi oluştur
     const { data, error } = await supabase
       .from('notifications')
       .insert({
@@ -131,17 +153,12 @@ const NotificationModel = {
       .select('*');
 
     if (error) {
-      // showToast("error", "Bildirim oluşturulurken bir hata oluştu");
       throw error;
     }
+
     return data as NotificationType[];
   },
 
-  /**
-   * Mark a notification as read
-   * @param {number} notificationId - The ID of the notification to update
-   * @returns {Promise<any>} Updated notification object
-   */
   async markAsRead({ userId }: { userId: string }): Promise<NotificationType[]> {
     const { data, error } = await supabase
       .from('notifications')
@@ -154,14 +171,10 @@ const NotificationModel = {
       showToast('error', 'Bildirim okundu olarak işaretlenirken bir hata oluştu');
       throw error;
     }
+
     return data as NotificationType[];
   },
 
-  /**
-   * Delete a notification
-   * @param {number} notificationId - The ID of the notification to delete
-   * @returns {Promise<void>}
-   */
   async deleteNotification({ notificationId }: { notificationId: number }): Promise<void> {
     const { error } = await supabase
       .from('notifications')
@@ -172,8 +185,6 @@ const NotificationModel = {
       showToast('error', 'Bildirim silinirken bir hata oluştu');
       throw error;
     }
-
-    return;
   },
 };
 

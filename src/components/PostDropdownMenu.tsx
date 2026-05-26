@@ -9,6 +9,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useThemedStyles } from '../theme/useThemedStyles';
 
 interface DropdownOption {
   id: string;
@@ -29,6 +30,7 @@ interface PostDropdownMenuProps {
   onDelete?: () => void;
   onShare?: () => void;
   onCopyLink?: () => void;
+  iconColor?: string;
 }
 
 const PostDropdownMenu: React.FC<PostDropdownMenuProps> = ({
@@ -42,7 +44,51 @@ const PostDropdownMenu: React.FC<PostDropdownMenuProps> = ({
   onDelete,
   onShare,
   onCopyLink,
+  iconColor = '#262626',
 }) => {
+  const styles = useThemedStyles((t) => ({
+    trigger: {
+      padding: 8,
+      borderRadius: 20,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: t.overlayDark,
+    },
+    menu: {
+      position: 'absolute',
+      backgroundColor: t.background,
+      borderRadius: 12,
+      paddingVertical: 8,
+      minWidth: 200,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 8,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.hairlineBorder,
+    },
+    menuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    menuIcon: {
+      marginRight: 12,
+      width: 20,
+    },
+    menuText: {
+      fontSize: 16,
+      color: t.textPrimary,
+      fontWeight: '500',
+    },
+  }));
+
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<View>(null);
@@ -188,7 +234,7 @@ const PostDropdownMenu: React.FC<PostDropdownMenuProps> = ({
           style={styles.trigger}
           onPress={handleOpen}
           activeOpacity={0.7}>
-          <Icon name="dots-horizontal" size={24} color="#262626" />
+          <Icon name="dots-horizontal" size={24} color={iconColor} />
         </TouchableOpacity>
       </View>
 
@@ -216,7 +262,7 @@ const PostDropdownMenu: React.FC<PostDropdownMenuProps> = ({
                   <Icon
                     name={option.icon}
                     size={20}
-                    color={option.color || '#262626'}
+                    color={option.color || iconColor}
                     style={styles.menuIcon}
                   />
                   <Text
@@ -235,46 +281,5 @@ const PostDropdownMenu: React.FC<PostDropdownMenuProps> = ({
     </>
   );
 };
-
-const styles = StyleSheet.create({
-  trigger: {
-    padding: 8,
-    borderRadius: 20,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  menu: {
-    position: 'absolute',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 8,
-    minWidth: 200,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  menuIcon: {
-    marginRight: 12,
-    width: 20,
-  },
-  menuText: {
-    fontSize: 16,
-    color: '#262626',
-    fontWeight: '500',
-  },
-});
 
 export default PostDropdownMenu;

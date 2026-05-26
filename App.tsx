@@ -5,11 +5,12 @@
  * @format
  */
 
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, ActivityIndicator, Animated } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, ActivityIndicator, Animated } from 'react-native';
 import { useAlert } from './src/context/AlertContext';
-import { AuthProvider} from './src/context/AuthContext';
-import { AppThemeProvider } from './src/context/AppThemeContext';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { hydrateHomeFeedCache } from './src/services/homeFeedCache';
+import { AppThemeProvider, useAppTheme, useAppThemeControl } from './src/context/AppThemeContext';
 import {AlertProvider} from './src/context/AlertContext';
 import {AppNavigator} from './src/navigation/AppNavigator';
 import Toast, {BaseToast} from 'react-native-toast-message';
@@ -56,32 +57,40 @@ const toastConfig = {
 };
 
 const AppContent = (): React.JSX.Element => {
-  const [isLoading, setIsLoading] = useState(true);
-  const fadeAnim = new Animated.Value(0);
-  const scaleAnim = new Animated.Value(0.8);
+  const { isLoading: authLoading, user } = useAuth();
+  const theme = useAppTheme();
+  const { ready: themeReady } = useAppThemeControl();
+  const [appInitialized, setAppInitialized] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const { currentAlert, hideAlert } = useAlert();
 
   useEffect(() => {
-    const initializeApp = async () => {
-      // Fade in animasyonu
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-      ]).start();
+    if (user?.id) {
+      void hydrateHomeFeedCache(user.id);
+    }
+  }, [user?.id]);
 
-      // Initialize image cache
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, scaleAnim]);
+
+  useEffect(() => {
+    const initializeApp = async () => {
       ImageService.initializeCache();
 
-      // Kategorileri arka planda ısıt — uygulama açılır açılmaz cache hazır olsun.
       getCachedCategories().catch(() => {
         // ilk açılışta ağ yoksa sessizce geç; bir sonraki ekran tekrar deneyecek.
       });
@@ -90,7 +99,6 @@ const AppContent = (): React.JSX.Element => {
         // Resume is best-effort
       });
 
-      // Deep linking başlat
       try {
         const removeDeepLinkListener = await DeepLinkingService.initialize();
         console.log('🔗 Deep linking initialized');
@@ -101,27 +109,24 @@ const AppContent = (): React.JSX.Element => {
       }
     };
 
-    // Initialize
-    const cleanup = initializeApp();
-
-    // Sadece app initialization - AuthContext loading'i devre dışı
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 3000); // 3 saniye app loading
+    const cleanup = initializeApp().finally(() => {
+      setAppInitialized(true);
+    });
 
     return () => {
-      clearTimeout(timer);
-      // Deep linking cleanup
-      cleanup.then(cleanupFn => {
-        if (cleanupFn) {cleanupFn();}
+      cleanup.then((cleanupFn) => {
+        if (cleanupFn) {
+          cleanupFn();
+        }
       });
     };
   }, []);
 
-  // Sadece app loading kontrolü
-  if (isLoading) {
+  const isBootstrapping = authLoading || !appInitialized || !themeReady;
+
+  if (isBootstrapping) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
         <Animated.View
           style={[
             styles.loadingContent,
@@ -131,11 +136,9 @@ const AppContent = (): React.JSX.Element => {
             },
           ]}
         >
-          <Logo size="large" color="#1DA1F2" />
-          {/* <Text style={styles.tagline}>Yolculuklarınızı Paylaşın</Text> */}
+          <Logo size="large" color={theme.accent} />
           <View style={styles.loadingIndicator}>
-            <ActivityIndicator size="large" color="#1DA1F2" />
-            {/* <Text style={styles.loadingText}>Yükleniyor...</Text> */}
+            <ActivityIndicator size="large" color={theme.accent} />
           </View>
         </Animated.View>
       </View>
@@ -156,11 +159,23 @@ const AppContent = (): React.JSX.Element => {
   );
 };
 
+function ThemedGestureRoot({ children }: { children: React.ReactNode }) {
+  const theme = useAppTheme();
+
+  return (
+    <GestureHandlerRootView
+      style={[styles.rootGesture, { backgroundColor: theme.background }]}
+    >
+      {children}
+    </GestureHandlerRootView>
+  );
+}
+
 function App(): React.JSX.Element {
   return (
-    <GestureHandlerRootView style={styles.rootGesture}>
-      <SafeAreaProvider>
-        <AppThemeProvider>
+    <SafeAreaProvider>
+      <AppThemeProvider>
+        <ThemedGestureRoot>
           <AuthProvider>
             <AlertProvider>
               <BottomSheetModalProvider>
@@ -168,9 +183,9 @@ function App(): React.JSX.Element {
               </BottomSheetModalProvider>
             </AlertProvider>
           </AuthProvider>
-        </AppThemeProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+        </ThemedGestureRoot>
+      </AppThemeProvider>
+    </SafeAreaProvider>
   );
 }
 
@@ -180,7 +195,6 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },

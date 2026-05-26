@@ -5,17 +5,14 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
-  RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import ThemedRefreshControl from '../components/common/ThemedRefreshControl';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { NotificationsHeader } from '../components/header/Header';
 import { useIsFocused } from '@react-navigation/native';
-import NotificationModel, {
-  NotificationType,
-  NotificationEntityType,
-} from '../model/notifications.model';
+import NotificationModel, { NotificationType } from '../model/notifications.model';
 import { useAuth } from '../context/AuthContext';
 import { buildProfileNavigationParams } from '../utils/profileSlug';
 import { useNavigation } from '@react-navigation/native';
@@ -27,36 +24,11 @@ import {
   setCachedNotifications,
 } from '../services/NotificationsListCache';
 import { mergeNotificationsPreservingUnchanged } from '../utils/listRefreshUtils';
+import { formatNotificationActionLabel } from '../utils/notificationLabel';
+import { useAppTheme } from '../context/AppThemeContext';
+import { useThemedStyles } from '../theme/useThemedStyles';
 
-const renderNotificationIcon = (type: NotificationEntityType) => {
-  switch (type) {
-    case 'like':
-      return <Icon name="heart" size={20} color="#FF3B30" />;
-    case 'comment':
-      return <Icon name="comment" size={20} color="#34C759" />;
-    case 'follow':
-      return <Icon name="account-plus" size={20} color="#007AFF" />;
-    case 'mention':
-      return <Icon name="at" size={20} color="#AF52DE" />;
-    default:
-      return <Icon name="bell" size={20} color="#8E8E93" />;
-  }
-};
-
-const getNotificationColor = (type: NotificationEntityType) => {
-  switch (type) {
-    case 'like':
-      return '#FF3B30';
-    case 'comment':
-      return '#34C759';
-    case 'follow':
-      return '#007AFF';
-    case 'mention':
-      return '#AF52DE';
-    default:
-      return '#8E8E93';
-  }
-};
+const DEFAULT_NOTIFICATION_COLOR = '#8E8E93';
 
 const isSenderProfileMissing = (item: NotificationType): boolean => {
   if (!item.profiles) {
@@ -80,6 +52,16 @@ const getSenderUsername = (item: NotificationType): string => {
   return 'silinmiş hesap';
 };
 
+const getNotificationLabel = (item: NotificationType): string => {
+  const typeLabel = item.notification_types?.label;
+
+  if (typeLabel) {
+    return formatNotificationActionLabel(typeLabel, item.message);
+  }
+
+  return item.message ?? 'bildirim gönderdi';
+};
+
 interface NotificationItemProps {
   item: NotificationType;
   action: () => void;
@@ -93,7 +75,74 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
   label,
   navigation,
 }) => {
+  const styles = useThemedStyles((t) => ({
+    notificationItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.hairlineBorder,
+      backgroundColor: t.background,
+    },
+    unreadNotification: {
+      backgroundColor: t.id === 'light' ? '#F8F9FF' : t.surfaceMuted,
+    },
+    notificationLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      marginRight: 12,
+    },
+    iconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    notificationContent: {
+      flex: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    notificationText: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      flexWrap: 'wrap',
+    },
+    usernameTouchable: {
+      marginRight: 4,
+    },
+    username: {
+      fontWeight: '600',
+      color: t.textPrimary,
+      lineHeight: 20,
+      fontSize: 15,
+    },
+    usernameMuted: {
+      color: t.textMuted,
+    },
+    message: {
+      color: t.textSecondary,
+      lineHeight: 20,
+      fontSize: 15,
+    },
+    timeText: {
+      fontSize: 13,
+      color: t.textMuted,
+      marginTop: 4,
+      marginLeft: 8,
+    },
+  }));
+
   const profileMissing = isSenderProfileMissing(item);
+  const typeMeta = item.notification_types;
+  const iconName = typeMeta?.icon_name ?? 'bell';
+  const iconColor = typeMeta?.color ?? DEFAULT_NOTIFICATION_COLOR;
 
   return (
     <TouchableOpacity
@@ -108,10 +157,10 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
         <View
           style={[
             styles.iconContainer,
-            { backgroundColor: `${getNotificationColor(item.entity_type)}20` },
+            { backgroundColor: `${iconColor}20` },
           ]}
         >
-          {renderNotificationIcon(item.entity_type)}
+          <Icon name={iconName} size={20} color={iconColor} />
         </View>
         <View style={styles.notificationContent}>
           <View style={styles.notificationText}>
@@ -159,6 +208,38 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
 };
 
 const NotificationsScreen = () => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    container: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    loaderWrap: {
+      paddingTop: 20,
+      alignItems: 'center',
+    },
+    list: {
+      flex: 1,
+      backgroundColor: t.background,
+    },
+    listContent: {
+      flexGrow: 1,
+      backgroundColor: t.background,
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+      minHeight: 200,
+    },
+    emptyText: {
+      fontSize: 16,
+      color: t.textMuted,
+      textAlign: 'center',
+    },
+  }));
+
   const { user, setUnreadNotificationCount } = useAuth();
   const isFocused = useIsFocused();
   const navigation = useNavigation();
@@ -254,92 +335,68 @@ const NotificationsScreen = () => {
     void fetchNotifications({ silent: true });
   }, [fetchNotifications]);
 
-  type NotificationAction = {
-    action: () => void;
-    label: string;
-  };
+  const getNotificationAction = useCallback(
+    (item: NotificationType): (() => void) => {
+      const navTarget = item.notification_types?.nav_target ?? 'route';
 
-  const notificationHandlers = {
-    follow: (item: NotificationType) => ({
-      action: () => {
-        if (!item.profiles?.username) {
-          return;
-        }
+      if (navTarget === 'profile') {
+        return () => {
+          if (!item.profiles?.username) {
+            return;
+          }
 
-        navigation.navigate(
-          'ProfileMain' as never,
-          buildProfileNavigationParams({
-            username: item.profiles.username,
-          }) as never,
-        );
-      },
-      label: 'seni takip etti',
-    }),
-    like: (item: NotificationType) => ({
-      action: () => {
-        navigation.navigate('RouteDetail' as never, { routeId: item.entity_id } as never);
-      },
-      label: 'rotanı beğendi',
-    }),
-    comment: (item: NotificationType) => ({
-      action: () => {
-        navigation.navigate('RouteDetail' as never, { routeId: item.entity_id } as never);
-      },
-      label: 'yorum yaptı',
-    }),
-    mention: (item: NotificationType) => ({
-      action: () => {
-        navigation.navigate('RouteDetail' as never, { routeId: item.entity_id } as never);
-      },
-      label: 'etiketledi',
-    }),
-  };
+          navigation.navigate(
+            'ProfileMain' as never,
+            buildProfileNavigationParams({
+              username: item.profiles.username,
+            }) as never,
+          );
+        };
+      }
 
-  const getNotificationHandler = (item: NotificationType): NotificationAction => {
-    return notificationHandlers[item.entity_type](item);
-  };
+      if (navTarget === 'route' && item.entity_id) {
+        return () => {
+          navigation.navigate('RouteDetail' as never, { routeId: item.entity_id } as never);
+        };
+      }
 
-  const renderItem = ({ item }: { item: NotificationType }) => {
-    const { action, label } = getNotificationHandler(item);
+      return () => {};
+    },
+    [navigation],
+  );
 
-    return (
-      <NotificationItem
-        item={item}
-        action={action}
-        label={label}
-        navigation={navigation}
-      />
-    );
-  };
+  const renderItem = ({ item }: { item: NotificationType }) => (
+    <NotificationItem
+      item={item}
+      action={getNotificationAction(item)}
+      label={getNotificationLabel(item)}
+      navigation={navigation}
+    />
+  );
 
   if (isInitialLoading && notifications.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <NotificationsHeader navigation={navigation} />
         <View style={styles.loaderWrap}>
-          <ActivityIndicator size="small" color="#333" />
+          <ActivityIndicator size="small" color={theme.textPrimary} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <NotificationsHeader navigation={navigation} />
       <FlatList
         data={notifications}
+        style={styles.list}
         contentContainerStyle={styles.listContent}
         renderItem={renderItem}
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#333', '#121212']}
-            tintColor="#000000"
-            titleColor="#000000"
-          />
+          <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -350,92 +407,5 @@ const NotificationsScreen = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  loaderWrap: {
-    paddingTop: 20,
-    alignItems: 'center',
-  },
-  listContent: {
-    flexGrow: 1,
-  },
-  notificationItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-    backgroundColor: '#fff',
-  },
-  unreadNotification: {
-    backgroundColor: '#F8F9FF',
-  },
-  notificationLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 12,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  notificationContent: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  notificationText: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    flexWrap: 'wrap',
-  },
-  usernameTouchable: {
-    marginRight: 4,
-  },
-  username: {
-    fontWeight: '600',
-    color: '#000',
-    lineHeight: 20,
-    fontSize: 15,
-  },
-  usernameMuted: {
-    color: '#8E8E93',
-  },
-  message: {
-    color: '#8E8E93',
-    lineHeight: 20,
-    fontSize: 15,
-  },
-  timeText: {
-    fontSize: 13,
-    color: '#8E8E93',
-    marginTop: 4,
-    marginLeft: 8,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    minHeight: 200,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    textAlign: 'center',
-  },
-});
 
 export default NotificationsScreen;

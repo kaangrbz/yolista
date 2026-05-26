@@ -9,10 +9,11 @@ import { showConfirm } from '../common/ConfirmModal';
 import MapView, {
   Marker,
   Polyline,
-  PROVIDER_DEFAULT,
-  UrlTile,
 } from 'react-native-maps';
-import { getTileSource } from '../../constants/mapStyles';
+import {
+  getMapProvider,
+  getNativeMapType,
+} from '../../constants/mapViewConfig';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteStop } from '../../screens/CreateRoute/StopDetailsScreen';
 
@@ -115,8 +116,8 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 
       {/* Map */}
       <MapView
-        provider={PROVIDER_DEFAULT}
-        mapType="none"
+        provider={getMapProvider()}
+        mapType={getNativeMapType('light')}
         style={styles.map}
         region={region}
         onRegionChangeComplete={setRegion}
@@ -126,13 +127,6 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         showsCompass={false}
         toolbarEnabled={false}>
 
-        <UrlTile
-          urlTemplate={getTileSource('light').urlTemplate}
-          maximumZ={getTileSource('light').maximumZ}
-          flipY={false}
-          shouldReplaceMapContent
-        />
-
         {/* Stop Markers */}
         {stopsWithCoordinates.map((stop, index) => {
           const originalIndex = stops.findIndex(s => s.id === stop.id);
@@ -141,8 +135,8 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               key={stop.id}
               coordinate={stop.coordinate!}
               pinColor={getMarkerColor(originalIndex)}
-              title={stop.title || `Durak ${originalIndex + 1}`}
-              description={stop.description || 'Açıklama eklenmemiş'}
+              title={stop.title?.trim() || `Durak ${originalIndex + 1}`}
+              description={stop.description?.trim() || undefined}
             />
           );
         })}

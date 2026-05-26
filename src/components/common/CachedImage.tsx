@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Image, StyleSheet, TouchableOpacity, Text, Pressable } from 'react-native';
 import { ImageService } from '../../services/ImageService';
 import SimpleSkeletonLoader from './SimpleSkeletonLoader';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface CachedImageProps {
   source: { uri: string } | number;
@@ -27,6 +28,27 @@ const CachedImage: React.FC<CachedImageProps> = ({
   userId,
   fallbackSource,
 }) => {
+  const styles = useThemedStyles((t) => ({
+    errorContainer: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 0,
+      borderRadius: 8,
+      backgroundColor: t.surfaceMuted,
+    },
+    errorPlaceholder: {
+      backgroundColor: t.surfaceMuted,
+    },
+    errorText: {
+      fontSize: 12,
+      color: t.textSecondary,
+      textAlign: 'center',
+    },
+    errorPressed: {
+      opacity: 0.88,
+    },
+  }));
+
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +56,6 @@ const CachedImage: React.FC<CachedImageProps> = ({
 
   const loadImage = async () => {
     if (typeof source === 'number') {
-      // Local image
       setImageUri(null);
       setLoading(false);
       setError(null);
@@ -46,7 +67,6 @@ const CachedImage: React.FC<CachedImageProps> = ({
       return;
     }
 
-    // If it's a network image (not from our storage), use it directly
     if (!bucketName || !userId || !source.uri.includes('supabase')) {
       setImageUri(source.uri);
       setLoading(false);
@@ -66,7 +86,7 @@ const CachedImage: React.FC<CachedImageProps> = ({
           setLoading(state.loading);
           setError(state.error);
           setRetryCount(state.retryCount);
-        }
+        },
       );
 
       if (cachedUri) {
@@ -176,25 +196,5 @@ const CachedImage: React.FC<CachedImageProps> = ({
 
   return renderContent();
 };
-
-const styles = StyleSheet.create({
-  errorContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 0,
-    borderRadius: 8,
-  },
-  errorPlaceholder: {
-    backgroundColor: '#e8e8e8',
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-  },
-  errorPressed: {
-    opacity: 0.88,
-  },
-});
 
 export default CachedImage;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { getTileSource, MapStyleMode } from '../../../constants/mapStyles';
+import { getMapStyleDefinition, MapStyleMode } from '../../../constants/mapStyles';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
 
@@ -35,7 +35,7 @@ export const MapStyleToggle: React.FC<MapStyleToggleProps> = ({
     },
   }));
 
-  const source = getTileSource(mode);
+  const styleDef = getMapStyleDefinition(mode);
 
   return (
     <TouchableOpacity
@@ -43,7 +43,7 @@ export const MapStyleToggle: React.FC<MapStyleToggleProps> = ({
       activeOpacity={0.85}
       style={[styles.fab, { top: topOffset }]}
     >
-      <Icon name={source.iconName} size={20} color={theme.textPrimary} />
+      <Icon name={styleDef.iconName} size={20} color={theme.textPrimary} />
     </TouchableOpacity>
   );
 };

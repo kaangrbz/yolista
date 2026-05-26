@@ -3,6 +3,8 @@ import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-nati
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SavedCollection } from '../../services/SaveCollectionsService';
 import CachedImage from './CachedImage';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface SavedCollectionRowProps {
   collection: SavedCollection;
@@ -19,6 +21,52 @@ const SavedCollectionRow: React.FC<SavedCollectionRowProps> = ({
   previewUrl,
   onPress,
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    rowContainer: {
+      minHeight: 56,
+      paddingVertical: 10,
+      paddingHorizontal: 4,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.hairlineBorder,
+    },
+    rowPressed: {
+      opacity: 0.75,
+    },
+    thumbnailWrap: {
+      marginRight: 12,
+    },
+    thumbnail: {
+      width: 48,
+      height: 48,
+      borderRadius: 8,
+      backgroundColor: t.borderStrong,
+    },
+    thumbnailPlaceholder: {
+      width: 48,
+      height: 48,
+      borderRadius: 8,
+      backgroundColor: t.surfaceMuted,
+    },
+    textContainer: {
+      flex: 1,
+      marginRight: 12,
+    },
+    titleText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: t.textPrimary,
+    },
+    noteText: {
+      marginTop: 2,
+      fontSize: 13,
+      color: t.textMuted,
+    },
+  }));
+
   const hasPreview = !!previewUrl && previewUrl.length > 0;
 
   return (
@@ -56,61 +104,16 @@ const SavedCollectionRow: React.FC<SavedCollectionRowProps> = ({
       </View>
 
       {isLoading ? (
-        <ActivityIndicator size="small" color="#111" />
+        <ActivityIndicator size="small" color={theme.textPrimary} />
       ) : (
         <Icon
           name={isSelected ? 'bookmark' : 'plus'}
           size={22}
-          color="#111"
+          color={theme.textPrimary}
         />
       )}
     </Pressable>
   );
 };
-
-const styles = StyleSheet.create({
-  rowContainer: {
-    minHeight: 56,
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e3e3e3',
-  },
-  rowPressed: {
-    opacity: 0.75,
-  },
-  thumbnailWrap: {
-    marginRight: 12,
-  },
-  thumbnail: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: '#eee',
-  },
-  thumbnailPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: '#e8e8e8',
-  },
-  textContainer: {
-    flex: 1,
-    marginRight: 12,
-  },
-  titleText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#121212',
-  },
-  noteText: {
-    marginTop: 2,
-    fontSize: 13,
-    color: '#7a7a7a',
-  },
-});
 
 export default SavedCollectionRow;

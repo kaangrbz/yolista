@@ -26,7 +26,6 @@ const ITEM_MARGIN_BOTTOM = 16;
 interface PhotoGridProps {
   selectedPhotos: CreateFlowPhoto[];
   onPhotoSelect: (photos: PickerPhotoInput[]) => void;
-  onPhotoReorder: (fromIndex: number, toIndex: number) => void;
   onRemovePhoto: (photoId: string) => void;
   maxPhotos: number;
 }
@@ -34,7 +33,6 @@ interface PhotoGridProps {
 export const PhotoGrid: React.FC<PhotoGridProps> = ({
   selectedPhotos,
   onPhotoSelect,
-  onPhotoReorder,
   onRemovePhoto,
   maxPhotos,
 }) => {
@@ -86,7 +84,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
       alignItems: 'center',
     },
     orderText: {
-      color: t.background,
+      color: t.onMedia,
       fontSize: 12,
       fontWeight: '700',
     },
@@ -101,45 +99,6 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 2,
-    },
-    reorderBar: {
-      position: 'absolute',
-      bottom: 8,
-      left: 8,
-      right: 8,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      zIndex: 2,
-    },
-    reorderButton: {
-      width: 30,
-      height: 30,
-      borderRadius: 15,
-      backgroundColor: t.overlayDark,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    reorderButtonDisabled: {
-      opacity: 0.45,
-    },
-    uploadBadge: {
-      position: 'absolute',
-      top: 8,
-      right: 40,
-      borderRadius: 12,
-      width: 24,
-      height: 24,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    uploadBadgeDone: {
-      backgroundColor: 'rgba(34, 139, 34, 0.9)',
-    },
-    uploadBadgeFailed: {
-      backgroundColor: 'rgba(220, 53, 69, 0.9)',
-    },
-    uploadBadgePending: {
-      backgroundColor: t.overlayDark,
     },
     addButton: {
       width: '48%',
@@ -230,7 +189,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
         quality: 0.8,
         selectionLimit: maxPhotos - selectedPhotos.length,
         includeBase64: false,
-        assetRepresentationMode: 'compatible',
+        assetRepresentationMode: 'current',
       });
 
       if (result.didCancel) return;
@@ -275,54 +234,8 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
     });
   };
 
-  const moveLeft = (index: number) => {
-    if (index <= 0) return;
-    onPhotoReorder(index, index - 1);
-  };
-
-  const moveRight = (index: number) => {
-    if (index >= selectedPhotos.length - 1) return;
-    onPhotoReorder(index, index + 1);
-  };
-
-  const renderUploadBadge = (photo: CreateFlowPhoto) => {
-    if (photo.uploadStatus === 'done') {
-      return (
-        <View style={[styles.uploadBadge, styles.uploadBadgeDone]}>
-          <Icon name="check" size={14} color="#fff" />
-        </View>
-      );
-    }
-
-    if (photo.uploadStatus === 'failed') {
-      return (
-        <View style={[styles.uploadBadge, styles.uploadBadgeFailed]}>
-          <Icon name="alert-circle-outline" size={14} color="#fff" />
-        </View>
-      );
-    }
-
-    if (
-      photo.uploadStatus === 'processing' ||
-      photo.uploadStatus === 'uploading' ||
-      photo.uploadStatus === 'pending'
-    ) {
-      return (
-        <View style={[styles.uploadBadge, styles.uploadBadgePending]}>
-          <ActivityIndicator size="small" color="#fff" />
-        </View>
-      );
-    }
-
-    return null;
-  };
-
-  const canReorder = selectedPhotos.length > 1;
-
   const renderPhotoItem = (photo: CreateFlowPhoto, index: number) => {
     const displayUri = photo.processedLocalUri || photo.uri;
-    const isFirst = index === 0;
-    const isLast = index === selectedPhotos.length - 1;
 
     return (
       <View key={photo.id} style={styles.photoItem}>
@@ -335,44 +248,14 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
           <View style={styles.orderBadge}>
             <Text style={styles.orderText}>{index + 1}</Text>
           </View>
-
-          {renderUploadBadge(photo)}
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.removeButton}
           onPress={() => handleRemovePhoto(photo.id)}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-          <Icon name="close" size={16} color="#fff" />
+          <Icon name="close" size={16} color={theme.onMedia} />
         </TouchableOpacity>
-
-        {canReorder ? (
-          <View style={styles.reorderBar}>
-            <TouchableOpacity
-              style={[styles.reorderButton, isFirst && styles.reorderButtonDisabled]}
-              onPress={() => moveLeft(index)}
-              disabled={isFirst}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-              <Icon
-                name="chevron-left"
-                size={20}
-                color={isFirst ? 'rgba(255,255,255,0.35)' : '#fff'}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.reorderButton, isLast && styles.reorderButtonDisabled]}
-              onPress={() => moveRight(index)}
-              disabled={isLast}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-              <Icon
-                name="chevron-right"
-                size={20}
-                color={isLast ? 'rgba(255,255,255,0.35)' : '#fff'}
-              />
-            </TouchableOpacity>
-          </View>
-        ) : null}
       </View>
     );
   };
@@ -407,9 +290,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
       {selectedPhotos.length > 0 ? (
         <View style={styles.infoContainer}>
           <Text style={styles.infoText}>
-            {canReorder
-              ? 'Sırayı değiştirmek için ← / → düğmelerini kullan. Tam ekran görmek için fotoğrafa dokun.'
-              : 'En az iki fotoğraf eklediğinde sıralama yapabilirsin.'}
+            Tam ekran görmek için fotoğrafa dokun. Sıralamayı bir sonraki adımda düzenleyebilirsin.
           </Text>
         </View>
       ) : null}

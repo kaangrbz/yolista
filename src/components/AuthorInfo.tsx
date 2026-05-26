@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 // import styles from '../styles';
 import Seperator from './Seperator';
@@ -11,6 +11,8 @@ import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { DefaultAvatar, NoImage } from '../assets';
 import { useProfileImageDownload } from '../hooks/useImageDownload';
 import { buildProfileNavigationParams } from '../utils/profileSlug';
+import { useAppTheme } from '../context/AppThemeContext';
+import { useThemedStyles } from '../theme/useThemedStyles';
 
 const AuthorInfo = ({ fullName, image_url, image_preview_url, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId, cityName }: {
   fullName: string;
@@ -25,6 +27,66 @@ const AuthorInfo = ({ fullName, image_url, image_preview_url, isVerified, userna
   routeId: string;
   cityName?: string;
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles((t) => ({
+    authorContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 10,
+      backgroundColor: t.background,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+    },
+    authorInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+    },
+    authorImage: {
+      width: 40,
+      height: 40,
+      borderRadius: 999,
+      marginRight: 5,
+    },
+    authorName: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: t.textPrimary,
+    },
+    verifiedIcon: {
+      marginLeft: 4,
+    },
+    authorUsername: {
+      fontSize: 14,
+      color: t.textSecondary,
+      marginLeft: 4,
+    },
+    moreButton: {
+      padding: 4,
+    },
+    timeAgo: {
+      fontSize: 12,
+      color: t.textMuted,
+    },
+    menuText: {
+      fontSize: 16,
+      color: t.textPrimary,
+    },
+    menuOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 5,
+      marginVertical: 5,
+    },
+    menuItemIcon: {
+      marginRight: 10,
+    },
+  }));
+
   const [visibleDropdown, setVisibleDropdown] = useState(false);
   const navigation = useNavigation();
   const screenName = useNavigationState((state) => state.routes[state.index].name);
@@ -140,7 +202,7 @@ const AuthorInfo = ({ fullName, image_url, image_preview_url, isVerified, userna
         <Seperator />
         <Text style={styles.timeAgo}>{getTimeAgo(createdAt)}</Text>
       </View>
-      <DropdownMenu visible={visibleDropdown} handleOpen={() => setVisibleDropdown(true)} handleClose={() => setVisibleDropdown(false)} trigger={<Icon name="dots-vertical" size={20} color="#666" />}>
+      <DropdownMenu visible={visibleDropdown} handleOpen={() => setVisibleDropdown(true)} handleClose={() => setVisibleDropdown(false)} trigger={<Icon name="dots-vertical" size={20} color={theme.textSecondary} />}>
         {/* <TouchableOpacity style={styles.menuOption}>
               <Icon name="pencil" size={20} color="#666" style={styles.menuItemIcon} />
               <Text style={styles.menuText}>Edit</Text>
@@ -153,12 +215,12 @@ const AuthorInfo = ({ fullName, image_url, image_preview_url, isVerified, userna
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.menuOption} onPress={handleHideRoute}>
-              <Icon name="archive" size={20} color="#333" style={styles.menuItemIcon} />
+              <Icon name="archive" size={20} color={theme.textSecondary} style={styles.menuItemIcon} />
               <Text style={styles.menuText}>Arşivle</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.menuOption} onPress={handleEditRoute}>
-              <Icon name="lock" size={20} color="#333" style={styles.menuItemIcon} />
+              <Icon name="lock" size={20} color={theme.textSecondary} style={styles.menuItemIcon} />
               <Text style={styles.menuText}>Düzenle</Text>
             </TouchableOpacity>
           </>
@@ -176,61 +238,3 @@ const AuthorInfo = ({ fullName, image_url, image_preview_url, isVerified, userna
 };
 
 export default AuthorInfo;
-
-const styles = StyleSheet.create({
-  authorContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 10,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  authorInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  authorImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 999, // Do not use borderRadius: string, it is not supported on andriod i guess
-    marginRight: 5,
-  },
-  authorName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#222',
-  },
-  verifiedIcon: {
-    marginLeft: 4,
-  },
-  authorUsername: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  moreButton: {
-    padding: 4,
-  },
-  timeAgo: {
-    fontSize: 12,
-    color: '#999',
-  },
-  menuText: {
-    fontSize: 16,
-    color: '#222',
-  },
-  menuOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 5,
-    marginVertical: 5,
-  },
-  menuItemIcon: {
-    marginRight: 10,
-  },
-});

@@ -41,7 +41,7 @@ export class ShareService {
     }
   }
 
-  /** Paylaşım metni: özel mesaj varsa o + link; yoksa rota başlığı + link; başlık yoksa sadece link */
+  /** Paylaşım metni: özel mesaj varsa o + link; yoksa rota etiketi + link; etiket yoksa sadece link */
   static composeShareMessage(
     postTitle: string,
     url: string,
