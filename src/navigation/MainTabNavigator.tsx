@@ -150,7 +150,10 @@ const ExploreStackScreen = () => {
   const tabStackScreenOptions = useTabStackScreenOptions();
 
   return (
-    <ExploreStack.Navigator screenOptions={tabStackScreenOptions}>
+    <ExploreStack.Navigator
+      initialRouteName="ExploreMap"
+      screenOptions={tabStackScreenOptions}
+    >
       <ExploreStack.Screen
         name="ExploreMain"
         component={ExploreScreen}

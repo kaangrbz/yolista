@@ -66,3 +66,15 @@ export const regionDeltaForDistanceKm = (distanceKm: number): number => {
 
 /** Keşif haritası — seçili / aktif rota önizleme çerçevesi */
 export const MAP_ACTIVE_ROUTE_BORDER = '#2563eb';
+
+/** Rota sekmesi — segment polyline tonları (opacity değil, ayrı stroke). */
+export const ROUTE_SEGMENT_ACTIVE = MAP_ACTIVE_ROUTE_BORDER;
+export const ROUTE_SEGMENT_PAST = '#94a3b8';
+export const ROUTE_SEGMENT_UPCOMING = '#cbd5e1';
+export const ROUTE_SEGMENT_APPROACH_ACTIVE = '#0d9488';
+export const ROUTE_SEGMENT_APPROACH_MUTED = '#64748b';
+export const ROUTE_SEGMENT_HALO = '#ffffff';
+
+/** GPS ile otomatik sonraki bacak (metre). */
+export const ROUTE_SEGMENT_ADVANCE_RADIUS_M = 80;
+export const ROUTE_SEGMENT_ADVANCE_DEBOUNCE_MS = 4000;

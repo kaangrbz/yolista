@@ -10,6 +10,7 @@ import MapRouteMarker from './MapRouteMarker';
 interface MapRouteGroupMarkerProps {
   group: RouteWithProfile[];
   selectedRouteId: string | null;
+  dimmed?: boolean;
   onPress: (route: RouteWithProfile) => void;
   onCalloutPress: (route: RouteWithProfile) => void;
 }
@@ -17,6 +18,7 @@ interface MapRouteGroupMarkerProps {
 export const MapRouteGroupMarker: React.FC<MapRouteGroupMarkerProps> = ({
   group,
   selectedRouteId,
+  dimmed = false,
   onPress,
   onCalloutPress,
 }) => {
@@ -62,6 +64,7 @@ export const MapRouteGroupMarker: React.FC<MapRouteGroupMarkerProps> = ({
         userId={primary.user_id || null}
         iconName={primary.categories?.icon_name}
         selected={isSelected}
+        dimmed={dimmed}
         stackCount={group.length}
         stackItems={group.slice(0, 5).map((route) => ({
           imageUrl: route.image_url || null,

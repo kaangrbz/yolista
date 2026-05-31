@@ -11,7 +11,8 @@ import { RouteWithProfile } from '../../../model/routes.model';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
 import { getRouteDisplayLabel } from '../../../utils/getRouteDisplayLabel';
-import { getRouteDistanceLabel } from '../../../utils/routeDistance';
+import { getRouteDistanceLabel, extractValidCoordinates } from '../../../utils/routeDistance';
+import { MAP_ACTIVE_ROUTE_BORDER } from '../../../constants/mapDefaults';
 import MapRouteStopCard, {
   getMapStopKey,
   getMapStopLabel,
@@ -25,6 +26,11 @@ interface MapSelectedRouteStopsProps {
   activeStopId?: string | null;
   onStopPress?: (stop: RouteWithProfile) => void;
   onClearSelection?: () => void;
+  onOpenRouteInMaps?: () => void;
+  onOpenStopInMaps?: (stop: RouteWithProfile) => void;
+  startFromUserLocation?: boolean;
+  onStartFromUserLocationChange?: (enabled: boolean) => void;
+  canStartFromUserLocation?: boolean;
 }
 
 const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
@@ -34,6 +40,11 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
   activeStopId = null,
   onStopPress,
   onClearSelection,
+  onOpenRouteInMaps,
+  onOpenStopInMaps,
+  startFromUserLocation = false,
+  onStartFromUserLocationChange,
+  canStartFromUserLocation = false,
 }) => {
   const scrollRef = useRef<ScrollView>(null);
   const theme = useAppTheme();
@@ -87,6 +98,35 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
       fontSize: 12,
       color: t.textSecondary,
     },
+    actionsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      paddingHorizontal: 18,
+      paddingBottom: 8,
+    },
+    mapsButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: t.surfaceMuted,
+    },
+    mapsButtonText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: t.textPrimary,
+    },
+    mapsButtonActive: {
+      backgroundColor: t.background,
+      borderWidth: 1.5,
+      borderColor: MAP_ACTIVE_ROUTE_BORDER,
+    },
+    mapsButtonTextActive: {
+      color: t.accent,
+    },
   }));
 
   const displayStops = useMemo(() => {
@@ -104,6 +144,32 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
     () => getRouteDistanceLabel(displayStops),
     [displayStops],
   );
+
+  const routeCoords = useMemo(
+    () =>
+      extractValidCoordinates(
+        displayStops.map((stop) => ({
+          latitude: stop.latitude,
+          longitude: stop.longitude,
+        })),
+      ),
+    [displayStops],
+  );
+
+  const activeStop = useMemo(() => {
+    if (!activeStopId) {
+      return null;
+    }
+
+    return (
+      displayStops.find((stop) => getMapStopKey(stop) === activeStopId) ?? null
+    );
+  }, [activeStopId, displayStops]);
+
+  const activeStopHasCoordinate =
+    activeStop &&
+    typeof activeStop.latitude === 'number' &&
+    typeof activeStop.longitude === 'number';
 
   useEffect(() => {
     if (!canScrollStops) {
@@ -193,6 +259,58 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
           </TouchableOpacity>
         ) : null}
       </View>
+
+      {!loading && routeCoords.length > 0 && onOpenRouteInMaps ? (
+        <View style={styles.actionsRow}>
+          {canStartFromUserLocation && onStartFromUserLocationChange ? (
+            <TouchableOpacity
+              style={[
+                styles.mapsButton,
+                startFromUserLocation && styles.mapsButtonActive,
+              ]}
+              activeOpacity={0.85}
+              onPress={() => {
+                void onStartFromUserLocationChange(!startFromUserLocation);
+              }}
+              accessibilityState={{ selected: startFromUserLocation }}
+            >
+              <Icon
+                name="crosshairs-gps"
+                size={16}
+                color={startFromUserLocation ? theme.accent : theme.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.mapsButtonText,
+                  startFromUserLocation && styles.mapsButtonTextActive,
+                ]}
+              >
+                Konumumdan başla
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          <TouchableOpacity
+            style={styles.mapsButton}
+            activeOpacity={0.85}
+            onPress={onOpenRouteInMaps}
+          >
+            <Icon name="google-maps" size={16} color={theme.accent} />
+            <Text style={styles.mapsButtonText}>Tüm rotayı haritada aç</Text>
+          </TouchableOpacity>
+
+          {activeStopHasCoordinate && activeStop && onOpenStopInMaps ? (
+            <TouchableOpacity
+              style={styles.mapsButton}
+              activeOpacity={0.85}
+              onPress={() => onOpenStopInMaps(activeStop)}
+            >
+              <Icon name="map-marker-radius" size={16} color={theme.accent} />
+              <Text style={styles.mapsButtonText}>Bu durağı haritada aç</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : null}
 
       {loading ? (
         <View style={styles.loadingRow}>

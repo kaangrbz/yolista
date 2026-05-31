@@ -1,8 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { StyleSheet, Text, View } from 'react-native';
 import { RouteWithProfile } from '../../model/routes.model';
-import { useAppTheme } from '../../context/AppThemeContext';
 import { useThemedStyles } from '../../theme/useThemedStyles';
 import {
   estimateWalkingMinutes,
@@ -11,14 +9,12 @@ import {
   getRouteDistanceLabel,
   totalRouteDistanceKmFromPoints,
 } from '../../utils/routeDistance';
-import { openRouteInMaps } from '../../utils/openInMaps';
 
 interface RouteSummaryBarProps {
   stops: RouteWithProfile[];
 }
 
 export const RouteSummaryBar: React.FC<RouteSummaryBarProps> = ({ stops }) => {
-  const theme = useAppTheme();
   const coords = extractValidCoordinates(
     stops.map((stop) => ({
       latitude: stop.latitude,
@@ -63,21 +59,6 @@ export const RouteSummaryBar: React.FC<RouteSummaryBarProps> = ({ stops }) => {
       fontSize: 13,
       color: t.textSecondary,
     },
-    mapsButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      alignSelf: 'flex-start',
-      gap: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 999,
-      backgroundColor: t.surfaceMuted,
-    },
-    mapsButtonText: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: t.textPrimary,
-    },
   }));
 
   const metaParts = [`${stops.length} durak`];
@@ -100,19 +81,6 @@ export const RouteSummaryBar: React.FC<RouteSummaryBarProps> = ({ stops }) => {
           </React.Fragment>
         ))}
       </View>
-
-      {coords.length > 0 ? (
-        <TouchableOpacity
-          style={styles.mapsButton}
-          activeOpacity={0.85}
-          onPress={() => {
-            void openRouteInMaps(coords);
-          }}
-        >
-          <Icon name="google-maps" size={16} color={theme.accent} />
-          <Text style={styles.mapsButtonText}>Tüm rotayı haritada aç</Text>
-        </TouchableOpacity>
-      ) : null}
     </View>
   );
 };

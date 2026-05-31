@@ -37,6 +37,8 @@ interface MapCardStackProps extends Pick<ViewProps, 'collapsable'> {
   count: number;
   items?: MapCardStackItem[];
   selected?: boolean;
+  dimmed?: boolean;
+  accentColor?: string;
   orderLabel?: string;
   badgeLabel?: string | null;
   variant?: 'route' | 'cluster';
@@ -49,6 +51,7 @@ interface MapCardStackCardProps {
   selected: boolean;
   isFront: boolean;
   variant: 'route' | 'cluster';
+  accentColor: string;
   badgeLabel?: string | null;
   onLoad?: () => void;
 }
@@ -59,6 +62,7 @@ const MapCardStackCard: React.FC<MapCardStackCardProps> = ({
   selected,
   isFront,
   variant,
+  accentColor,
   badgeLabel,
   onLoad,
 }) => {
@@ -90,10 +94,10 @@ const MapCardStackCard: React.FC<MapCardStackCardProps> = ({
   const iconName = item.iconName || 'map-marker';
   const borderColor =
     selected && isFront
-      ? theme.accent
+      ? accentColor
       : item.estimatedLocation && isFront
         ? theme.textMuted
-        : theme.accent;
+        : accentColor;
 
   return (
     <View
@@ -133,7 +137,7 @@ const MapCardStackCard: React.FC<MapCardStackCardProps> = ({
       )}
 
       {isFront && badgeLabel ? (
-        <View style={[styles.badge, { backgroundColor: theme.accent, borderColor: theme.background }]}>
+        <View style={[styles.badge, { backgroundColor: accentColor, borderColor: theme.background }]}>
           <Text style={[styles.badgeText, { color: theme.background }]}>{badgeLabel}</Text>
         </View>
       ) : null}
@@ -145,6 +149,8 @@ export const MapCardStack: React.FC<MapCardStackProps> = ({
   count,
   items,
   selected = false,
+  dimmed = false,
+  accentColor: accentColorProp,
   orderLabel,
   badgeLabel: badgeLabelProp,
   variant = 'route',
@@ -152,6 +158,7 @@ export const MapCardStack: React.FC<MapCardStackProps> = ({
   collapsable,
 }) => {
   const theme = useAppTheme();
+  const accentColor = accentColorProp ?? theme.accent;
   const safeCount = Math.max(1, count);
   const visibleCount = getMapMarkerVisibleCount(safeCount);
   const slots = getMapMarkerStackSlots(safeCount);
@@ -193,9 +200,12 @@ export const MapCardStack: React.FC<MapCardStackProps> = ({
   }, [allLoaded, onImageReady]);
 
   return (
-    <View style={styles.root} collapsable={collapsable}>
+    <View
+      style={[styles.root, dimmed && !selected ? styles.rootDimmed : null]}
+      collapsable={collapsable}
+    >
       <View style={styles.stack}>
-        <View style={[styles.tail, { borderTopColor: theme.accent }]} />
+        <View style={[styles.tail, { borderTopColor: accentColor }]} />
         {resolvedItems.map((item, index) => (
           <MapCardStackCard
             key={`card-${index}`}
@@ -204,6 +214,7 @@ export const MapCardStack: React.FC<MapCardStackProps> = ({
             selected={selected}
             isFront={index === visibleCount - 1}
             variant={variant}
+            accentColor={accentColor}
             badgeLabel={index === visibleCount - 1 ? badgeLabel : null}
             onLoad={handleCardLoad}
           />
@@ -217,6 +228,9 @@ const styles = StyleSheet.create({
   root: {
     width: MAP_MARKER_WIDTH,
     height: MAP_MARKER_HEIGHT,
+  },
+  rootDimmed: {
+    opacity: 0.42,
   },
   stack: {
     position: 'absolute',

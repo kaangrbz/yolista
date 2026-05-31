@@ -8,9 +8,12 @@ interface MapRouteMarkerProps extends Pick<ViewProps, 'collapsable'> {
   userId?: string | null;
   iconName?: string;
   selected?: boolean;
+  dimmed?: boolean;
+  accentColor?: string;
   stackCount?: number;
   stackItems?: MapCardStackItem[];
   orderLabel?: string;
+  badgeLabel?: string | null;
   estimatedLocation?: boolean;
   onImageReady?: () => void;
 }
@@ -21,9 +24,12 @@ export const MapRouteMarker: React.FC<MapRouteMarkerProps> = ({
   userId,
   iconName = 'map-marker',
   selected = false,
+  dimmed = false,
+  accentColor,
   stackCount = 1,
   stackItems,
   orderLabel,
+  badgeLabel,
   estimatedLocation = false,
   onImageReady,
   collapsable,
@@ -39,7 +45,10 @@ export const MapRouteMarker: React.FC<MapRouteMarkerProps> = ({
       count={orderLabel ? 1 : safeStack}
       items={resolvedItems}
       selected={selected}
+      dimmed={dimmed}
+      accentColor={accentColor}
       orderLabel={orderLabel}
+      badgeLabel={badgeLabel}
       onImageReady={onImageReady}
       collapsable={collapsable}
     />

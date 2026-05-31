@@ -7,7 +7,6 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import { useThemedStyles } from '../../theme/useThemedStyles';
 import { useMapPreviewImageDownload } from '../../hooks/useImageDownload';
 import { getStopPhotoHintLabel } from '../../utils/getStopPhotoHintLabel';
-import { openStopInMaps } from '../../utils/openInMaps';
 
 interface RouteSegmentCardProps {
   stop: RouteWithProfile;
@@ -24,8 +23,6 @@ export const RouteSegmentCard: React.FC<RouteSegmentCardProps> = ({
 }) => {
   const theme = useAppTheme();
   const label = getStopPhotoHintLabel(stop);
-  const hasCoordinate =
-    typeof stop.latitude === 'number' && typeof stop.longitude === 'number';
   const description = stop.description?.trim() || '';
 
   const { imageUri } = useMapPreviewImageDownload(
@@ -93,22 +90,6 @@ export const RouteSegmentCard: React.FC<RouteSegmentCardProps> = ({
       lineHeight: 16,
       color: t.textSecondary,
     },
-    locationMissing: {
-      fontSize: 11,
-      color: t.textMuted,
-      fontStyle: 'italic',
-    },
-    mapsButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      marginTop: 4,
-    },
-    mapsButtonText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: t.accent,
-    },
   }));
 
   return (
@@ -140,24 +121,6 @@ export const RouteSegmentCard: React.FC<RouteSegmentCardProps> = ({
               {description}
             </Text>
           ) : null}
-
-          {!hasCoordinate ? (
-            <Text style={styles.locationMissing}>Konum yok</Text>
-          ) : (
-            <TouchableOpacity
-              style={styles.mapsButton}
-              activeOpacity={0.85}
-              onPress={() => {
-                void openStopInMaps({
-                  latitude: stop.latitude as number,
-                  longitude: stop.longitude as number,
-                });
-              }}
-            >
-              <Icon name="map-marker-radius" size={14} color={theme.accent} />
-              <Text style={styles.mapsButtonText}>Bu durağı haritada aç</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
     </TouchableOpacity>

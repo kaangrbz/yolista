@@ -21,8 +21,11 @@ import { getRouteDistanceLabel } from '../../../utils/routeDistance';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
 import MapRouteRow from './MapRouteRow';
+import MapRouteDirectionsPanel from './MapRouteDirectionsPanel';
+import MapRouteSheetTabs from './MapRouteSheetTabs';
 import MapSelectedRouteStops from './MapSelectedRouteStops';
 import MapWeatherBadge from './MapWeatherBadge';
+import type { RouteSegment, RouteSheetTab } from '../../../types/routeSegment.types';
 
 export type BottomSheetSnap = 'small' | 'medium' | 'large';
 
@@ -43,6 +46,18 @@ interface MapBottomSheetProps {
   onSelectRoute: (route: RouteWithProfile) => void;
   onStopPress?: (stop: RouteWithProfile) => void;
   onDismissRouteStops?: () => void;
+  onOpenRouteInMaps?: () => void;
+  onOpenStopInMaps?: (stop: RouteWithProfile) => void;
+  startFromUserLocation?: boolean;
+  onStartFromUserLocationChange?: (enabled: boolean) => void;
+  canStartFromUserLocation?: boolean;
+  routeSheetTab?: RouteSheetTab;
+  onRouteSheetTabChange?: (tab: RouteSheetTab) => void;
+  routeSegments?: RouteSegment[];
+  activeSegmentIndex?: number;
+  segmentsLoading?: boolean;
+  onSegmentPress?: (index: number) => void;
+  onOpenActiveStopInMaps?: () => void;
   onSnapChange?: (snap: BottomSheetSnap) => void;
   /** Hava durumu rozeti için aktif konum (genelde haritanın merkezi). */
   weatherLatitude?: number | null;
@@ -84,6 +99,18 @@ type MapBottomSheetListHeaderProps = {
   activeStopId: string | null;
   onStopPress?: (stop: RouteWithProfile) => void;
   onDismissRouteStops?: () => void;
+  onOpenRouteInMaps?: () => void;
+  onOpenStopInMaps?: (stop: RouteWithProfile) => void;
+  startFromUserLocation?: boolean;
+  onStartFromUserLocationChange?: (enabled: boolean) => void;
+  canStartFromUserLocation?: boolean;
+  routeSheetTab: RouteSheetTab;
+  onRouteSheetTabChange?: (tab: RouteSheetTab) => void;
+  routeSegments: RouteSegment[];
+  activeSegmentIndex: number;
+  segmentsLoading: boolean;
+  onSegmentPress?: (index: number) => void;
+  onOpenActiveStopInMaps?: () => void;
   routes: RouteWithProfile[];
   isViewingSelectedRoute: boolean;
   sectionTitle: string;
@@ -105,6 +132,18 @@ const MapBottomSheetListHeader: React.FC<MapBottomSheetListHeaderProps> = ({
   activeStopId,
   onStopPress,
   onDismissRouteStops,
+  onOpenRouteInMaps,
+  onOpenStopInMaps,
+  startFromUserLocation = false,
+  onStartFromUserLocationChange,
+  canStartFromUserLocation = false,
+  routeSheetTab,
+  onRouteSheetTabChange,
+  routeSegments,
+  activeSegmentIndex,
+  segmentsLoading,
+  onSegmentPress,
+  onOpenActiveStopInMaps,
   routes,
   isViewingSelectedRoute,
   sectionTitle,
@@ -141,7 +180,14 @@ const MapBottomSheetListHeader: React.FC<MapBottomSheetListHeaderProps> = ({
       </View>
     </View>
 
-    {showSelectedRouteStops ? (
+    {showSelectedRouteStops && onRouteSheetTabChange ? (
+      <MapRouteSheetTabs
+        activeTab={routeSheetTab}
+        onTabChange={onRouteSheetTabChange}
+      />
+    ) : null}
+
+    {showSelectedRouteStops && routeSheetTab === 'stops' ? (
       <MapSelectedRouteStops
         stops={selectedRouteStops}
         loading={stopsLoading}
@@ -149,10 +195,32 @@ const MapBottomSheetListHeader: React.FC<MapBottomSheetListHeaderProps> = ({
         activeStopId={activeStopId}
         onStopPress={onStopPress}
         onClearSelection={onDismissRouteStops}
+        onOpenRouteInMaps={onOpenRouteInMaps}
+        onOpenStopInMaps={onOpenStopInMaps}
+        startFromUserLocation={startFromUserLocation}
+        onStartFromUserLocationChange={onStartFromUserLocationChange}
+        canStartFromUserLocation={canStartFromUserLocation}
       />
     ) : null}
 
-    {!(isViewingSelectedRoute && routes.length === 0) ? (
+    {showSelectedRouteStops && routeSheetTab === 'directions' ? (
+      <MapRouteDirectionsPanel
+        selectedRoute={selectedRoute}
+        segments={routeSegments}
+        activeSegmentIndex={activeSegmentIndex}
+        loading={segmentsLoading || stopsLoading}
+        startFromUserLocation={startFromUserLocation}
+        canStartFromUserLocation={canStartFromUserLocation}
+        onSegmentPress={onSegmentPress ?? (() => undefined)}
+        onStartFromUserLocationChange={(enabled) => {
+          onStartFromUserLocationChange?.(enabled);
+        }}
+        onOpenRouteInMaps={onOpenRouteInMaps ?? (() => undefined)}
+        onOpenActiveStopInMaps={onOpenActiveStopInMaps ?? (() => undefined)}
+      />
+    ) : null}
+
+    {showSelectedRouteStops && routeSheetTab === 'directions' ? null : !(isViewingSelectedRoute && routes.length === 0) ? (
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionHeaderTitle}>{sectionTitle}</Text>
         {routes.length > 0 ? (
@@ -179,6 +247,18 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       onSelectRoute,
       onStopPress,
       onDismissRouteStops,
+      onOpenRouteInMaps,
+      onOpenStopInMaps,
+      startFromUserLocation = false,
+      onStartFromUserLocationChange,
+      canStartFromUserLocation = false,
+      routeSheetTab = 'stops',
+      onRouteSheetTabChange,
+      routeSegments = [],
+      activeSegmentIndex = 0,
+      segmentsLoading = false,
+      onSegmentPress,
+      onOpenActiveStopInMaps,
       onSnapChange,
       weatherLatitude,
       weatherLongitude,
@@ -399,6 +479,18 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       activeStopId,
       onStopPress,
       onDismissRouteStops,
+      onOpenRouteInMaps,
+      onOpenStopInMaps,
+      startFromUserLocation,
+      onStartFromUserLocationChange,
+      canStartFromUserLocation,
+      routeSheetTab,
+      onRouteSheetTabChange,
+      routeSegments,
+      activeSegmentIndex,
+      segmentsLoading,
+      onSegmentPress,
+      onOpenActiveStopInMaps,
       routes,
       isViewingSelectedRoute,
       sectionTitle,
@@ -419,6 +511,18 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       activeStopId,
       onStopPress,
       onDismissRouteStops,
+      onOpenRouteInMaps,
+      onOpenStopInMaps,
+      startFromUserLocation,
+      onStartFromUserLocationChange,
+      canStartFromUserLocation,
+      routeSheetTab,
+      onRouteSheetTabChange,
+      routeSegments,
+      activeSegmentIndex,
+      segmentsLoading,
+      onSegmentPress,
+      onOpenActiveStopInMaps,
       routes,
       isViewingSelectedRoute,
       sectionTitle,
@@ -432,6 +536,9 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       () => <MapBottomSheetListHeader {...listHeaderPropsRef.current} />,
       [],
     );
+
+    const listData =
+      showSelectedRouteStops && routeSheetTab === 'directions' ? [] : routes;
 
     const renderListEmpty = useCallback(() => {
       if (loading) {
@@ -478,7 +585,7 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       >
         <BottomSheetFlatList
           ref={verticalListRef}
-          data={routes}
+          data={listData}
           keyExtractor={keyExtractor}
           renderItem={renderVerticalItem}
           ItemSeparatorComponent={renderRowSeparator}

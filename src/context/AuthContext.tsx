@@ -1,8 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
-import { getAuthMobileCallbackUrl } from '../constants/appLinks';
 import { translateSupabaseError } from '../utils/supabaseErrorMessages';
+import {
+  requestRecoveryViaWebApi,
+  resendConfirmationViaWebApi,
+  signupViaWebApi,
+} from '../utils/authApi';
 import { markLoggedInBefore } from '../utils/welcome';
 import { AUTH_MOBILE } from '../shared/auth-messages';
 
@@ -296,40 +300,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     username: string,
   ): Promise<SignUpResult> => {
     try {
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email,
+      const result = await signupViaWebApi({
+        email: email.trim(),
         password,
-        options: {
-          emailRedirectTo: getAuthMobileCallbackUrl('signup'),
-          data: {
-            username,
-            full_name,
-            image_url: '',
-          },
-        },
+        full_name: full_name.trim(),
+        username: username.trim(),
       });
 
-      if (signUpError) {
-        throw new Error(translateSupabaseError(signUpError, 'Kayıt olurken bir hata oluştu.'));
-      }
-
-      if (!authData.user) {
-        throw new Error('No user data returned from signup');
-      }
-
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        throw sessionError;
-      }
-
-      if (session?.user) {
-        await applySession(session);
-
-        return { needsEmailVerification: false };
-      }
-
-      return { needsEmailVerification: true };
+      return { needsEmailVerification: result.needsEmailVerification };
     } catch (error) {
       console.error('Sign up error:', error);
       throw new Error(translateSupabaseError(error, 'Kayıt olurken bir hata oluştu.'));
@@ -338,13 +316,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const resetPasswordForEmail = async (email: string) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: getAuthMobileCallbackUrl('recovery'),
-      });
-
-      if (error) {
-        throw error;
-      }
+      await requestRecoveryViaWebApi(email.trim());
     } catch (error) {
       console.error('Reset password email error:', error);
       throw new Error(
@@ -418,17 +390,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const resendSignupConfirmation = async (email: string) => {
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-        options: {
-          emailRedirectTo: getAuthMobileCallbackUrl('signup'),
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
+      await resendConfirmationViaWebApi(email.trim());
     } catch (error) {
       console.error('Resend signup confirmation error:', error);
       throw new Error(

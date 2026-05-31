@@ -1,5 +1,6 @@
 /** Yayınlanan site ve uygulama deep link kökleri */
-export const APP_PUBLISHED_ORIGIN = 'https://yolista.roulista.com';
+export const APP_PUBLISHED_ORIGIN =
+  process.env.EXPO_PUBLIC_SITE_URL ?? 'https://yolista.roulista.com';
 
 export const APP_LINK_HOSTS = [
   'yolista.roulista.com',

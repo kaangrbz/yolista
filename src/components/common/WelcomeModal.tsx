@@ -38,10 +38,6 @@ const welcomeFeatures: WelcomeFeature[] = [
 const WelcomeModal: React.FC<WelcomeModalProps> = ({ visible, onDismiss }) => {
   const theme = useAuthTheme();
   const styles = useAuthThemedStyles((t) => ({
-    brandRow: {
-      alignItems: 'center',
-      marginBottom: 16,
-    },
     features: {
       gap: 12,
     },
@@ -92,7 +88,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ visible, onDismiss }) => {
       onClose={onDismiss}
       title="Yolista'ya hoş geldin!"
       message="Rotanı keşfet, paylaş ve şehrini yeni bir gözle yaşamaya başla."
-      icon="map-marker-star"
+      hero={<Logo size="large" color={theme.primary} />}
       showCloseButton={true}
       dismissOnBackdrop={false}
       primaryAction={{
@@ -100,10 +96,6 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ visible, onDismiss }) => {
         onPress: handleStart,
       }}
     >
-      <View style={styles.brandRow}>
-        <Logo size="small" color={theme.primary} />
-      </View>
-
       <View style={styles.features}>
         {welcomeFeatures.map((feature) => (
           <View key={feature.title} style={styles.featureRow}>

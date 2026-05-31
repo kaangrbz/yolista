@@ -42,6 +42,8 @@ interface AppModalProps {
   message?: string;
   icon?: string;
   iconColor?: string;
+  /** `icon` yerine özel üst alan (örn. marka logosu). Verilirse `icon` yok sayılır. */
+  hero?: React.ReactNode;
   children?: React.ReactNode;
   /**
    * Dinamik buton dizisi. Verilirse `primaryAction` / `secondaryAction` yok sayılır.
@@ -86,6 +88,7 @@ const AppModal: React.FC<AppModalProps> = ({
   message,
   icon,
   iconColor,
+  hero,
   children,
   actions,
   actionsLayout = 'auto',
@@ -160,6 +163,11 @@ const AppModal: React.FC<AppModalProps> = ({
       justifyContent: 'center',
       borderWidth: 1,
       borderColor: t.cardBorder,
+    },
+    heroCustom: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 20,
     },
     title: {
       fontSize: 24,
@@ -243,7 +251,9 @@ const AppModal: React.FC<AppModalProps> = ({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
-            {icon ? (
+            {hero ? (
+              <View style={styles.heroCustom}>{hero}</View>
+            ) : icon ? (
               <View style={styles.heroOuter}>
                 <View style={styles.heroInner}>
                   <Icon name={icon} size={40} color={resolvedIconColor} />
