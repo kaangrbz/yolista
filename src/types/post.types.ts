@@ -47,8 +47,12 @@ export interface PostProps {
   prefetchedImageRows?: RouteImageRow[];
   showFullScreen?: boolean;
   actions?: PostActions;
-  /** Faz 3 — harita + durak listesi (carousel üstü). */
+  /** @deprecated carousel altında tab içeriği için detailBelowCarouselSlot kullanın */
   detailExperienceSlot?: React.ReactNode;
+  /** Rota detay: carousel altında tab bar + tab paneli. */
+  detailBelowCarouselSlot?: React.ReactNode;
+  /** Feed listesinde durak sayısı ipucu (Rotayı aç CTA). */
+  stopCountHint?: number | null;
   /** Carousel ↔ harita senkronu. */
   activeSlideIndex?: number;
   onActiveSlideIndexChange?: (index: number) => void;

@@ -38,6 +38,17 @@ export class ImageService {
     };
   }
 
+  /** Harici CDN / admin JSON import — Supabase indirmesi yok, URI doğrudan kullanılır. */
+  private static isExternalHttpImageUrl(imageUrl: string): boolean {
+    const trimmed = imageUrl.trim();
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      return false;
+    }
+
+    return this.extractPathFromSupabaseUrl(trimmed, 'routes') === null
+      && this.extractPathFromSupabaseUrl(trimmed, 'profiles') === null;
+  }
+
   private static extractPathFromSupabaseUrl(imageUrl: string, bucketName: string): string | null {
     if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
       return null;
@@ -178,12 +189,52 @@ export class ImageService {
     }
   }
 
+  /** Önbellek hazır olmadan anında gösterim — önce preview, yoksa ana görsel. */
+  static resolveRouteImageRemoteUri(
+    imageUrl: string | null | undefined,
+    userId: string,
+    imagePreviewUrl?: string | null,
+  ): string | null {
+    if (!userId) {
+      return null;
+    }
+
+    const candidates = [imagePreviewUrl, imageUrl].filter(
+      (value): value is string => Boolean(value?.trim()),
+    );
+
+    for (const candidate of candidates) {
+      const trimmed = candidate.trim();
+
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        return trimmed;
+      }
+
+      const paths = this.getCandidatePaths(trimmed, userId, 'routes');
+
+      for (const path of paths) {
+        const { data } = supabase.storage.from('routes').getPublicUrl(path);
+
+        if (data.publicUrl) {
+          return data.publicUrl;
+        }
+      }
+    }
+
+    return null;
+  }
+
   static async loadImageWithCache(
     imageUrl: string,
     bucketName: string,
     userId: string,
     onStateChange?: (state: ImageLoadState) => void
   ): Promise<string | null> {
+    if (this.isExternalHttpImageUrl(imageUrl)) {
+      onStateChange?.({ loading: false, error: null, retryCount: 0 });
+      return imageUrl.trim();
+    }
+
     const cacheKey = this.buildDiskCacheKey(bucketName, imageUrl, userId);
 
     const cachedUri = await CacheManager.getFileUriIfCached(cacheKey);
@@ -263,6 +314,12 @@ export class ImageService {
     if (!imageUrl) {
       onStateChange?.({ loading: false, error: null, retryCount: 0, imageUri: null });
       return null;
+    }
+
+    if (this.isExternalHttpImageUrl(imageUrl)) {
+      const externalUri = imageUrl.trim();
+      onStateChange?.({ loading: false, error: null, retryCount: 0, imageUri: externalUri });
+      return externalUri;
     }
 
     const cacheKey = this.buildDiskCacheKey(bucketName, imageUrl, userId);

@@ -15,8 +15,8 @@ import DeviceInfo from 'react-native-device-info';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DeepLinkingService from '../services/DeepLinkingService';
 import AuthLinkingService from '../services/AuthLinkingService';
-import { CommentsSheetProvider } from '../context/CommentsSheetContext';
 import { useAppTheme } from '../context/AppThemeContext';
+import { CommentsSheetProvider } from '../context/CommentsSheetContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -282,20 +282,20 @@ export const AppNavigator = () => {
     >
       <CommentsSheetProvider>
         <Stack.Navigator
-        initialRouteName={initialRouteName}
-        screenOptions={{
-          headerShown: false,
-          animation: 'slide_from_right',
-          contentStyle: { backgroundColor: theme.background },
-        }}
-      >
-        <Stack.Screen name="MainTabs" component={MainTabNavigator} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-        <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
-      </Stack.Navigator>
+          initialRouteName={initialRouteName}
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+            contentStyle: { backgroundColor: theme.background },
+          }}
+        >
+          <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+          <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
+        </Stack.Navigator>
       </CommentsSheetProvider>
     </NavigationContainer>
   );

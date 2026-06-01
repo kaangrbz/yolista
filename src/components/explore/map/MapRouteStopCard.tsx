@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Image,
   Text,
@@ -9,7 +9,8 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../../model/routes.model';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
-import { useMapPreviewImageDownload } from '../../../hooks/useImageDownload';
+import { usePostImageDownload } from '../../../hooks/useImageDownload';
+import { ImageService } from '../../../services/ImageService';
 import { MAP_ACTIVE_ROUTE_BORDER } from '../../../constants/mapDefaults';
 import { getStopPhotoHintLabel } from '../../../utils/getStopPhotoHintLabel';
 
@@ -107,12 +108,25 @@ export const MapRouteStopCard: React.FC<MapRouteStopCardProps> = ({
     },
   }));
 
-  const { imageUri } = useMapPreviewImageDownload(
-    stop.image_url,
-    stop.user_id || '',
+  const userId = stop.user_id || stop.profiles?.id || '';
+
+  const { imageUri } = usePostImageDownload(
+    stop.image_url || undefined,
+    userId,
     stop.image_preview_url || undefined,
-    { cacheOnly: true, previewOnly: true },
   );
+
+  const displayUri = useMemo(() => {
+    if (imageUri) {
+      return imageUri;
+    }
+
+    return ImageService.resolveRouteImageRemoteUri(
+      stop.image_url,
+      userId,
+      stop.image_preview_url,
+    );
+  }, [imageUri, stop.image_preview_url, stop.image_url, userId]);
 
   const description = stop.description?.trim() || '';
   const hasStopLabel = Boolean(stopLabel);
@@ -125,8 +139,8 @@ export const MapRouteStopCard: React.FC<MapRouteStopCardProps> = ({
       style={[styles.card, selected && styles.cardSelected]}
     >
       <View style={styles.imageWrapper}>
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
+        {displayUri ? (
+          <Image source={{ uri: displayUri }} style={styles.image} resizeMode="cover" />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]}>
             <Icon name="image-outline" size={28} color={theme.textMuted} />

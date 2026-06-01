@@ -17,8 +17,8 @@ interface UseAddressSearchResult {
 }
 
 export const useAddressSearch = ({
-  debounceMs = 350,
-  minQueryLength = 2,
+  debounceMs = 500,
+  minQueryLength = 3,
   limit = 6,
 }: UseAddressSearchOptions = {}): UseAddressSearchResult => {
   const [query, setQuery] = useState('');

@@ -1,8 +1,10 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PlatformPressable } from '@react-navigation/elements';
 import { TabBarIcon } from '../components/icons/tab/TabBarIcons';
+import { TabBarNotificationIcon } from '../components/icons/tab/TabBarNotificationIcon';
 
 import { HomeScreen } from '../screens/HomeScreen';
 import { CreateRouteStack } from './CreateRouteStack';
@@ -18,14 +20,15 @@ import type { SocialUserListRouteParams } from '../types/socialUserList';
 import { VerifyEmailScreen } from '../screens/VerifyEmailScreen';
 import { useAppTheme } from '../context/AppThemeContext';
 import { AppTabBar } from './AppTabBar';
+import { buildProfileNavigationParams } from '../utils/profileSlug';
+import type { RouteDetailParams } from '../types/routeDetailNavigation.types';
 
 type ProfileStackParamList = {
   ProfileMain: { username?: string; currentUserId?: string };
-  RouteDetail: { routeId: string };
+  RouteDetail: RouteDetailParams;
   Explore: { categoryId?: number };
   SocialUserList: SocialUserListRouteParams;
   VerifyEmail: { email?: string; verifiedFromLink?: boolean };
-  Notifications: undefined;
 };
 
 type HomeStackParamList = {
@@ -34,24 +37,30 @@ type HomeStackParamList = {
     showSuccessMessage?: boolean;
     successMessage?: string;
   } | undefined;
-  RouteDetail: { routeId: string };
+  RouteDetail: RouteDetailParams;
   AddCategory: undefined;
   Explore: { categoryId?: number };
   ProfileMain: { username: string; currentUserId?: string };
   SocialUserList: SocialUserListRouteParams;
-  Notifications: undefined;
 };
 
 type ExploreStackParamList = {
   ExploreMain: { categoryId?: number };
   ExploreMap: undefined;
-  RouteDetail: { routeId: string };
+  RouteDetail: RouteDetailParams;
   ProfileMain: { username: string; currentUserId?: string };
   SocialUserList: SocialUserListRouteParams;
-  Notifications: undefined;
 };
 
-const Tab = createBottomTabNavigator();
+export type MainTabParamList = {
+  HomeStack: NavigatorScreenParams<HomeStackParamList>;
+  ExploreStack: NavigatorScreenParams<ExploreStackParamList>;
+  CreateRoute: undefined;
+  Notifications: undefined;
+  ProfileStack: NavigatorScreenParams<ProfileStackParamList>;
+};
+
+const Tab = createBottomTabNavigator<MainTabParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const ExploreStack = createNativeStackNavigator<ExploreStackParamList>();
@@ -101,10 +110,6 @@ const ProfileStackScreen = () => {
         name="VerifyEmail"
         component={VerifyEmailScreen}
       />
-      <ProfileStack.Screen
-        name="Notifications"
-        component={NotificationsScreen}
-      />
     </ProfileStack.Navigator>
   );
 };
@@ -138,10 +143,6 @@ const HomeStackScreen = () => {
         name="SocialUserList"
         component={SocialUserListRouteScreen}
       />
-      <HomeStack.Screen
-        name="Notifications"
-        component={NotificationsScreen}
-      />
     </HomeStack.Navigator>
   );
 };
@@ -174,16 +175,15 @@ const ExploreStackScreen = () => {
         name="SocialUserList"
         component={SocialUserListRouteScreen}
       />
-      <ExploreStack.Screen
-        name="Notifications"
-        component={NotificationsScreen}
-      />
     </ExploreStack.Navigator>
   );
 };
 
 const MainTabNavigator = () => {
   const theme = useAppTheme();
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? '';
+  const currentUsername = user?.profile?.username ?? '';
 
   return (
     <Tab.Navigator
@@ -240,8 +240,58 @@ const MainTabNavigator = () => {
         }}
       />
       <Tab.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarNotificationIcon
+              color={color}
+              focused={focused}
+              size={TAB_ICON_SIZE}
+            />
+          ),
+          tabBarAccessibilityLabel: 'Bildirimler',
+        }}
+      />
+      <Tab.Screen
         name="ProfileStack"
         component={ProfileStackScreen}
+        listeners={({ navigation, route }) => ({
+          tabPress: (e) => {
+            const tabState = navigation.getState();
+            const isProfileTabFocused = tabState.routes[tabState.index]?.key === route.key;
+
+            if (!isProfileTabFocused || !currentUsername) {
+              return;
+            }
+
+            const profileStackRoute = tabState.routes.find(
+              (tabRoute) => tabRoute.name === 'ProfileStack',
+            );
+            const stackState = profileStackRoute?.state;
+            const activeStackRoute = stackState?.routes[stackState.index ?? 0];
+            const activeParams = activeStackRoute?.params as { username?: string } | undefined;
+
+            const isAlreadyOnOwnProfile =
+              stackState?.index === 0 &&
+              activeStackRoute?.name === 'ProfileMain' &&
+              (!activeParams?.username || activeParams.username === currentUsername);
+
+            if (isAlreadyOnOwnProfile) {
+              return;
+            }
+
+            e.preventDefault();
+
+            navigation.navigate('ProfileStack', {
+              screen: 'ProfileMain',
+              params: buildProfileNavigationParams({
+                username: currentUsername,
+                currentUserId,
+              }),
+            });
+          },
+        })}
         options={{
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="profile" color={color} focused={focused} size={TAB_ICON_SIZE} />

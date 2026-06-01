@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Image,
-  Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,8 +13,7 @@ import { PROFILE_BADGE_ASSETS } from '../../lib/profileBadges';
 import { useThemedStyles } from '../../theme/useThemedStyles';
 
 interface ProfileBadgeInfoSheetProps {
-  visible: boolean;
-  badge: ProfileBadge | null;
+  badge: ProfileBadge;
   onClose: () => void;
 }
 
@@ -52,7 +50,6 @@ const SheetIcon: React.FC<{ badge: ProfileBadge; size: number }> = ({
 };
 
 const ProfileBadgeInfoSheet: React.FC<ProfileBadgeInfoSheetProps> = ({
-  visible,
   badge,
   onClose,
 }) => {
@@ -118,47 +115,36 @@ const ProfileBadgeInfoSheet: React.FC<ProfileBadgeInfoSheetProps> = ({
     },
   }));
 
-  if (!badge) {
-    return null;
-  }
-
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
-      <View style={styles.overlay}>
-        <TouchableOpacity
-          style={styles.backdrop}
-          activeOpacity={1}
-          onPress={onClose}
-          accessibilityLabel="Kapat"
-        />
-        <View
-          style={[
-            styles.sheet,
-            { paddingBottom: Math.max(insets.bottom, 16) },
-          ]}
-        >
-          <View style={styles.handle} />
-          <View style={styles.iconWrap}>
-            <SheetIcon badge={badge} size={28} />
-          </View>
-          <Text style={styles.title}>{badge.label}</Text>
-          <Text style={styles.message}>{badge.description}</Text>
-          <TouchableOpacity
-            style={[styles.closeButton, { backgroundColor: badge.color }]}
-            onPress={onClose}
-            accessibilityRole="button"
-            accessibilityLabel="Tamam"
-          >
-            <Text style={styles.closeButtonText}>Tamam</Text>
-          </TouchableOpacity>
+    <View style={styles.overlay}>
+      <TouchableOpacity
+        style={styles.backdrop}
+        activeOpacity={1}
+        onPress={onClose}
+        accessibilityLabel="Kapat"
+      />
+      <View
+        style={[
+          styles.sheet,
+          { paddingBottom: Math.max(insets.bottom, 16) },
+        ]}
+      >
+        <View style={styles.handle} />
+        <View style={styles.iconWrap}>
+          <SheetIcon badge={badge} size={28} />
         </View>
+        <Text style={styles.title}>{badge.label}</Text>
+        <Text style={styles.message}>{badge.description}</Text>
+        <TouchableOpacity
+          style={[styles.closeButton, { backgroundColor: badge.color }]}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Tamam"
+        >
+          <Text style={styles.closeButtonText}>Tamam</Text>
+        </TouchableOpacity>
       </View>
-    </Modal>
+    </View>
   );
 };
 

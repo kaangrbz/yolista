@@ -153,10 +153,14 @@ export async function loadMapPreviewImage(
   const allowNetwork = !options.cacheOnly;
 
   if (imagePreviewUrl) {
-    const previewUri = await loadStorageKey(userId, imagePreviewUrl, allowNetwork);
+    try {
+      const previewUri = await loadStorageKey(userId, imagePreviewUrl, allowNetwork);
 
-    if (previewUri) {
-      return previewUri;
+      if (previewUri) {
+        return previewUri;
+      }
+    } catch {
+      // Preview yüklenemezse ana görsele düş.
     }
   }
 

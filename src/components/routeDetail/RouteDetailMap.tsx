@@ -7,12 +7,14 @@ import {
   getMapProvider,
   getNativeMapType,
 } from '../../constants/mapViewConfig';
+import { useThemedStyles } from '../../theme/useThemedStyles';
 import {
   extractValidCoordinates,
   LatLng,
 } from '../../utils/routeDistance';
 
-const MAP_HEIGHT = 220;
+const MAP_HEIGHT_FULL = 220;
+const MAP_HEIGHT_EMBEDDED = 188;
 const ACTIVE_PIN = MAP_ACTIVE_ROUTE_BORDER;
 const DEFAULT_PIN = '#4CAF50';
 
@@ -20,14 +22,37 @@ interface RouteDetailMapProps {
   stops: RouteWithProfile[];
   activeStopIndex: number;
   onStopPress?: (index: number) => void;
+  variant?: 'fullBleed' | 'embedded';
 }
 
 export const RouteDetailMap: React.FC<RouteDetailMapProps> = ({
   stops,
   activeStopIndex,
   onStopPress,
+  variant = 'fullBleed',
 }) => {
   const mapRef = useRef<MapView>(null);
+  const isEmbedded = variant === 'embedded';
+
+  const styles = useThemedStyles((t) => ({
+    wrapper: {
+      height: isEmbedded ? MAP_HEIGHT_EMBEDDED : MAP_HEIGHT_FULL,
+      width: '100%',
+      overflow: 'hidden',
+      ...(isEmbedded
+        ? {
+            marginHorizontal: 16,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: t.border,
+            backgroundColor: t.surfaceMuted,
+          }
+        : null),
+    },
+    map: {
+      ...StyleSheet.absoluteFill,
+    },
+  }));
 
   const coordinates = useMemo(
     () =>
@@ -161,16 +186,5 @@ export const RouteDetailMap: React.FC<RouteDetailMapProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  wrapper: {
-    height: MAP_HEIGHT,
-    width: '100%',
-    overflow: 'hidden',
-  },
-  map: {
-    ...StyleSheet.absoluteFill,
-  },
-});
 
 export default RouteDetailMap;

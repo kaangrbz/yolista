@@ -1,6 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../model/routes.model';
+import { useAppTheme } from '../../context/AppThemeContext';
 import { useThemedStyles } from '../../theme/useThemedStyles';
 import {
   estimateWalkingMinutes,
@@ -15,6 +17,8 @@ interface RouteSummaryBarProps {
 }
 
 export const RouteSummaryBar: React.FC<RouteSummaryBarProps> = ({ stops }) => {
+  const theme = useAppTheme();
+
   const coords = extractValidCoordinates(
     stops.map((stop) => ({
       latitude: stop.latitude,
@@ -39,46 +43,51 @@ export const RouteSummaryBar: React.FC<RouteSummaryBarProps> = ({ stops }) => {
   const styles = useThemedStyles((t) => ({
     container: {
       paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.border,
-      gap: 10,
+      paddingBottom: 12,
     },
-    metaRow: {
+    chipRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
+      gap: 8,
+    },
+    chip: {
+      flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+      borderRadius: 999,
+      backgroundColor: t.surfaceMuted,
+      borderWidth: 1,
+      borderColor: t.border,
     },
-    metaText: {
-      fontSize: 13,
-      fontWeight: '600',
+    chipText: {
+      fontSize: 12,
+      fontWeight: '700',
       color: t.textPrimary,
-    },
-    metaMuted: {
-      fontSize: 13,
-      color: t.textSecondary,
     },
   }));
 
-  const metaParts = [`${stops.length} durak`];
+  const chips: { icon: string; label: string }[] = [
+    { icon: 'map-marker-multiple', label: `${stops.length} durak` },
+  ];
 
   if (distanceLabel) {
-    metaParts.push(distanceLabel);
+    chips.push({ icon: 'map-marker-distance', label: distanceLabel });
   }
 
   if (walkingLabel) {
-    metaParts.push(walkingLabel);
+    chips.push({ icon: 'walk', label: walkingLabel });
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.metaRow}>
-        {metaParts.map((part, index) => (
-          <React.Fragment key={part}>
-            {index > 0 ? <Text style={styles.metaMuted}>·</Text> : null}
-            <Text style={styles.metaText}>{part}</Text>
-          </React.Fragment>
+      <View style={styles.chipRow}>
+        {chips.map((chip) => (
+          <View key={chip.label} style={styles.chip}>
+            <Icon name={chip.icon} size={14} color={theme.textSecondary} />
+            <Text style={styles.chipText}>{chip.label}</Text>
+          </View>
         ))}
       </View>
     </View>

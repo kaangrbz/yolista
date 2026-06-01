@@ -1,7 +1,10 @@
 // keyboard-aware-ignore: harita üstünde absolute pozisyonlanmış arama çubuğu; klavye kaldırma davranışı uygun değil
 import React, {
+  forwardRef,
   useCallback,
+  useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -25,13 +28,26 @@ interface MapSearchBarProps {
   placeholder?: string;
 }
 
-export const MapSearchBar: React.FC<MapSearchBarProps> = ({
+export interface MapSearchBarHandle {
+  blur: () => void;
+}
+
+export const MapSearchBar = forwardRef<MapSearchBarHandle, MapSearchBarProps>(({
   onResultPress,
   placeholder = 'Şehir, tarihi yer, mekan ara...',
-}) => {
+}, ref) => {
   const theme = useAppTheme();
+  const inputRef = useRef<TextInput>(null);
   const { query, setQuery, results, loading, clear, minQueryLength } = useAddressSearch();
   const [focused, setFocused] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    blur: () => {
+      inputRef.current?.blur();
+      Keyboard.dismiss();
+      setFocused(false);
+    },
+  }));
 
   const showResults = useMemo(() => {
     return focused && query.trim().length >= minQueryLength;
@@ -178,6 +194,7 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
         />
 
         <TextInput
+          ref={inputRef}
           style={styles.input}
           value={query}
           onChangeText={setQuery}
@@ -222,6 +239,8 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
       ) : null}
     </View>
   );
-};
+});
+
+MapSearchBar.displayName = 'MapSearchBar';
 
 export default MapSearchBar;

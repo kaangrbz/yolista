@@ -8,6 +8,7 @@ import React, {
 import {
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import MapView, {
@@ -24,16 +25,19 @@ import { useAuth } from '../../context/AuthContext';
 import RouteModel, { RouteWithProfile } from '../../model/routes.model';
 import CategoryModel from '../../model/category.model';
 import { CategoryItem } from '../../types/category.types';
-import { requestLocation } from '../../permissions';
+import { requestLocation, checkLocation } from '../../permissions';
 import { useViewportRoutes } from '../../hooks/useViewportRoutes';
 import { useRouteMapClusters } from '../../hooks/useRouteMapClusters';
 import {
   ROUTE_FOCUS_ZOOM_DELTA,
   regionForStopFocus,
+  regionForUserLocation,
   regionDeltaForDistanceKm,
   TURKEY_BOUNDS,
   TURKEY_REGION,
   MAP_FILTER_DEFAULT_DISTANCE_KM,
+  computeMapBottomSheetSnapHeights,
+  mapSheetEdgePadding,
 } from '../../constants/mapDefaults';
 import {
   getNextMapStyle,
@@ -52,10 +56,14 @@ import MapClusterMarkerWrapper from '../../components/explore/map/MapClusterMark
 import MapStyleToggle from '../../components/explore/map/MapStyleToggle';
 import MyLocationFab from '../../components/explore/map/MyLocationFab';
 import MapZoomControls from '../../components/explore/map/MapZoomControls';
-import MapSearchBar from '../../components/explore/map/MapSearchBar';
+import MapSearchBar, {
+  type MapSearchBarHandle,
+} from '../../components/explore/map/MapSearchBar';
 import { GeocodingResult } from '../../services/GeocodingService';
 import MapBottomSheet, {
   MapBottomSheetHandle,
+  type BottomSheetSnap,
+  type MapBottomSheetSnapMetrics,
 } from '../../components/explore/map/MapBottomSheet';
 import MapRoutePolylineLayer from '../../components/explore/map/MapRoutePolylineLayer';
 import { showToast } from '../../utils/alert';
@@ -68,6 +76,15 @@ import { useRouteSegmentProgress } from '../../hooks/useRouteSegmentProgress';
 import type { RouteSegment, RouteSheetTab } from '../../types/routeSegment.types';
 import { openRouteInMaps, openStopInMaps } from '../../utils/openInMaps';
 import { extractValidCoordinates } from '../../utils/routeDistance';
+import { ShareService } from '../../services/ShareService';
+import { getRouteShareLabel } from '../../utils/getRouteDisplayLabel';
+import { usePostActions } from '../../hooks/usePostActions';
+import SavedCollectionsSheet from '../../components/common/SavedCollectionsSheet';
+import {
+  getLastKnownLocationSync,
+  hydrateLastKnownLocation,
+  saveLastKnownLocation,
+} from '../../services/lastKnownLocationStorage';
 
 const DEFAULT_FILTERS: MapFilters = {
   categoryId: 0,
@@ -77,18 +94,26 @@ const DEFAULT_FILTERS: MapFilters = {
 
 const ExploreMapScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const navigation = useNavigation<any>();
   const { user } = useAuth();
 
   const mapRef = useRef<MapView>(null);
   const sheetRef = useRef<MapBottomSheetHandle>(null);
+  const searchBarRef = useRef<MapSearchBarHandle>(null);
   const lastFittedRouteIdRef = useRef<string | null>(null);
-  const userCoordinateRef = useRef<LatLng | null>(null);
+  const userCoordinateRef = useRef<LatLng | null>(getLastKnownLocationSync());
   const locationWaitersRef = useRef<Array<(coordinate: LatLng) => void>>([]);
-  const [region, setRegion] = useState<Region>(TURKEY_REGION);
+  const [region, setRegion] = useState<Region>(() => {
+    const cached = getLastKnownLocationSync();
+
+    return cached ? regionForUserLocation(cached) : TURKEY_REGION;
+  });
   const [filters, setFilters] = useState<MapFilters>(DEFAULT_FILTERS);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const [userCoordinate, setUserCoordinate] = useState<LatLng | null>(null);
+  const [userCoordinate, setUserCoordinate] = useState<LatLng | null>(
+    () => getLastKnownLocationSync(),
+  );
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedRouteMeta, setSelectedRouteMeta] = useState<RouteWithProfile | null>(
     null,
@@ -108,6 +133,27 @@ const ExploreMapScreen: React.FC = () => {
   const [mapStyleMode, setMapStyleMode] = useState<MapStyleMode>('light');
   const [locating, setLocating] = useState(false);
   const [locationGranted, setLocationGranted] = useState(false);
+  const [sheetMetrics, setSheetMetrics] = useState<MapBottomSheetSnapMetrics>(() => {
+    const snapHeights = computeMapBottomSheetSnapHeights(windowHeight, 0);
+
+    return {
+      sheetHeight: snapHeights.closed,
+      snapHeights,
+    };
+  });
+  const [sheetSnap, setSheetSnap] = useState<BottomSheetSnap>('small');
+
+  const handleSheetSnapChange = useCallback(
+    (snap: BottomSheetSnap, metrics: MapBottomSheetSnapMetrics) => {
+      setSheetMetrics(metrics);
+      setSheetSnap(snap);
+
+      if (snap === 'large') {
+        searchBarRef.current?.blur();
+      }
+    },
+    [],
+  );
 
   const theme = useAppTheme();
   const styles = useThemedStyles((t) => ({
@@ -128,6 +174,8 @@ const ExploreMapScreen: React.FC = () => {
       left: 0,
       right: 0,
       paddingHorizontal: 8,
+      zIndex: 20,
+      elevation: 20,
     },
     searchRow: {
       flexDirection: 'row',
@@ -154,6 +202,18 @@ const ExploreMapScreen: React.FC = () => {
     filterBarRow: {
       marginTop: 6,
     },
+    mapOverlayHidden: {
+      opacity: 0,
+    },
+    sheetHost: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      zIndex: 40,
+      elevation: 40,
+    },
   }));
 
   const discoveryFilters = useMemo(() => {
@@ -172,12 +232,16 @@ const ExploreMapScreen: React.FC = () => {
     };
   }, [filters, userCoordinate]);
 
+  const isRouteDetailOpen = Boolean(selectedRouteId && routeStopsExpanded);
+
   const { routes, loading } = useViewportRoutes({
     region,
     filters: discoveryFilters,
+    enabled: !isRouteDetailOpen,
   });
 
   const mapClusters = useRouteMapClusters(routes, region);
+  const visibleMapClusters = isRouteDetailOpen ? [] : mapClusters;
 
   useEffect(() => {
     prefetchMapPreviewImages(routes);
@@ -244,7 +308,7 @@ const ExploreMapScreen: React.FC = () => {
 
     if (routeSheetTab === 'directions' && activeSegment?.coordinates.length) {
       mapRef.current?.fitToCoordinates(activeSegment.coordinates, {
-        edgePadding: { top: 160, right: 48, bottom: 340, left: 48 },
+        edgePadding: mapSheetEdgePadding(sheetMetrics.sheetHeight),
         animated: true,
       });
       return;
@@ -266,7 +330,7 @@ const ExploreMapScreen: React.FC = () => {
     ];
 
     mapRef.current?.fitToCoordinates(fitCoords, {
-      edgePadding: { top: 160, right: 48, bottom: 340, left: 48 },
+      edgePadding: mapSheetEdgePadding(sheetMetrics.sheetHeight),
       animated: true,
     });
   }, [
@@ -277,6 +341,7 @@ const ExploreMapScreen: React.FC = () => {
     routeSheetTab,
     routeStopsExpanded,
     selectedRouteId,
+    sheetMetrics.sheetHeight,
   ]);
 
   const selectedStopsWithCoords = useMemo(
@@ -377,6 +442,26 @@ const ExploreMapScreen: React.FC = () => {
     );
   }, [selectedRouteMeta, selectedRouteId, selectedRouteStops]);
 
+  const selectedRouteOwnerId =
+    resolvedSelectedRoute?.user_id || resolvedSelectedRoute?.profiles?.id || '';
+
+  const {
+    isSaved: isSelectedRouteSaved,
+    isSaveSheetVisible,
+    isCollectionsLoading,
+    collections,
+    selectedCollectionIds,
+    rowLoadingMap,
+    handleSave: handleSaveSelectedRouteAction,
+    closeSaveSheet,
+    toggleCollectionForPost,
+    createCollectionForPost,
+  } = usePostActions(
+    selectedRouteId ?? '',
+    user?.id ?? null,
+    selectedRouteOwnerId,
+  );
+
   const bottomSheetRoutes = useMemo(() => {
     if (!selectedRouteId || !resolvedSelectedRoute?.id) {
       return routes;
@@ -432,12 +517,36 @@ const ExploreMapScreen: React.FC = () => {
     );
   }, []);
 
+  const applyUserCoordinate = useCallback((coordinate: LatLng) => {
+    userCoordinateRef.current = coordinate;
+    setUserCoordinate(coordinate);
+  }, []);
+
+  const centerMapOnCoordinate = useCallback((coordinate: LatLng, animated = true) => {
+    const nextRegion = regionForUserLocation(coordinate);
+
+    setRegion(nextRegion);
+    mapRef.current?.animateToRegion(nextRegion, animated ? 350 : 0);
+  }, []);
+
   useEffect(() => {
     let isCancelled = false;
 
-    const tryGetLocation = async () => {
+    const bootstrapLocation = async () => {
+      const cached =
+        getLastKnownLocationSync() ?? (await hydrateLastKnownLocation());
+
+      if (isCancelled) {
+        return;
+      }
+
+      if (cached) {
+        applyUserCoordinate(cached);
+        centerMapOnCoordinate(cached, false);
+      }
+
       try {
-        const granted = await requestLocation();
+        const granted = await checkLocation();
 
         if (isCancelled) {
           return;
@@ -445,8 +554,7 @@ const ExploreMapScreen: React.FC = () => {
 
         setLocationGranted(granted);
 
-        if (!granted) {
-          // Konum yoksa Türkiye'yi tam kapsayacak şekilde sığdır.
+        if (!granted && !cached) {
           setTimeout(() => {
             if (!isCancelled) {
               fitTurkey();
@@ -454,9 +562,9 @@ const ExploreMapScreen: React.FC = () => {
           }, 300);
         }
       } catch (err) {
-        console.warn('Location permission error:', err);
+        console.warn('Location permission check error:', err);
 
-        if (!isCancelled) {
+        if (!isCancelled && !cached) {
           setTimeout(() => {
             if (!isCancelled) {
               fitTurkey();
@@ -466,12 +574,12 @@ const ExploreMapScreen: React.FC = () => {
       }
     };
 
-    void tryGetLocation();
+    void bootstrapLocation();
 
     return () => {
       isCancelled = true;
     };
-  }, [fitTurkey]);
+  }, [applyUserCoordinate, centerMapOnCoordinate, fitTurkey]);
 
   const handleRegionChangeComplete = useCallback((next: Region) => {
     setRegion(next);
@@ -491,6 +599,7 @@ const ExploreMapScreen: React.FC = () => {
 
     userCoordinateRef.current = next;
     setUserCoordinate(next);
+    saveLastKnownLocation(next);
 
     if (locationWaitersRef.current.length > 0) {
       locationWaitersRef.current.forEach((resolve) => resolve(next));
@@ -721,7 +830,6 @@ const ExploreMapScreen: React.FC = () => {
         );
       }
 
-      sheetRef.current?.snapTo('medium');
       sheetRef.current?.scrollToRoute(route.id);
       void fetchRouteDetails(route.id);
     },
@@ -801,30 +909,28 @@ const ExploreMapScreen: React.FC = () => {
 
       if (segment?.coordinates.length) {
         mapRef.current?.fitToCoordinates(segment.coordinates, {
-          edgePadding: { top: 160, right: 48, bottom: 340, left: 48 },
+          edgePadding: mapSheetEdgePadding(sheetMetrics.sheetHeight),
           animated: true,
         });
       }
     },
-    [routeSegments, syncActiveStopFromSegment],
+    [routeSegments, syncActiveStopFromSegment, sheetMetrics.sheetHeight],
   );
 
   const handleRouteSheetTabChange = useCallback((tab: RouteSheetTab) => {
     setRouteSheetTab(tab);
 
     if (tab === 'directions') {
-      sheetRef.current?.snapTo('large');
-
       const segment = routeSegments[activeSegmentIndex];
 
       if (segment?.coordinates.length) {
         mapRef.current?.fitToCoordinates(segment.coordinates, {
-          edgePadding: { top: 160, right: 48, bottom: 340, left: 48 },
+          edgePadding: mapSheetEdgePadding(sheetMetrics.sheetHeight),
           animated: true,
         });
       }
     }
-  }, [activeSegmentIndex, routeSegments]);
+  }, [activeSegmentIndex, routeSegments, sheetMetrics.sheetHeight]);
 
   const handleOpenActiveStopInMaps = useCallback(() => {
     const segment = routeSegments[activeSegmentIndex];
@@ -833,7 +939,7 @@ const ExploreMapScreen: React.FC = () => {
       return;
     }
 
-    void openStopInMaps(segment.to);
+    void openStopInMaps(segment.to, { from: segment.from });
   }, [activeSegmentIndex, routeSegments]);
 
   useRouteSegmentProgress({
@@ -850,7 +956,7 @@ const ExploreMapScreen: React.FC = () => {
 
       if (routeSheetTab === 'directions' && segment?.coordinates.length) {
         mapRef.current?.fitToCoordinates(segment.coordinates, {
-          edgePadding: { top: 160, right: 48, bottom: 340, left: 48 },
+          edgePadding: mapSheetEdgePadding(sheetMetrics.sheetHeight),
           animated: true,
         });
       }
@@ -880,11 +986,18 @@ const ExploreMapScreen: React.FC = () => {
       return;
     }
 
-    void openStopInMaps({
+    const destination = {
       latitude: stop.latitude,
       longitude: stop.longitude,
-    });
-  }, []);
+    };
+
+    if (userCoordinate) {
+      void openStopInMaps(destination, { from: userCoordinate });
+      return;
+    }
+
+    void openStopInMaps(destination);
+  }, [userCoordinate]);
 
   const handleMarkerPress = useCallback(
     (route: RouteWithProfile) => {
@@ -903,6 +1016,40 @@ const ExploreMapScreen: React.FC = () => {
     },
     [navigation],
   );
+
+  const handleOpenRouteDetail = useCallback(() => {
+    if (!selectedRouteId) {
+      return;
+    }
+
+    let initialStopIndex = 0;
+
+    if (activeStopId) {
+      const stopIndex = selectedRouteStops.findIndex(
+        (stop) => getMapStopKey(stop) === activeStopId,
+      );
+
+      if (stopIndex >= 0) {
+        initialStopIndex = stopIndex;
+      }
+    }
+
+    navigation.navigate('RouteDetail', {
+      routeId: selectedRouteId,
+      initialTab: routeSheetTab,
+      initialStopIndex,
+      initialSegmentIndex: activeSegmentIndex,
+      startFromUserLocation,
+    });
+  }, [
+    activeSegmentIndex,
+    activeStopId,
+    navigation,
+    routeSheetTab,
+    selectedRouteId,
+    selectedRouteStops,
+    startFromUserLocation,
+  ]);
 
   const handleMyLocationPress = useCallback(async () => {
     setLocating(true);
@@ -1020,6 +1167,50 @@ const ExploreMapScreen: React.FC = () => {
     }
   }, [selectedRouteId, selectedRouteMeta, selectedRouteStops]);
 
+  const handleClearSelectedRoute = useCallback(() => {
+    searchBarRef.current?.blur();
+
+    setSelectedRouteId(null);
+    setSelectedRouteMeta(null);
+    setSelectedRouteStops([]);
+    setRouteStopsExpanded(false);
+    setPolylineCoords([]);
+    setApproachPolylineCoords([]);
+    setStartFromUserLocation(false);
+    setRouteSheetTab('stops');
+    setRouteSegments([]);
+    setActiveSegmentIndex(0);
+    setActiveStopId(null);
+    setStopsLoading(false);
+    setPolylineLoading(false);
+    setSegmentsLoading(false);
+    lastFittedRouteIdRef.current = null;
+  }, []);
+
+  const handleShareSelectedRoute = useCallback(async () => {
+    if (!selectedRouteId || !resolvedSelectedRoute) {
+      return;
+    }
+
+    await ShareService.sharePost({
+      postId: selectedRouteId,
+      title: getRouteShareLabel(resolvedSelectedRoute),
+    });
+  }, [resolvedSelectedRoute, selectedRouteId]);
+
+  const handleSaveSelectedRoute = useCallback(async () => {
+    if (!selectedRouteId) {
+      return;
+    }
+
+    if (!user?.id) {
+      showToast('error', 'Kaydetmek için giriş yapmalısın');
+      return;
+    }
+
+    await handleSaveSelectedRouteAction();
+  }, [handleSaveSelectedRouteAction, selectedRouteId, user?.id]);
+
   const handleClusterPress = useCallback(
     (expansionZoom: number, latitude: number, longitude: number) => {
       const latitudeDelta = Math.min(360 / 2 ** expansionZoom, region.latitudeDelta);
@@ -1070,8 +1261,7 @@ const ExploreMapScreen: React.FC = () => {
       }
 
       const isGroupSelected = group.some((route) => route.id === selectedRouteId);
-      const shouldDim =
-        Boolean(selectedRouteId && routeStopsExpanded && !isGroupSelected);
+      const shouldDim = Boolean(selectedRouteId) && !isGroupSelected;
 
       return (
         <MapRouteGroupMarker
@@ -1092,13 +1282,19 @@ const ExploreMapScreen: React.FC = () => {
       handleCalloutPress,
       handleClusterPress,
       handleMarkerPress,
-      routeStopsExpanded,
       selectedRouteId,
       showSelectedRouteOnMap,
     ],
   );
 
+  const initialMapRegion = useMemo(() => {
+    const cached = getLastKnownLocationSync();
+
+    return cached ? regionForUserLocation(cached) : TURKEY_REGION;
+  }, []);
+
   const showsTopOffset = insets.top + 6;
+  const isSheetFullScreen = sheetSnap === 'large';
 
   return (
     <View style={styles.container}>
@@ -1107,7 +1303,7 @@ const ExploreMapScreen: React.FC = () => {
         provider={getMapProvider()}
         mapType={getNativeMapType(mapStyleMode)}
         style={styles.map}
-        initialRegion={TURKEY_REGION}
+        initialRegion={initialMapRegion}
         onRegionChangeComplete={handleRegionChangeComplete}
         showsUserLocation={locationGranted}
         showsMyLocationButton={false}
@@ -1115,7 +1311,7 @@ const ExploreMapScreen: React.FC = () => {
         toolbarEnabled={false}
         onUserLocationChange={locationGranted ? handleUserLocationChange : undefined}
       >
-        {mapClusters.map(renderMapFeature)}
+        {visibleMapClusters.map(renderMapFeature)}
 
         <MapRoutePolylineLayer
           showRoute={routeStopsExpanded}
@@ -1140,8 +1336,12 @@ const ExploreMapScreen: React.FC = () => {
       </MapView>
 
       <View
-        style={[styles.topBar, { paddingTop: showsTopOffset }]}
-        pointerEvents="box-none"
+        style={[
+          styles.topBar,
+          { paddingTop: showsTopOffset },
+          isSheetFullScreen && styles.mapOverlayHidden,
+        ]}
+        pointerEvents={isSheetFullScreen ? 'none' : 'box-none'}
       >
         <View style={styles.searchRow} pointerEvents="box-none">
           <TouchableOpacity
@@ -1159,7 +1359,7 @@ const ExploreMapScreen: React.FC = () => {
           </TouchableOpacity>
 
           <View style={styles.searchBarWrapper}>
-            <MapSearchBar onResultPress={handleSearchResult} />
+            <MapSearchBar ref={searchBarRef} onResultPress={handleSearchResult} />
           </View>
         </View>
 
@@ -1172,51 +1372,76 @@ const ExploreMapScreen: React.FC = () => {
         </View>
       </View>
 
-      <MapZoomControls
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        topOffset={showsTopOffset + 120}
-      />
+      {!isSheetFullScreen ? (
+        <>
+          <MapZoomControls
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            topOffset={showsTopOffset + 120}
+          />
 
-      <MyLocationFab
-        onPress={handleMyLocationPress}
-        loading={locating}
-        topOffset={showsTopOffset + 120}
-      />
+          <MyLocationFab
+            onPress={handleMyLocationPress}
+            loading={locating}
+            topOffset={showsTopOffset + 120}
+          />
 
-      <MapStyleToggle
-        mode={mapStyleMode}
-        onToggle={handleStyleToggle}
-        topOffset={showsTopOffset + 172}
-      />
+          <MapStyleToggle
+            mode={mapStyleMode}
+            onToggle={handleStyleToggle}
+            topOffset={showsTopOffset + 172}
+          />
+        </>
+      ) : null}
 
-      <MapBottomSheet
-        ref={sheetRef}
-        routes={bottomSheetRoutes}
-        loading={loading}
-        selectedRouteId={selectedRouteId}
-        selectedRoute={resolvedSelectedRoute}
-        selectedRouteStops={selectedRouteStops}
-        showRouteStopsPanel={routeStopsExpanded}
-        activeStopId={activeStopId}
-        stopsLoading={stopsLoading}
-        onSelectRoute={handleSelectRoute}
-        onStopPress={handleStopPress}
-        onDismissRouteStops={handleDismissRouteStops}
-        onOpenRouteInMaps={handleOpenRouteInMaps}
-        onOpenStopInMaps={handleOpenStopInMaps}
-        startFromUserLocation={startFromUserLocation}
-        onStartFromUserLocationChange={handleStartFromUserLocationChange}
-        canStartFromUserLocation={firstStopCoordinate !== null}
-        routeSheetTab={routeSheetTab}
-        onRouteSheetTabChange={handleRouteSheetTabChange}
-        routeSegments={routeSegments}
-        activeSegmentIndex={activeSegmentIndex}
-        segmentsLoading={segmentsLoading}
-        onSegmentPress={handleSegmentPress}
-        onOpenActiveStopInMaps={handleOpenActiveStopInMaps}
-        weatherLatitude={region.latitude}
-        weatherLongitude={region.longitude}
+      <View style={styles.sheetHost} pointerEvents="box-none">
+        <MapBottomSheet
+          ref={sheetRef}
+          routes={bottomSheetRoutes}
+          loading={loading}
+          selectedRouteId={selectedRouteId}
+          selectedRoute={resolvedSelectedRoute}
+          selectedRouteStops={selectedRouteStops}
+          showRouteStopsPanel={routeStopsExpanded}
+          activeStopId={activeStopId}
+          stopsLoading={stopsLoading}
+          onSelectRoute={handleSelectRoute}
+          onStopPress={handleStopPress}
+          onDismissRouteStops={handleDismissRouteStops}
+          onOpenRouteInMaps={handleOpenRouteInMaps}
+          onOpenStopInMaps={handleOpenStopInMaps}
+          startFromUserLocation={startFromUserLocation}
+          onStartFromUserLocationChange={handleStartFromUserLocationChange}
+          canStartFromUserLocation={firstStopCoordinate !== null}
+          routeSheetTab={routeSheetTab}
+          onRouteSheetTabChange={handleRouteSheetTabChange}
+          routeSegments={routeSegments}
+          activeSegmentIndex={activeSegmentIndex}
+          segmentsLoading={segmentsLoading}
+          onSegmentPress={handleSegmentPress}
+          onOpenActiveStopInMaps={handleOpenActiveStopInMaps}
+          onOpenRouteDetail={handleOpenRouteDetail}
+          onSnapChange={handleSheetSnapChange}
+          topInset={insets.top}
+          weatherLatitude={region.latitude}
+          weatherLongitude={region.longitude}
+          onClearSelectedRoute={handleClearSelectedRoute}
+          onShareRoute={handleShareSelectedRoute}
+          onSaveRoute={handleSaveSelectedRoute}
+          isRouteSaved={isSelectedRouteSaved}
+          saveLoading={isCollectionsLoading}
+        />
+      </View>
+
+      <SavedCollectionsSheet
+        visible={isSaveSheetVisible}
+        loading={isCollectionsLoading}
+        collections={collections}
+        selectedCollectionIds={selectedCollectionIds}
+        rowLoadingMap={rowLoadingMap}
+        onClose={closeSaveSheet}
+        onToggleCollection={toggleCollectionForPost}
+        onCreateCollection={createCollectionForPost}
       />
     </View>
   );

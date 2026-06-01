@@ -8,11 +8,8 @@ import {
   ViewStyle,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../../context/AuthContext';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useThemedStyles } from '../../theme/useThemedStyles';
-import { NotificationBellButton } from './NotificationBellButton';
 
 type HeaderProps = {
   title?: string;
@@ -108,32 +105,8 @@ export const BaseHeader = ({
   );
 };
 
-const useNotificationsNavigation = () => {
-  const navigation = useNavigation<any>();
-  const { unreadNotificationCount } = useAuth();
-
-  const openNotifications = () => {
-    navigation.navigate('Notifications');
-  };
-
-  return { unreadNotificationCount, openNotifications };
-};
-
 export const HomeHeader = () => {
-  const { unreadNotificationCount, openNotifications } = useNotificationsNavigation();
-
-  return (
-    <BaseHeader
-      title="Yolista"
-      centerTitle
-      rightComponent={
-        <NotificationBellButton
-          count={unreadNotificationCount}
-          onPress={openNotifications}
-        />
-      }
-    />
-  );
+  return <BaseHeader title="Yolista" centerTitle />;
 };
 
 export const RouteDetailHeader = ({ navigation }: { navigation?: any }) => {
@@ -153,46 +126,15 @@ export const RouteDetailHeader = ({ navigation }: { navigation?: any }) => {
 };
 
 export const ExploreHeader = () => {
-  const { unreadNotificationCount, openNotifications } = useNotificationsNavigation();
-
-  return (
-    <BaseHeader
-      title="Keşfet"
-      rightComponent={
-        <NotificationBellButton
-          count={unreadNotificationCount}
-          onPress={openNotifications}
-        />
-      }
-    />
-  );
+  return <BaseHeader title="Keşfet" />;
 };
 
 export const CreateRouteHeader = () => {
   return <BaseHeader title="Yeni Rota Oluştur" />;
 };
 
-export const NotificationsHeader = ({ navigation }: { navigation?: { goBack: () => void } }) => {
-  const theme = useAppTheme();
-  const fallbackNavigation = useNavigation<any>();
-  const nav = navigation ?? fallbackNavigation;
-  const styles = useHeaderStyles();
-
-  return (
-    <BaseHeader
-      title="Bildirimler"
-      leftComponent={
-        <TouchableOpacity
-          onPress={() => nav.goBack()}
-          style={styles.backHit}
-          accessibilityRole="button"
-          accessibilityLabel="Geri"
-        >
-          <Icon name="arrow-left" size={22} color={theme.textPrimary} />
-        </TouchableOpacity>
-      }
-    />
-  );
+export const NotificationsHeader = () => {
+  return <BaseHeader title="Bildirimler" centerTitle />;
 };
 
 export const SocialListHeader = ({

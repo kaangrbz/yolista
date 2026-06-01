@@ -13,11 +13,13 @@ import { useThemedStyles } from '../../../theme/useThemedStyles';
 import { getRouteDisplayLabel } from '../../../utils/getRouteDisplayLabel';
 import { getRouteDistanceLabel, extractValidCoordinates } from '../../../utils/routeDistance';
 import { MAP_ACTIVE_ROUTE_BORDER } from '../../../constants/mapDefaults';
+import { useCommentsSheet } from '../../../context/CommentsSheetContext';
 import MapRouteStopCard, {
   getMapStopKey,
   getMapStopLabel,
   MAP_ROUTE_STOP_CARD_STEP,
 } from './MapRouteStopCard';
+import MapRouteDetailButton from './MapRouteDetailButton';
 
 interface MapSelectedRouteStopsProps {
   stops: RouteWithProfile[];
@@ -28,6 +30,7 @@ interface MapSelectedRouteStopsProps {
   onClearSelection?: () => void;
   onOpenRouteInMaps?: () => void;
   onOpenStopInMaps?: (stop: RouteWithProfile) => void;
+  onOpenRouteDetail?: () => void;
   startFromUserLocation?: boolean;
   onStartFromUserLocationChange?: (enabled: boolean) => void;
   canStartFromUserLocation?: boolean;
@@ -42,12 +45,14 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
   onClearSelection,
   onOpenRouteInMaps,
   onOpenStopInMaps,
+  onOpenRouteDetail,
   startFromUserLocation = false,
   onStartFromUserLocationChange,
   canStartFromUserLocation = false,
 }) => {
   const scrollRef = useRef<ScrollView>(null);
   const theme = useAppTheme();
+  const { openComments } = useCommentsSheet();
   const styles = useThemedStyles((t) => ({
     wrapper: {
       paddingVertical: 10,
@@ -293,6 +298,31 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
           <TouchableOpacity
             style={styles.mapsButton}
             activeOpacity={0.85}
+            onPress={() => {
+              if (!selectedRoute?.id) {
+                return;
+              }
+
+              openComments({
+                routeId: selectedRoute.id,
+                routeOwnerId:
+                  selectedRoute.user_id || selectedRoute.profiles?.id || '',
+                parentType: 'routeDetail',
+              });
+            }}
+          >
+            <Icon name="comment-outline" size={16} color={theme.accent} />
+            <Text style={styles.mapsButtonText}>
+              Yorumlar
+              {(selectedRoute?.comment_count || 0) > 0
+                ? ` (${selectedRoute?.comment_count})`
+                : ''}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.mapsButton}
+            activeOpacity={0.85}
             onPress={onOpenRouteInMaps}
           >
             <Icon name="google-maps" size={16} color={theme.accent} />
@@ -310,6 +340,10 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
             </TouchableOpacity>
           ) : null}
         </View>
+      ) : null}
+
+      {onOpenRouteDetail ? (
+        <MapRouteDetailButton onPress={onOpenRouteDetail} />
       ) : null}
 
       {loading ? (

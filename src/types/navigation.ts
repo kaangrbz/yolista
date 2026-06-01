@@ -1,3 +1,5 @@
+import type { RouteDetailParams } from './routeDetailNavigation.types';
+
 export enum PageName {
   Home = 'Home',
   RouteDetail = 'RouteDetail',
@@ -12,7 +14,7 @@ export enum PageName {
 }
 
 export type NavigationParams = {
-  [PageName.RouteDetail]: { routeId: string };
+  [PageName.RouteDetail]: RouteDetailParams;
   [PageName.Explore]: { categoryId?: number };
   [PageName.Profile]: { username: string };
   [PageName.AddCategory]: undefined;

@@ -5,12 +5,12 @@ import RouteDiscoveryService, {
   DiscoveryFilters,
 } from '../services/RouteDiscoveryService';
 import { RouteWithProfile } from '../model/routes.model';
+import { VIEWPORT_DEBOUNCE_MS } from '../constants/mapDefaults';
 import {
-  VIEWPORT_DEBOUNCE_MS,
-  VIEWPORT_MIN_DELTA_CHANGE,
-  VIEWPORT_MIN_PAN_FRACTION,
-  VIEWPORT_MIN_ZOOM_FRACTION,
-} from '../constants/mapDefaults';
+  expandBbox,
+  regionToBbox,
+  shouldSkipViewportFetch,
+} from '../utils/viewportFetch';
 import { useAuth } from '../context/AuthContext';
 
 interface UseViewportRoutesParams {
@@ -26,50 +26,6 @@ interface UseViewportRoutesResult {
   refetch: () => void;
 }
 
-const regionToBbox = (region: Region): BoundingBox => {
-  return {
-    minLat: region.latitude - region.latitudeDelta / 2,
-    maxLat: region.latitude + region.latitudeDelta / 2,
-    minLng: region.longitude - region.longitudeDelta / 2,
-    maxLng: region.longitude + region.longitudeDelta / 2,
-  };
-};
-
-const shouldSkipUpdate = (previous: Region | null, next: Region): boolean => {
-  if (!previous) {
-    return false;
-  }
-
-  const latThreshold = Math.max(
-    previous.latitudeDelta * VIEWPORT_MIN_PAN_FRACTION,
-    VIEWPORT_MIN_DELTA_CHANGE,
-  );
-  const lngThreshold = Math.max(
-    previous.longitudeDelta * VIEWPORT_MIN_PAN_FRACTION,
-    VIEWPORT_MIN_DELTA_CHANGE,
-  );
-  const latDeltaThreshold = Math.max(
-    previous.latitudeDelta * VIEWPORT_MIN_ZOOM_FRACTION,
-    VIEWPORT_MIN_DELTA_CHANGE,
-  );
-  const lngDeltaThreshold = Math.max(
-    previous.longitudeDelta * VIEWPORT_MIN_ZOOM_FRACTION,
-    VIEWPORT_MIN_DELTA_CHANGE,
-  );
-
-  const latDiff = Math.abs(previous.latitude - next.latitude);
-  const lngDiff = Math.abs(previous.longitude - next.longitude);
-  const latDeltaDiff = Math.abs(previous.latitudeDelta - next.latitudeDelta);
-  const lngDeltaDiff = Math.abs(previous.longitudeDelta - next.longitudeDelta);
-
-  return (
-    latDiff < latThreshold &&
-    lngDiff < lngThreshold &&
-    latDeltaDiff < latDeltaThreshold &&
-    lngDeltaDiff < lngDeltaThreshold
-  );
-};
-
 export const useViewportRoutes = ({
   region,
   filters,
@@ -84,8 +40,10 @@ export const useViewportRoutes = ({
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRegionRef = useRef<Region | null>(null);
+  const lastFetchedBboxRef = useRef<BoundingBox | null>(null);
   const lastFiltersKeyRef = useRef<string>('');
   const requestIdRef = useRef(0);
+  const hasFetchedRef = useRef(false);
 
   const filtersKey = useMemo(() => JSON.stringify(filters || {}), [filters]);
 
@@ -110,6 +68,11 @@ export const useViewportRoutes = ({
         }
 
         setRoutes(data);
+        hasFetchedRef.current = true;
+        lastFetchedBboxRef.current = expandBbox(
+          regionToBbox(targetRegion),
+          targetRegion.latitude,
+        );
       } catch (err) {
         if (requestId !== requestIdRef.current) {
           return;
@@ -138,7 +101,15 @@ export const useViewportRoutes = ({
     const filtersChanged = lastFiltersKeyRef.current !== filtersKey;
     lastFiltersKeyRef.current = filtersKey;
 
-    if (!filtersChanged && shouldSkipUpdate(lastRegionRef.current, region)) {
+    if (
+      hasFetchedRef.current &&
+      !filtersChanged &&
+      shouldSkipViewportFetch(
+        lastRegionRef.current,
+        region,
+        lastFetchedBboxRef.current,
+      )
+    ) {
       return;
     }
 
@@ -146,11 +117,19 @@ export const useViewportRoutes = ({
 
     if (timerRef.current) {
       clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
 
-    timerRef.current = setTimeout(() => {
+    const scheduleFetch = () => {
       void runFetch(region);
-    }, VIEWPORT_DEBOUNCE_MS);
+    };
+
+    if (!hasFetchedRef.current) {
+      scheduleFetch();
+      return;
+    }
+
+    timerRef.current = setTimeout(scheduleFetch, VIEWPORT_DEBOUNCE_MS);
 
     return () => {
       if (timerRef.current) {

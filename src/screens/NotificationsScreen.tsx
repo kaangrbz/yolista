@@ -16,6 +16,8 @@ import NotificationModel, { NotificationType } from '../model/notifications.mode
 import { useAuth } from '../context/AuthContext';
 import { buildProfileNavigationParams } from '../utils/profileSlug';
 import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { MainTabParamList } from '../navigation/MainTabNavigator';
 import { getTimeAgo } from '../utils/timeAgo';
 import CachedProfileAvatar from '../components/common/CachedProfileAvatar';
 import { profileAvatarCache } from '../services/ProfileAvatarCache';
@@ -66,14 +68,14 @@ interface NotificationItemProps {
   item: NotificationType;
   action: () => void;
   label: string;
-  navigation: any;
+  onPressProfile: (username: string) => void;
 }
 
 const NotificationItem: React.FC<NotificationItemProps> = ({
   item,
   action,
   label,
-  navigation,
+  onPressProfile,
 }) => {
   const styles = useThemedStyles((t) => ({
     notificationItem: {
@@ -172,12 +174,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
                   return;
                 }
 
-                navigation.navigate(
-                  'ProfileMain' as never,
-                  buildProfileNavigationParams({
-                    username: item.profiles.username,
-                  }) as never,
-                );
+                onPressProfile(item.profiles.username);
               }}
             >
               <Text
@@ -242,7 +239,7 @@ const NotificationsScreen = () => {
 
   const { user, setUnreadNotificationCount } = useAuth();
   const isFocused = useIsFocused();
-  const navigation = useNavigation();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
   const [notifications, setNotifications] = useState<NotificationType[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -335,6 +332,26 @@ const NotificationsScreen = () => {
     void fetchNotifications({ silent: true });
   }, [fetchNotifications]);
 
+  const navigateToProfile = useCallback(
+    (username: string) => {
+      navigation.navigate('ProfileStack', {
+        screen: 'ProfileMain',
+        params: buildProfileNavigationParams({ username }),
+      });
+    },
+    [navigation],
+  );
+
+  const navigateToRoute = useCallback(
+    (routeId: string) => {
+      navigation.navigate('HomeStack', {
+        screen: 'RouteDetail',
+        params: { routeId },
+      });
+    },
+    [navigation],
+  );
+
   const getNotificationAction = useCallback(
     (item: NotificationType): (() => void) => {
       const navTarget = item.notification_types?.nav_target ?? 'route';
@@ -345,24 +362,19 @@ const NotificationsScreen = () => {
             return;
           }
 
-          navigation.navigate(
-            'ProfileMain' as never,
-            buildProfileNavigationParams({
-              username: item.profiles.username,
-            }) as never,
-          );
+          navigateToProfile(item.profiles.username);
         };
       }
 
       if (navTarget === 'route' && item.entity_id) {
         return () => {
-          navigation.navigate('RouteDetail' as never, { routeId: item.entity_id } as never);
+          navigateToRoute(item.entity_id);
         };
       }
 
       return () => {};
     },
-    [navigation],
+    [navigateToProfile, navigateToRoute],
   );
 
   const renderItem = ({ item }: { item: NotificationType }) => (
@@ -370,14 +382,14 @@ const NotificationsScreen = () => {
       item={item}
       action={getNotificationAction(item)}
       label={getNotificationLabel(item)}
-      navigation={navigation}
+      onPressProfile={navigateToProfile}
     />
   );
 
   if (isInitialLoading && notifications.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <NotificationsHeader navigation={navigation} />
+        <NotificationsHeader />
         <View style={styles.loaderWrap}>
           <ActivityIndicator size="small" color={theme.textPrimary} />
         </View>
@@ -387,7 +399,7 @@ const NotificationsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <NotificationsHeader navigation={navigation} />
+      <NotificationsHeader />
       <FlatList
         data={notifications}
         style={styles.list}

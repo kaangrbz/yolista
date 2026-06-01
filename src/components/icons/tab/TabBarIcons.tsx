@@ -69,6 +69,26 @@ export const TabCreateIcon: React.FC<CurvedStrokeIconProps> = (props) => {
   );
 };
 
+export const TabNotificationsIcon: React.FC<CurvedStrokeIconProps> = (props) => {
+  const { focused = false } = props;
+
+  return (
+    <IconFrame {...props}>
+      {() => (
+        <>
+          <FilledPath
+            d="M12 5.2 C9.55 5.2 7.7 7.05 7.7 9.5 V11.1 C7.7 11.8 7.5 12.45 7.15 12.95 L6.1 14.55 C5.7 15.15 6.1 15.85 6.8 15.85 H17.2 C17.9 15.85 18.3 15.15 17.9 14.55 L16.85 12.95 C16.5 12.45 16.3 11.8 16.3 11.1 V9.5 C16.3 7.05 14.45 5.2 12 5.2 Z"
+            color={props.color}
+            focused={focused}
+          />
+          <Path d="M12 5.2 C9.55 5.2 7.7 7.05 7.7 9.5 V11.1 C7.7 11.8 7.5 12.45 7.15 12.95 L6.1 14.55 C5.7 15.15 6.1 15.85 6.8 15.85 H17.2 C17.9 15.85 18.3 15.15 17.9 14.55 L16.85 12.95 C16.5 12.45 16.3 11.8 16.3 11.1 V9.5 C16.3 7.05 14.45 5.2 12 5.2 Z" />
+          <Path d="M10.3 15.85 C10.55 17 11.2 17.85 12 17.85 C12.8 17.85 13.45 17 13.7 15.85" />
+        </>
+      )}
+    </IconFrame>
+  );
+};
+
 export const TabProfileIcon: React.FC<CurvedStrokeIconProps> = (props) => {
   const { focused = false } = props;
 
@@ -94,7 +114,7 @@ export const TabProfileIcon: React.FC<CurvedStrokeIconProps> = (props) => {
   );
 };
 
-export type TabBarIconName = 'home' | 'explore' | 'create' | 'profile';
+export type TabBarIconName = 'home' | 'explore' | 'create' | 'notifications' | 'profile';
 
 interface TabBarIconProps extends CurvedStrokeIconProps {
   name: TabBarIconName;
@@ -104,6 +124,7 @@ const TAB_ICON_MAP: Record<TabBarIconName, React.FC<CurvedStrokeIconProps>> = {
   home: TabHomeIcon,
   explore: TabExploreIcon,
   create: TabCreateIcon,
+  notifications: TabNotificationsIcon,
   profile: TabProfileIcon,
 };
 

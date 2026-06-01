@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import type { ProfileBadge } from '../../model/profile.model';
 import { PROFILE_BADGE_ASSETS, pickPrimaryBadges } from '../../lib/profileBadges';
-import ProfileBadgeInfoSheet from './ProfileBadgeInfoSheet';
+import { showProfileBadgeSheet } from './ProfileBadgeSheetHost';
 
 interface ProfileBadgesProps {
   badges: ProfileBadge[];
@@ -56,8 +56,6 @@ const ProfileBadges: React.FC<ProfileBadgesProps> = ({
   size = 18,
   maxVisible,
 }) => {
-  const [activeBadge, setActiveBadge] = useState<ProfileBadge | null>(null);
-
   if (!badges || badges.length === 0) {
     return null;
   }
@@ -68,28 +66,20 @@ const ProfileBadges: React.FC<ProfileBadgesProps> = ({
       : badges;
 
   return (
-    <>
-      <View style={styles.badgeRow}>
-        {visible.map((badge) => (
-          <TouchableOpacity
-            key={badge.key}
-            onPress={() => setActiveBadge(badge)}
-            style={styles.badgeButton}
-            accessibilityRole="button"
-            accessibilityLabel={`${badge.label} rozet bilgisi`}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <ProfileBadgeIcon badge={badge} size={size} />
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <ProfileBadgeInfoSheet
-        visible={activeBadge !== null}
-        badge={activeBadge}
-        onClose={() => setActiveBadge(null)}
-      />
-    </>
+    <View style={styles.badgeRow}>
+      {visible.map((badge) => (
+        <TouchableOpacity
+          key={badge.key}
+          onPress={() => showProfileBadgeSheet(badge)}
+          style={styles.badgeButton}
+          accessibilityRole="button"
+          accessibilityLabel={`${badge.label} rozet bilgisi`}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <ProfileBadgeIcon badge={badge} size={size} />
+        </TouchableOpacity>
+      ))}
+    </View>
   );
 };
 

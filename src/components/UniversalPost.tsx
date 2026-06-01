@@ -29,6 +29,7 @@ import { useGlobalAlert } from '../hooks/useGlobalAlert';
 import SavedCollectionsSheet from './common/SavedCollectionsSheet';
 import { useCommentsSheet } from '../context/CommentsSheetContext';
 import { useThemedStyles } from '../theme/useThemedStyles';
+import RouteDetailCTA from './routeDetail/RouteDetailCTA';
 
 const { height: windowHeight } = Dimensions.get('window');
 const FULL_SCREEN_MIN_HEIGHT = Math.max(windowHeight - 160, 480);
@@ -42,6 +43,8 @@ const UniversalPost: React.FC<PostProps> = ({
   showFullScreen = false,
   actions,
   detailExperienceSlot,
+  detailBelowCarouselSlot,
+  stopCountHint = null,
   activeSlideIndex,
   onActiveSlideIndexChange,
 }) => {
@@ -523,6 +526,20 @@ const UniversalPost: React.FC<PostProps> = ({
           </Text>
         </Pressable>
       )}
+
+      {detailBelowCarouselSlot}
+
+      {!detailBelowCarouselSlot &&
+      !detailExperienceSlot &&
+      !showFullScreen ? (
+        <RouteDetailCTA
+          routeId={postId}
+          stopCountHint={
+            stopCountHint ??
+            (carouselImages.length > 0 ? carouselImages.length : null)
+          }
+        />
+      ) : null}
 
       <PostActions
         isLiked={isLiked}

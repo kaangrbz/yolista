@@ -93,6 +93,18 @@ const enrichRoutes = async (
     }
   });
 
+  const { data: commentCounts } = await supabase.rpc('count_comments_by_route_ids', {
+    route_ids: ids,
+  });
+
+  const commentCountsMap = (commentCounts || []).reduce(
+    (acc: Record<string, number>, row: { route_id: string; comment_count: number }) => {
+      acc[row.route_id] = row.comment_count || 0;
+      return acc;
+    },
+    {},
+  );
+
   return routes.map((row: any) => ({
     ...row,
     profiles: Array.isArray(row.profiles) ? row.profiles[0] : row.profiles,
@@ -100,7 +112,7 @@ const enrichRoutes = async (
     categories: Array.isArray(row.categories) ? row.categories[0] : row.categories,
     like_count: likeCountMap[row.id] || 0,
     did_like: loggedUserId ? !!userLikedMap[row.id] : false,
-    comment_count: 0,
+    comment_count: commentCountsMap[row.id] || 0,
   })) as RouteWithProfile[];
 };
 

@@ -1,29 +1,27 @@
 import React, { useMemo } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { RouteWithProfile } from '../../../model/routes.model';
-import { useAppTheme } from '../../../context/AppThemeContext';
-import { useThemedStyles } from '../../../theme/useThemedStyles';
-import {
-  MAP_ACTIVE_ROUTE_BORDER,
-} from '../../../constants/mapDefaults';
-import type { RouteSegment } from '../../../types/routeSegment.types';
+import { RouteWithProfile } from '../../model/routes.model';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { useThemedStyles } from '../../theme/useThemedStyles';
+import { MAP_ACTIVE_ROUTE_BORDER } from '../../constants/mapDefaults';
+import type { RouteSegment } from '../../types/routeSegment.types';
 import {
   formatDistanceFromMeters,
   formatDurationFromSeconds,
-} from '../../../utils/routeSegmentColors';
-import { getRouteDisplayLabel } from '../../../utils/getRouteDisplayLabel';
-import MapRouteDetailButton from './MapRouteDetailButton';
-import RouteDirectionsTimeline from '../../routeDetail/RouteDirectionsTimeline';
+} from '../../utils/routeSegmentColors';
+import RouteSegmentMap from './RouteSegmentMap';
+import RouteDirectionsTimeline from './RouteDirectionsTimeline';
+import { openRouteInMaps, openStopInMaps } from '../../utils/openInMaps';
+import { extractValidCoordinates } from '../../utils/routeDistance';
 
-interface MapRouteDirectionsPanelProps {
-  selectedRoute: RouteWithProfile | null;
+interface RouteDirectionsTabPanelProps {
+  stops: RouteWithProfile[];
   segments: RouteSegment[];
   activeSegmentIndex: number;
   loading: boolean;
@@ -31,13 +29,10 @@ interface MapRouteDirectionsPanelProps {
   canStartFromUserLocation: boolean;
   onSegmentPress: (index: number) => void;
   onStartFromUserLocationChange: (enabled: boolean) => void;
-  onOpenRouteInMaps: () => void;
-  onOpenActiveStopInMaps: () => void;
-  onOpenRouteDetail?: () => void;
 }
 
-export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = ({
-  selectedRoute,
+export const RouteDirectionsTabPanel: React.FC<RouteDirectionsTabPanelProps> = ({
+  stops,
   segments,
   activeSegmentIndex,
   loading,
@@ -45,54 +40,35 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
   canStartFromUserLocation,
   onSegmentPress,
   onStartFromUserLocationChange,
-  onOpenRouteInMaps,
-  onOpenActiveStopInMaps,
-  onOpenRouteDetail,
 }) => {
   const theme = useAppTheme();
 
   const styles = useThemedStyles((t) => ({
     wrapper: {
-      paddingBottom: 12,
+      paddingBottom: 8,
     },
-    modeHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 18,
-      paddingBottom: 10,
-    },
-    modeTitle: {
-      fontSize: 20,
-      fontWeight: '800',
-      color: t.textPrimary,
-      letterSpacing: -0.3,
-    },
-    modeMeta: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: t.textSecondary,
-    },
-    toggleRow: {
+    chipRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,
-      paddingHorizontal: 18,
-      paddingBottom: 10,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
     },
     chip: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
       borderRadius: 999,
       backgroundColor: t.surfaceMuted,
+      borderWidth: 1,
+      borderColor: t.border,
     },
     chipActive: {
       backgroundColor: t.background,
-      borderWidth: 1.5,
       borderColor: MAP_ACTIVE_ROUTE_BORDER,
+      borderWidth: 1.5,
     },
     chipText: {
       fontSize: 12,
@@ -100,7 +76,7 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
       color: t.textPrimary,
     },
     timeline: {
-      paddingHorizontal: 18,
+      paddingHorizontal: 16,
       paddingTop: 4,
     },
     timelineRow: {
@@ -153,16 +129,15 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
       marginTop: 4,
     },
     stepsSection: {
-      paddingHorizontal: 18,
-      paddingTop: 8,
-      paddingBottom: 4,
+      paddingHorizontal: 16,
+      paddingTop: 4,
+      paddingBottom: 8,
     },
     stepsTitle: {
       fontSize: 12,
       fontWeight: '700',
       color: t.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      letterSpacing: 0.4,
       marginBottom: 8,
     },
     stepRow: {
@@ -178,37 +153,49 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
       color: t.textPrimary,
     },
     actionsRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
       gap: 8,
-      paddingHorizontal: 18,
+      paddingHorizontal: 16,
       paddingTop: 12,
+      paddingBottom: 8,
     },
     primaryButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      justifyContent: 'center',
+      gap: 8,
+      minHeight: 46,
       paddingHorizontal: 16,
       paddingVertical: 12,
       borderRadius: 999,
       backgroundColor: theme.accent,
     },
     primaryButtonText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '700',
       color: '#fff',
     },
+    secondaryRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
     secondaryButton: {
+      flex: 1,
+      minWidth: '46%',
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: 6,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
+      minHeight: 42,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
       borderRadius: 999,
       backgroundColor: t.surfaceMuted,
+      borderWidth: 1,
+      borderColor: t.border,
     },
     secondaryButtonText: {
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: '700',
       color: t.textPrimary,
     },
@@ -216,12 +203,14 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 28,
+      paddingVertical: 32,
       gap: 8,
     },
     loadingText: {
-      fontSize: 12,
+      fontSize: 13,
       color: t.textSecondary,
+      textAlign: 'center',
+      paddingHorizontal: 24,
     },
   }));
 
@@ -255,10 +244,28 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
 
   const activeSegment = segments[activeSegmentIndex];
   const activeSteps = activeSegment?.stepInstructions ?? [];
+  const coordStops = extractValidCoordinates(
+    stops.map((stop) => ({
+      latitude: stop.latitude,
+      longitude: stop.longitude,
+    })),
+  );
 
-  const routeTitle = selectedRoute
-    ? getRouteDisplayLabel(selectedRoute)
-    : 'Rota';
+  const handleOpenRouteInMaps = () => {
+    if (coordStops.length === 0) {
+      return;
+    }
+
+    void openRouteInMaps(coordStops);
+  };
+
+  const handleOpenActiveSegmentInMaps = () => {
+    if (!activeSegment) {
+      return;
+    }
+
+    void openRouteInMaps([activeSegment.from, activeSegment.to]);
+  };
 
   if (loading) {
     return (
@@ -270,30 +277,56 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
   }
 
   if (segments.length === 0) {
+    const singleStop = coordStops.length === 1;
+
     return (
-      <View style={styles.loadingRow}>
-        <Text style={styles.loadingText}>Koordinatlı durak bulunamadı</Text>
+      <View style={styles.wrapper}>
+        <View style={styles.loadingRow}>
+          <Text style={styles.loadingText}>
+            {singleStop
+              ? 'Tek nokta — yönlendirme yok'
+              : 'Koordinatlı durak bulunamadı'}
+          </Text>
+        </View>
+        {singleStop ? (
+          <View style={styles.actionsRow}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              activeOpacity={0.88}
+              onPress={() => void openStopInMaps(coordStops[0])}
+            >
+              <Icon name="google-maps" size={18} color="#fff" />
+              <Text style={styles.primaryButtonText}>Haritada aç</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
     );
   }
 
-  return (
-    <ScrollView
-      style={styles.wrapper}
-      nestedScrollEnabled
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.modeHeader}>
-        <Text style={styles.modeTitle}>Yürüyüş</Text>
-        <Text style={styles.modeMeta}>
-          {[totals.durationLabel, totals.distanceLabel]
-            .filter(Boolean)
-            .join(' · ') || routeTitle}
-        </Text>
-      </View>
+  const summaryChips: { icon: string; label: string }[] = [
+    { icon: 'routes', label: `${segments.length} bacak` },
+  ];
 
-      {canStartFromUserLocation ? (
-        <View style={styles.toggleRow}>
+  if (totals.distanceLabel) {
+    summaryChips.push({ icon: 'map-marker-distance', label: totals.distanceLabel });
+  }
+
+  if (totals.durationLabel) {
+    summaryChips.push({ icon: 'walk', label: totals.durationLabel });
+  }
+
+  return (
+    <View style={styles.wrapper}>
+      <View style={styles.chipRow}>
+        {summaryChips.map((chip) => (
+          <View key={chip.label} style={styles.chip}>
+            <Icon name={chip.icon} size={14} color={theme.textSecondary} />
+            <Text style={styles.chipText}>{chip.label}</Text>
+          </View>
+        ))}
+
+        {canStartFromUserLocation ? (
           <TouchableOpacity
             style={[styles.chip, startFromUserLocation && styles.chipActive]}
             activeOpacity={0.85}
@@ -303,13 +336,19 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
           >
             <Icon
               name="crosshairs-gps"
-              size={16}
+              size={14}
               color={startFromUserLocation ? theme.accent : theme.textSecondary}
             />
             <Text style={styles.chipText}>Konumumdan başla</Text>
           </TouchableOpacity>
-        </View>
-      ) : null}
+        ) : null}
+      </View>
+
+      <RouteSegmentMap
+        segment={activeSegment ?? null}
+        segmentIndex={activeSegmentIndex}
+        activeSegmentIndex={activeSegmentIndex}
+      />
 
       <RouteDirectionsTimeline
         segments={segments}
@@ -340,29 +379,36 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
         <TouchableOpacity
           style={styles.primaryButton}
           activeOpacity={0.88}
-          onPress={onOpenRouteInMaps}
+          onPress={handleOpenRouteInMaps}
         >
-          <Icon name="navigation" size={16} color="#fff" />
+          <Icon name="navigation" size={18} color="#fff" />
           <Text style={styles.primaryButtonText}>Başlat</Text>
         </TouchableOpacity>
 
-        {activeSegment ? (
+        <View style={styles.secondaryRow}>
+          {activeSegment ? (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              activeOpacity={0.85}
+              onPress={handleOpenActiveSegmentInMaps}
+            >
+              <Icon name="map-marker-path" size={16} color={theme.accent} />
+              <Text style={styles.secondaryButtonText}>Bu bacak</Text>
+            </TouchableOpacity>
+          ) : null}
+
           <TouchableOpacity
             style={styles.secondaryButton}
-            activeOpacity={0.88}
-            onPress={onOpenActiveStopInMaps}
+            activeOpacity={0.85}
+            onPress={handleOpenRouteInMaps}
           >
-            <Icon name="map-marker-radius" size={16} color={theme.accent} />
-            <Text style={styles.secondaryButtonText}>Bu durağı aç</Text>
+            <Icon name="google-maps" size={16} color={theme.accent} />
+            <Text style={styles.secondaryButtonText}>Tüm rota</Text>
           </TouchableOpacity>
-        ) : null}
+        </View>
       </View>
-
-      {onOpenRouteDetail ? (
-        <MapRouteDetailButton onPress={onOpenRouteDetail} />
-      ) : null}
-    </ScrollView>
+    </View>
   );
 };
 
-export default MapRouteDirectionsPanel;
+export default RouteDirectionsTabPanel;

@@ -1,24 +1,22 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Image,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { TouchableOpacity } from '@gorhom/bottom-sheet';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../../model/routes.model';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
 import { getRouteDisplayLabel } from '../../../utils/getRouteDisplayLabel';
-import {
-  getRouteLocationLabel,
-  getRouteLocationSource,
-} from '../../../utils/routeLocationLabel';
+import { getStopPhotoHintLabel } from '../../../utils/getStopPhotoHintLabel';
 import {
   useMapPreviewImageDownload,
   useProfileImageDownload,
 } from '../../../hooks/useImageDownload';
 import { MAP_ACTIVE_ROUTE_BORDER } from '../../../constants/mapDefaults';
+import { useCommentsSheet } from '../../../context/CommentsSheetContext';
 
 interface MapRouteRowProps {
   route: RouteWithProfile;
@@ -27,9 +25,8 @@ interface MapRouteRowProps {
   onPress: () => void;
 }
 
-/**
- * Bottom sheet'in dikey listesinde gözüken satır — Google Maps arama sonucu satırına benzer.
- */
+const THUMB_SIZE = 72;
+
 export const MapRouteRow: React.FC<MapRouteRowProps> = ({
   route,
   selected = false,
@@ -37,25 +34,33 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
   onPress,
 }) => {
   const theme = useAppTheme();
+  const { openComments } = useCommentsSheet();
   const styles = useThemedStyles((t) => ({
     row: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 16,
-      paddingVertical: 10,
+      paddingVertical: 12,
+      gap: 12,
     },
     rowSelected: {
       backgroundColor: t.surfaceMuted,
     },
+    selectedAccent: {
+      position: 'absolute',
+      left: 0,
+      top: 10,
+      bottom: 10,
+      width: 3,
+      borderRadius: 2,
+      backgroundColor: MAP_ACTIVE_ROUTE_BORDER,
+    },
     imageWrapper: {
-      width: 64,
-      height: 64,
-      borderRadius: 10,
+      width: THUMB_SIZE,
+      height: THUMB_SIZE,
+      borderRadius: 12,
       overflow: 'hidden',
-      marginRight: 12,
       backgroundColor: t.surfaceMuted,
-      borderWidth: 1,
-      borderColor: t.border,
     },
     imageWrapperSelected: {
       borderWidth: 2,
@@ -71,24 +76,31 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
     },
     content: {
       flex: 1,
+      minWidth: 0,
       justifyContent: 'center',
+      gap: 4,
     },
     title: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '700',
       color: t.textPrimary,
-      marginBottom: 4,
+      letterSpacing: -0.2,
+      lineHeight: 20,
+    },
+    subtitle: {
+      fontSize: 13,
+      color: t.textSecondary,
+      lineHeight: 18,
     },
     authorRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 4,
+      gap: 5,
     },
     avatar: {
-      width: 16,
-      height: 16,
-      borderRadius: 8,
-      marginRight: 6,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
       backgroundColor: t.surfaceMuted,
     },
     avatarFallback: {
@@ -96,49 +108,30 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
       alignItems: 'center',
     },
     authorName: {
-      fontSize: 11,
+      fontSize: 12,
       color: t.textSecondary,
+      fontWeight: '600',
       flexShrink: 1,
-      fontWeight: '600',
     },
-    verifiedIcon: {
-      marginLeft: 3,
+    trailing: {
+      alignItems: 'flex-end',
+      justifyContent: 'center',
+      gap: 8,
+      marginLeft: 4,
     },
-    metaRow: {
+    statButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      flexWrap: 'wrap',
+      gap: 3,
+      minWidth: 28,
+      justifyContent: 'flex-end',
     },
-    metaText: {
-      fontSize: 11,
-      color: t.textSecondary,
-      marginLeft: 3,
-    },
-    dot: {
-      width: 3,
-      height: 3,
-      borderRadius: 1.5,
-      backgroundColor: t.textMuted,
-      marginHorizontal: 6,
-    },
-    chip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: t.surfaceMuted,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 999,
-      marginLeft: 8,
-      maxWidth: 110,
-    },
-    chipText: {
-      fontSize: 10,
-      color: t.textSecondary,
-      marginLeft: 3,
+    statText: {
+      fontSize: 12,
+      color: t.textMuted,
       fontWeight: '600',
-    },
-    chevron: {
-      marginLeft: 6,
+      minWidth: 10,
+      textAlign: 'right',
     },
   }));
 
@@ -155,132 +148,129 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
     route.profiles?.image_preview_url,
   );
 
+  const stopTitle = getStopPhotoHintLabel(route);
+  const routeLabel = getRouteDisplayLabel(route);
   const username = route.profiles?.username?.trim() || null;
-  const locationLabel = getRouteLocationLabel(getRouteLocationSource(route));
+
+  const primaryTitle = stopTitle || routeLabel;
+
+  const subtitle = useMemo(() => {
+    const parts: string[] = [];
+
+    if (stopTitle) {
+      parts.push(routeLabel);
+    } else if (route.cities?.name) {
+      parts.push(route.cities.name);
+    }
+
+    if (!stopTitle && route.categories?.name) {
+      const category = route.categories.name;
+
+      if (!parts.includes(category)) {
+        parts.push(category);
+      }
+    }
+
+    if (distanceLabel) {
+      parts.push(distanceLabel);
+    }
+
+    return parts.join(' · ');
+  }, [
+    distanceLabel,
+    route.categories?.name,
+    route.cities?.name,
+    routeLabel,
+    stopTitle,
+  ]);
+
+  const showAuthor = !subtitle && Boolean(username);
+
+  const handleCommentPress = useCallback(() => {
+    if (!route.id) {
+      return;
+    }
+
+    openComments({
+      routeId: route.id,
+      routeOwnerId: route.user_id || route.profiles?.id || '',
+      parentType: 'routeDetail',
+    });
+  }, [openComments, route.id, route.profiles?.id, route.user_id]);
+
+  const likeCount = route.like_count || 0;
+  const commentCount = route.comment_count || 0;
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={selected}
-      activeOpacity={selected ? 1 : 0.85}
-      accessibilityState={{ selected }}
-      style={[styles.row, selected && styles.rowSelected]}
-    >
-      <View style={[styles.imageWrapper, selected && styles.imageWrapperSelected]}>
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.image} />
-        ) : (
-          <View style={[styles.image, styles.imagePlaceholder]}>
-            <Icon
-              name="image-outline"
-              size={26}
-              color={theme.textMuted}
-            />
-          </View>
-        )}
-      </View>
+    <View style={[styles.row, selected && styles.rowSelected]}>
+      {selected ? <View style={styles.selectedAccent} /> : null}
 
-      <View style={styles.content}>
-        <Text numberOfLines={1} style={styles.title}>
-          {getRouteDisplayLabel(route)}
-        </Text>
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={selected}
+        activeOpacity={selected ? 1 : 0.7}
+        accessibilityState={{ selected }}
+        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+      >
+        <View style={[styles.imageWrapper, selected && styles.imageWrapperSelected]}>
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.image} />
+          ) : (
+            <View style={[styles.image, styles.imagePlaceholder]}>
+              <Icon name="image-outline" size={28} color={theme.textMuted} />
+            </View>
+          )}
+        </View>
 
-        {username ? (
-          <View style={styles.authorRow}>
-            {avatarUri ? (
-              <Image source={{ uri: avatarUri }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarFallback]}>
-                <Icon name="account" size={10} color={theme.textMuted} />
-              </View>
-            )}
-            <Text numberOfLines={1} style={styles.authorName}>
-              @{username}
+        <View style={styles.content}>
+          <Text numberOfLines={2} style={styles.title}>
+            {primaryTitle}
+          </Text>
+
+          {subtitle ? (
+            <Text numberOfLines={1} style={styles.subtitle}>
+              {subtitle}
             </Text>
-            {route.profiles?.is_verified ? (
-              <Icon
-                name="check-decagram"
-                size={11}
-                color={theme.accent}
-                style={styles.verifiedIcon}
-              />
-            ) : null}
-          </View>
-        ) : null}
-
-        <View style={styles.metaRow}>
-          {route.cities?.name ? (
-            <>
-              <Icon
-                name="map-marker"
-                size={12}
-                color={theme.textSecondary}
-              />
-              <Text numberOfLines={1} style={styles.metaText}>
-                {route.cities.name}
-              </Text>
-              {locationLabel ? (
-                <>
-                  <View style={styles.dot} />
-                  <Text numberOfLines={1} style={styles.metaText}>
-                    {locationLabel}
-                  </Text>
-                </>
+          ) : showAuthor ? (
+            <View style={styles.authorRow}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatar} />
               ) : (
-                <View style={styles.dot} />
+                <View style={[styles.avatar, styles.avatarFallback]}>
+                  <Icon name="account" size={11} color={theme.textMuted} />
+                </View>
               )}
-            </>
-          ) : locationLabel ? (
-            <Text numberOfLines={1} style={styles.metaText}>
-              {locationLabel}
-            </Text>
-          ) : null}
-
-          <Icon
-            name="heart"
-            size={12}
-            color={theme.textSecondary}
-          />
-          <Text style={styles.metaText}>{route.like_count || 0}</Text>
-
-          {distanceLabel ? (
-            <>
-              <View style={styles.dot} />
-              <Icon
-                name="map-marker-distance"
-                size={12}
-                color={theme.textSecondary}
-              />
-              <Text numberOfLines={1} style={styles.metaText}>
-                {distanceLabel}
+              <Text numberOfLines={1} style={styles.authorName}>
+                @{username}
               </Text>
-            </>
-          ) : null}
-
-          {route.categories?.name ? (
-            <View style={styles.chip}>
-              <Icon
-                name={route.categories.icon_name || 'tag'}
-                size={10}
-                color={theme.textSecondary}
-              />
-              <Text numberOfLines={1} style={styles.chipText}>
-                {route.categories.name}
-              </Text>
+              {route.profiles?.is_verified ? (
+                <Icon name="check-decagram" size={12} color={theme.accent} />
+              ) : null}
             </View>
           ) : null}
         </View>
-      </View>
+      </TouchableOpacity>
 
-      {!selected ? (
-        <Icon
-          name="chevron-right"
-          size={20}
-          color={theme.textMuted}
-          style={styles.chevron}
-        />
-      ) : null}
-    </TouchableOpacity>
+      <View style={styles.trailing}>
+        <View style={styles.statButton}>
+          <Icon name="heart-outline" size={16} color={theme.textMuted} />
+          <Text style={styles.statText}>{likeCount}</Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.statButton}
+          onPress={handleCommentPress}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel={
+            commentCount > 0 ? `${commentCount} yorum` : 'Yorum yap'
+          }
+        >
+          <Icon name="comment-outline" size={16} color={theme.textMuted} />
+          <Text style={styles.statText}>{commentCount}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 };
 

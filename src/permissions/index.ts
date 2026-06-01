@@ -1,4 +1,4 @@
-import { requestLocationPermission } from './location';
+import { requestLocationPermission, checkLocationPermission } from './location';
 import {
   checkPermission as checkPermissionInternal,
   requestPermission as requestPermissionInternal,
@@ -11,8 +11,7 @@ export const checkPermission = async (
   kind: PermissionKind,
 ): Promise<PermissionResult> => {
   if (kind === 'location') {
-    // Konum için ayrı akış var; check API'sini de tek bir granted/denied'a indir.
-    return requestLocationPermission();
+    return checkLocationPermission();
   }
 
   return checkPermissionInternal(kind);
@@ -34,6 +33,12 @@ const toBoolean = (result: PermissionResult): boolean => {
 
 export const requestLocation = async (): Promise<boolean> => {
   const result = await requestPermission('location');
+
+  return toBoolean(result);
+};
+
+export const checkLocation = async (): Promise<boolean> => {
+  const result = await checkLocationPermission();
 
   return toBoolean(result);
 };

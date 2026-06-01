@@ -51,6 +51,32 @@ const logAccuracyIfAvailable = async () => {
   }
 };
 
+/** Sadece mevcut izin durumunu okur; sistem dialog'u açmaz. */
+export const checkLocationPermission = async (): Promise<PermissionResult> => {
+  if (isIOS) {
+    return statusToResult(await check(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE));
+  }
+
+  if (!isAndroid) {
+    return 'unavailable';
+  }
+
+  const fine = statusToResult(await check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION));
+  const coarse = statusToResult(
+    await check(PERMISSIONS.ANDROID.ACCESS_COARSE_LOCATION),
+  );
+
+  if (fine === 'granted' || coarse === 'granted') {
+    return 'granted';
+  }
+
+  if (fine === 'blocked' || coarse === 'blocked') {
+    return 'blocked';
+  }
+
+  return 'denied';
+};
+
 /**
  * Konum izni özel akışı.
  *

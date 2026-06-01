@@ -13,13 +13,16 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Pressable,
+  Modal,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { showConfirm } from '../common/ConfirmModal';
 import {
   BottomSheetBackdrop,
   BottomSheetFlatList,
   BottomSheetFooter,
   BottomSheetModal,
+  BottomSheetModalProvider,
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
 import type {
@@ -460,14 +463,22 @@ const CommentsSheet: React.FC<CommentsSheetProps> = ({
   }, [comments.length, isVisible, routeId, publishCommentCount]);
 
   useEffect(() => {
-    if (isVisible) {
-      sheetRef.current?.present();
-
+    if (!isVisible) {
       return;
     }
 
-    sheetRef.current?.dismiss();
-  }, [isVisible]);
+    const frameId = requestAnimationFrame(() => {
+      sheetRef.current?.present();
+    });
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [isVisible, routeId]);
+
+  const handleModalShow = useCallback(() => {
+    sheetRef.current?.present();
+  }, []);
 
   const handleDismiss = useCallback(() => {
     if (routeId) {
@@ -731,37 +742,61 @@ const CommentsSheet: React.FC<CommentsSheetProps> = ({
     ],
   );
 
+  if (!isVisible) {
+    return null;
+  }
+
   return (
-    <BottomSheetModal
-      ref={sheetRef}
-      snapPoints={snapPoints}
-      index={1}
-      enablePanDownToClose={true}
-      onDismiss={handleDismiss}
-      backdropComponent={renderBackdrop}
-      backgroundStyle={styles.sheetBackground}
-      handleIndicatorStyle={styles.sheetIndicator}
-      keyboardBehavior="interactive"
-      keyboardBlurBehavior="restore"
-      android_keyboardInputMode="adjustResize"
-      footerComponent={renderFooter}
+    <Modal
+      visible={isVisible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={handleDismiss}
+      onShow={handleModalShow}
     >
-      <BottomSheetFlatList
-        data={comments}
-        keyExtractor={(item) => item.id}
-        renderItem={renderCommentItem}
-        ListHeaderComponent={renderListHeader}
-        ListEmptyComponent={renderListEmpty}
-        ListFooterComponent={renderListFooter}
-        contentContainerStyle={styles.listContent}
-        style={styles.flatList}
-        keyboardShouldPersistTaps="handled"
-        enableFooterMarginAdjustment={true}
-        refreshing={refreshing}
-        onRefresh={() => loadComments({ showSpinner: false })}
-      />
-    </BottomSheetModal>
+      <GestureHandlerRootView style={modalStyles.root}>
+        <BottomSheetModalProvider>
+          <BottomSheetModal
+            ref={sheetRef}
+            snapPoints={snapPoints}
+            index={1}
+            stackBehavior="push"
+            enablePanDownToClose={true}
+            onDismiss={handleDismiss}
+            backdropComponent={renderBackdrop}
+            backgroundStyle={styles.sheetBackground}
+            handleIndicatorStyle={styles.sheetIndicator}
+            keyboardBehavior="interactive"
+            keyboardBlurBehavior="restore"
+            android_keyboardInputMode="adjustResize"
+            footerComponent={renderFooter}
+          >
+            <BottomSheetFlatList
+              data={comments}
+              keyExtractor={(item) => item.id}
+              renderItem={renderCommentItem}
+              ListHeaderComponent={renderListHeader}
+              ListEmptyComponent={renderListEmpty}
+              ListFooterComponent={renderListFooter}
+              contentContainerStyle={styles.listContent}
+              style={styles.flatList}
+              keyboardShouldPersistTaps="handled"
+              enableFooterMarginAdjustment={true}
+              refreshing={refreshing}
+              onRefresh={() => loadComments({ showSpinner: false })}
+            />
+          </BottomSheetModal>
+        </BottomSheetModalProvider>
+      </GestureHandlerRootView>
+    </Modal>
   );
 };
+
+const modalStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});
 
 export default CommentsSheet;

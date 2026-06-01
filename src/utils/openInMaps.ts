@@ -1,10 +1,52 @@
 import { Linking, Platform } from 'react-native';
-import type { LatLng } from './routeDistance';
+import { MAPS_DRIVING_MODE_MIN_KM } from '../constants/mapDefaults';
+import {
+  haversineDistanceKm,
+  totalRouteDistanceKmFromPoints,
+  type LatLng,
+} from './routeDistance';
 
 type TravelMode = 'walking' | 'driving';
 
+export type OpenInMapsOptions = {
+  /** Mesafe biliniyorsa doğrudan mod seçimi. */
+  distanceKm?: number;
+  /** Tek hedef açılışında başlangıç noktası (mesafe hesabı için). */
+  from?: LatLng;
+};
+
 const formatCoord = ({ latitude, longitude }: LatLng): string =>
   `${latitude},${longitude}`;
+
+export const resolveTravelModeForDistanceKm = (
+  distanceKm: number,
+): TravelMode =>
+  distanceKm >= MAPS_DRIVING_MODE_MIN_KM ? 'driving' : 'walking';
+
+const resolveTravelModeForStops = (stops: LatLng[]): TravelMode => {
+  if (stops.length < 2) {
+    return 'walking';
+  }
+
+  return resolveTravelModeForDistanceKm(totalRouteDistanceKmFromPoints(stops));
+};
+
+const resolveTravelModeForOpenStop = (
+  coordinate: LatLng,
+  options: OpenInMapsOptions = {},
+): TravelMode => {
+  if (typeof options.distanceKm === 'number') {
+    return resolveTravelModeForDistanceKm(options.distanceKm);
+  }
+
+  if (options.from) {
+    return resolveTravelModeForDistanceKm(
+      haversineDistanceKm(options.from, coordinate),
+    );
+  }
+
+  return 'walking';
+};
 
 /**
  * Google Maps universal URL (opens native app when installed).
@@ -122,17 +164,27 @@ async function tryOpenUrl(url: string): Promise<boolean> {
   }
 }
 
-export async function openStopInMaps(coordinate: LatLng): Promise<void> {
+const appleLegacyDirFlag = (travelMode: TravelMode): 'w' | 'd' =>
+  travelMode === 'driving' ? 'd' : 'w';
+
+const androidNavigationMode = (travelMode: TravelMode): 'w' | 'd' =>
+  travelMode === 'driving' ? 'd' : 'w';
+
+export async function openStopInMaps(
+  coordinate: LatLng,
+  options: OpenInMapsOptions = {},
+): Promise<void> {
   const stops = [coordinate];
+  const travelMode = resolveTravelModeForOpenStop(coordinate, options);
 
   if (Platform.OS === 'ios') {
-    const appleUrl = buildAppleMapsDirectionsUrl(stops, 'walking');
+    const appleUrl = buildAppleMapsDirectionsUrl(stops, travelMode);
 
     if (appleUrl && (await tryOpenUrl(appleUrl))) {
       return;
     }
 
-    const legacyUrl = `maps://?daddr=${formatCoord(coordinate)}&dirflg=w`;
+    const legacyUrl = `maps://?daddr=${formatCoord(coordinate)}&dirflg=${appleLegacyDirFlag(travelMode)}`;
 
     if (await tryOpenUrl(legacyUrl)) {
       return;
@@ -140,7 +192,7 @@ export async function openStopInMaps(coordinate: LatLng): Promise<void> {
   }
 
   if (Platform.OS === 'android') {
-    const nativeUrl = `google.navigation:q=${formatCoord(coordinate)}&mode=w`;
+    const nativeUrl = `google.navigation:q=${formatCoord(coordinate)}&mode=${androidNavigationMode(travelMode)}`;
 
     try {
       if (await Linking.canOpenURL(nativeUrl)) {
@@ -152,7 +204,7 @@ export async function openStopInMaps(coordinate: LatLng): Promise<void> {
     }
   }
 
-  const googleUrl = buildGoogleMapsDirectionsUrl(stops, 'walking');
+  const googleUrl = buildGoogleMapsDirectionsUrl(stops, travelMode);
 
   if (googleUrl) {
     await tryOpenUrl(googleUrl);
@@ -164,21 +216,24 @@ export async function openRouteInMaps(stops: LatLng[]): Promise<void> {
     return;
   }
 
+  const travelMode = resolveTravelModeForStops(stops);
+  const appleLegacyFlag = appleLegacyDirFlag(travelMode);
+
   if (Platform.OS === 'ios') {
-    const appleUrl = buildAppleMapsDirectionsUrl(stops, 'walking');
+    const appleUrl = buildAppleMapsDirectionsUrl(stops, travelMode);
 
     if (appleUrl && (await tryOpenUrl(appleUrl))) {
       return;
     }
 
-    const legacyUrl = buildAppleMapsLegacyDirectionsUrl(stops, 'w');
+    const legacyUrl = buildAppleMapsLegacyDirectionsUrl(stops, appleLegacyFlag);
 
     if (legacyUrl && (await tryOpenUrl(legacyUrl))) {
       return;
     }
   }
 
-  const googleUrl = buildGoogleMapsDirectionsUrl(stops, 'walking');
+  const googleUrl = buildGoogleMapsDirectionsUrl(stops, travelMode);
 
   if (googleUrl) {
     await tryOpenUrl(googleUrl);

@@ -17,6 +17,7 @@ export interface OpenCommentsParams {
 }
 
 type CommentCountListener = (count: number) => void;
+type BeforeOpenListener = () => void;
 
 interface CommentsSheetContextValue {
   openComments: (params: OpenCommentsParams) => void;
@@ -26,6 +27,8 @@ interface CommentsSheetContextValue {
     listener: CommentCountListener,
   ) => () => void;
   notifyCommentCount: (routeId: string, count: number) => void;
+  /** Harita bottom sheet gibi üst katmanları yorum açılmadan önce küçültmek için. */
+  registerBeforeOpen: (listener: BeforeOpenListener) => () => void;
 }
 
 interface ActiveCommentsState {
@@ -57,8 +60,13 @@ export const CommentsSheetProvider: React.FC<{ children: React.ReactNode }> = ({
   const countListenersRef = useRef<Map<string, Set<CommentCountListener>>>(
     new Map(),
   );
+  const beforeOpenListenersRef = useRef<Set<BeforeOpenListener>>(new Set());
 
   const openComments = useCallback((params: OpenCommentsParams) => {
+    beforeOpenListenersRef.current.forEach((listener) => {
+      listener();
+    });
+
     setActiveComments({
       routeId: params.routeId,
       routeOwnerId: params.routeOwnerId,
@@ -68,6 +76,14 @@ export const CommentsSheetProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const closeComments = useCallback(() => {
     setActiveComments(null);
+  }, []);
+
+  const registerBeforeOpen = useCallback((listener: BeforeOpenListener) => {
+    beforeOpenListenersRef.current.add(listener);
+
+    return () => {
+      beforeOpenListenersRef.current.delete(listener);
+    };
   }, []);
 
   const subscribeCommentCount = useCallback(
@@ -112,8 +128,15 @@ export const CommentsSheetProvider: React.FC<{ children: React.ReactNode }> = ({
       closeComments,
       subscribeCommentCount,
       notifyCommentCount,
+      registerBeforeOpen,
     }),
-    [openComments, closeComments, subscribeCommentCount, notifyCommentCount],
+    [
+      openComments,
+      closeComments,
+      subscribeCommentCount,
+      notifyCommentCount,
+      registerBeforeOpen,
+    ],
   );
 
   return (
