@@ -1,3 +1,4 @@
+import { triggerAchievementChecks } from '../lib/achievements';
 import { supabase } from '../lib/supabase';
 import NotificationModel from './notifications.model';
 
@@ -77,6 +78,8 @@ const CommentModel = {
     } catch (error) {
       console.error('Error sending notification:', error);
     }
+
+    triggerAchievementChecks([userId, routeOwnerId]);
 
     return data as Comment;
   },

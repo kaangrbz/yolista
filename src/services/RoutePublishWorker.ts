@@ -13,6 +13,7 @@ import {
   prepareRoutePhotoPreview,
 } from './RoutePhotoUploadService';
 import { uploadRoutePhotoWithPreview } from './routePhotoStorage';
+import { triggerAchievementChecks } from '../lib/achievements';
 
 function getPublishStoreState() {
 
@@ -217,6 +218,8 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
     require('../store/createRouteFlowStore').useCreateRouteFlowStore.getState().completeFlow();
 
     store.workerSuccess({ progress01: 1 });
+
+    triggerAchievementChecks([record.userId]);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Bilinmeyen hata';
     await markDraftFailed(record, message);

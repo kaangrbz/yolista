@@ -8,10 +8,10 @@ import {
   TextInputKeyPressEventData,
   View,
 } from 'react-native';
-import { AUTH_MOBILE } from '../../../shared/auth-messages';
+import { AUTH_MOBILE, AUTH_OTP_LENGTH } from '../../../shared/auth-messages';
 import { useAuthThemedStyles } from '../../../theme/useAuthThemedStyles';
 
-const OTP_LENGTH = 6;
+const OTP_LENGTH = AUTH_OTP_LENGTH;
 
 interface AuthOtpInputProps {
   value: string;

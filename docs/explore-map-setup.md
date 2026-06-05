@@ -30,6 +30,8 @@ cp android/secrets.properties.example android/secrets.properties
 
 CI/CD için `GOOGLE_MAPS_API_KEY` ortam değişkeni kullanılabilir. Key, build sırasında `AndroidManifest.xml` meta-data alanına enjekte edilir.
 
+**Web (`yolista-web`):** Aynı GCP projesindeki key `yolista-web/.env.local` ve `.env.prod` içinde `GOOGLE_MAPS_API_KEY` olarak tanımlanır. Google Cloud Console’da bu key için **HTTP referrer** kısıtı ekleyin (`http://localhost:8111/*`, prod site). Etkin API’ler: Maps JavaScript API, Places API, Geocoding API (+ Android için Maps SDK for Android).
+
 Konum izinleri Android 12+ için her ikisi de declare edilmiş durumda:
 
 ```xml

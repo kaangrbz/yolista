@@ -16,6 +16,8 @@ import ExploreScreen from '../screens/ExploreScreen';
 import ExploreMapScreen from '../screens/Explore/ExploreMapScreen';
 import { useAuth } from '../context/AuthContext';
 import { SocialUserListRouteScreen } from '../screens/SocialUserListRouteScreen';
+import AchievementsScreen from '../screens/AchievementsScreen';
+import type { AchievementsRouteParams } from '../types/achievementsNavigation';
 import type { SocialUserListRouteParams } from '../types/socialUserList';
 import { VerifyEmailScreen } from '../screens/VerifyEmailScreen';
 import { useAppTheme } from '../context/AppThemeContext';
@@ -25,6 +27,7 @@ import type { RouteDetailParams } from '../types/routeDetailNavigation.types';
 
 type ProfileStackParamList = {
   ProfileMain: { username?: string; currentUserId?: string };
+  Achievements: AchievementsRouteParams;
   RouteDetail: RouteDetailParams;
   Explore: { categoryId?: number };
   SocialUserList: SocialUserListRouteParams;
@@ -41,6 +44,7 @@ type HomeStackParamList = {
   AddCategory: undefined;
   Explore: { categoryId?: number };
   ProfileMain: { username: string; currentUserId?: string };
+  Achievements: AchievementsRouteParams;
   SocialUserList: SocialUserListRouteParams;
 };
 
@@ -49,6 +53,7 @@ type ExploreStackParamList = {
   ExploreMap: undefined;
   RouteDetail: RouteDetailParams;
   ProfileMain: { username: string; currentUserId?: string };
+  Achievements: AchievementsRouteParams;
   SocialUserList: SocialUserListRouteParams;
 };
 
@@ -93,6 +98,10 @@ const ProfileStackScreen = () => {
           username: currentUsername,
           currentUserId: currentUserId,
         }}
+      />
+      <ProfileStack.Screen
+        name="Achievements"
+        component={AchievementsScreen}
       />
       <ProfileStack.Screen
         name="RouteDetail"
@@ -140,6 +149,10 @@ const HomeStackScreen = () => {
         component={ProfileScreen}
       />
       <HomeStack.Screen
+        name="Achievements"
+        component={AchievementsScreen}
+      />
+      <HomeStack.Screen
         name="SocialUserList"
         component={SocialUserListRouteScreen}
       />
@@ -170,6 +183,10 @@ const ExploreStackScreen = () => {
       <ExploreStack.Screen
         name="ProfileMain"
         component={ProfileScreen}
+      />
+      <ExploreStack.Screen
+        name="Achievements"
+        component={AchievementsScreen}
       />
       <ExploreStack.Screen
         name="SocialUserList"

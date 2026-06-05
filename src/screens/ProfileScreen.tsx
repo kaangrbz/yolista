@@ -18,7 +18,16 @@ import type { SocialUserListRouteParams } from '../types/socialUserList';
 import UserModel from '../model/user.model';
 import RouteModel, { RouteWithProfile } from '../model/routes.model';
 import { Profile, ProfileBadge } from '../model/profile.model';
+import type { Achievement } from '../model/achievement.model';
 import { fetchBadgesForUser } from '../lib/profileBadges';
+import {
+  fetchAchievementCatalog,
+  fetchUserAchievements,
+} from '../lib/achievements';
+import { buildProfileTabs, type ProfileTabKey } from '../lib/profileTabs';
+import ProfileAchievementsTab from '../components/profile/ProfileAchievementsTab';
+import ProfileBadgeSheetHost from '../components/profile/ProfileBadgeSheetHost';
+import AchievementSheetHost from '../components/profile/AchievementSheetHost';
 import ProfileEditModal from '../components/profile/ProfileEditModal';
 import { deleteAccount } from '../services/AccountService';
 import ImageViewer from '../components/ImageViewer';
@@ -58,6 +67,11 @@ interface ProfileScreenProps {
 
 type ProfileStackParamList = {
   ProfileMain: { username?: string; currentUserId?: string };
+  Achievements: {
+    userId: string;
+    showFullCatalog?: boolean;
+    username?: string;
+  };
   RouteDetail: { routeId: string };
   Explore: { categoryId?: number };
   SocialUserList: SocialUserListRouteParams;
@@ -152,6 +166,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   );
   const [user, setUser] = useState<Profile | null>(null);
   const [badges, setBadges] = useState<ProfileBadge[]>([]);
+  const [earnedAchievements, setEarnedAchievements] = useState<Achievement[]>([]);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
@@ -166,7 +181,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const [headerHighUri, setHeaderHighUri] = useState<string | null>(null);
   const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
   const [isHeaderImageViewerVisible, setIsHeaderImageViewerVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTabKey, setActiveTabKey] = useState<ProfileTabKey>('grid');
+  const [achievementCatalog, setAchievementCatalog] = useState<Achievement[]>([]);
+  const [achievementsTabLoading, setAchievementsTabLoading] = useState(false);
 
   const [savedPosts, setSavedPosts] = useState<RouteWithProfile[]>([]);
   const [likedPosts, setLikedPosts] = useState<RouteWithProfile[]>([]);
@@ -180,6 +197,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const likedPageRef = useRef(0);
   const savedTabLoadedRef = useRef(false);
   const likedTabLoadedRef = useRef(false);
+  const achievementsTabLoadedRef = useRef(false);
 
   const { posts: routes, isLoading: postsLoading, refresh: refreshPosts } = useProfilePosts(profileUserId || '', 20);
 
@@ -204,6 +222,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const isInitialProfileLoading = isProfileLoading && !user;
   const isInitialStatsLoading = (isProfileLoading || isStatsLoading) && !user;
   const isInitialPostsLoading = isInitialListLoading(postsLoading, routes.length);
+  const profileTabs = buildProfileTabs(!!isCurrentUserProfile);
 
   const fetchProfileStats = async (
     targetUserId: string,
@@ -323,8 +342,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
       if (targetUserId) {
         void fetchBadgesForUser(targetUserId).then(setBadges);
+        void fetchUserAchievements(targetUserId).then(setEarnedAchievements);
       } else {
         setBadges([]);
+        setEarnedAchievements([]);
       }
 
       if (targetUserId && targetUserId !== loggedInUserId) {
@@ -478,12 +499,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
       return;
     }
 
-    if (activeTab === 2) {
+    if (activeTabKey === 'saved') {
       void loadMoreSavedPosts();
       return;
     }
 
-    if (activeTab === 3) {
+    if (activeTabKey === 'liked') {
       void loadMoreLikedPosts();
     }
   };
@@ -663,8 +684,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const resetLazyTabCache = () => {
     savedTabLoadedRef.current = false;
     likedTabLoadedRef.current = false;
+    achievementsTabLoadedRef.current = false;
     setSavedPosts([]);
     setLikedPosts([]);
+    setAchievementCatalog([]);
+    setActiveTabKey('grid');
   };
 
   // Refresh function
@@ -679,7 +703,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
       }
 
       if (isCurrentUserProfile && currentUserId) {
-        if (activeTab === 2) {
+        if (activeTabKey === 'saved') {
           savedTabLoadedRef.current = true;
 
           if (savedPosts.length === 0) {
@@ -690,7 +714,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           setSavedTabLoading(false);
         }
 
-        if (activeTab === 3) {
+        if (activeTabKey === 'liked') {
           likedTabLoadedRef.current = true;
 
           if (likedPosts.length === 0) {
@@ -699,6 +723,29 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
           await loadLikedInitial(currentUserId, { silent: true });
           setLikedTabLoading(false);
+        }
+
+        if (activeTabKey === 'achievements' && profileUserId) {
+          achievementsTabLoadedRef.current = true;
+          setAchievementsTabLoading(true);
+          try {
+            const earnedRows = await fetchUserAchievements(profileUserId);
+            setEarnedAchievements(earnedRows);
+            if (isCurrentUserProfile) {
+              const catalogRows = await fetchAchievementCatalog(true);
+              setAchievementCatalog(catalogRows);
+            }
+          } finally {
+            setAchievementsTabLoading(false);
+          }
+        }
+      } else if (activeTabKey === 'achievements' && profileUserId) {
+        setAchievementsTabLoading(true);
+        try {
+          const earnedRows = await fetchUserAchievements(profileUserId);
+          setEarnedAchievements(earnedRows);
+        } finally {
+          setAchievementsTabLoading(false);
         }
       }
     } catch (error) {
@@ -722,7 +769,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
       return;
     }
 
-    if (activeTab === 2 && !savedTabLoadedRef.current) {
+    if (activeTabKey === 'saved' && !savedTabLoadedRef.current) {
       savedTabLoadedRef.current = true;
       setSavedTabLoading(true);
       void loadSavedInitial(currentUserId).finally(() => {
@@ -730,14 +777,49 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
       });
     }
 
-    if (activeTab === 3 && !likedTabLoadedRef.current) {
+    if (activeTabKey === 'liked' && !likedTabLoadedRef.current) {
       likedTabLoadedRef.current = true;
       setLikedTabLoading(true);
       void loadLikedInitial(currentUserId).finally(() => {
         setLikedTabLoading(false);
       });
     }
-  }, [activeTab, isCurrentUserProfile, currentUserId]);
+  }, [activeTabKey, isCurrentUserProfile, currentUserId]);
+
+  useEffect(() => {
+    if (activeTabKey !== 'achievements' || !profileUserId) {
+      return;
+    }
+
+    if (achievementsTabLoadedRef.current) {
+      return;
+    }
+
+    achievementsTabLoadedRef.current = true;
+    setAchievementsTabLoading(true);
+
+    void (async () => {
+      try {
+        const earnedRows = await fetchUserAchievements(profileUserId);
+        setEarnedAchievements(earnedRows);
+
+        if (isCurrentUserProfile) {
+          const catalogRows = await fetchAchievementCatalog();
+          setAchievementCatalog(catalogRows);
+        } else {
+          setAchievementCatalog([]);
+        }
+      } finally {
+        setAchievementsTabLoading(false);
+      }
+    })();
+  }, [activeTabKey, profileUserId, isCurrentUserProfile]);
+
+  useEffect(() => {
+    if (!profileTabs.some((tab) => tab.key === activeTabKey)) {
+      setActiveTabKey('grid');
+    }
+  }, [profileTabs, activeTabKey]);
 
   if (!user && !isProfileLoading) {
     return (
@@ -796,26 +878,26 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
         />
 
         <ProfileTabs
-          activeTab={activeTab}
+          activeTabKey={activeTabKey}
           isCurrentUserProfile={!!isCurrentUserProfile}
-          onTabChange={setActiveTab}
+          onTabChange={setActiveTabKey}
         />
 
         <View style={styles.tabContent}>
-          {activeTab === 0 && (
+          {activeTabKey === 'grid' && (
             <ProfilePostsGrid
               routes={routes}
               onRoutePress={handleRoutePress}
               loading={isInitialPostsLoading}
             />
           )}
-          {activeTab === 1 && (
+          {activeTabKey === 'list' && (
             <ProfilePostsList
               routes={routes}
               currentUserId={currentUserId}
             />
           )}
-          {isCurrentUserProfile && activeTab === 2 && (
+          {isCurrentUserProfile && activeTabKey === 'saved' && (
             <ProfileSavedPosts
               savedPosts={savedPosts}
               currentUserId={currentUserId}
@@ -823,12 +905,20 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
               initialLoading={savedTabLoading}
             />
           )}
-          {isCurrentUserProfile && activeTab === 3 && (
+          {isCurrentUserProfile && activeTabKey === 'liked' && (
             <ProfileLikedPosts
               likedPosts={likedPosts}
               currentUserId={currentUserId}
               loadingMore={likedLoadingMore}
               initialLoading={likedTabLoading}
+            />
+          )}
+          {activeTabKey === 'achievements' && (
+            <ProfileAchievementsTab
+              earned={earnedAchievements}
+              catalog={achievementCatalog}
+              showFullCatalog={!!isCurrentUserProfile}
+              loading={achievementsTabLoading}
             />
           )}
         </View>
@@ -892,6 +982,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           postUrl={ShareService.generateProfileUrl(user.username)}
         />
       ) : null}
+
+      <ProfileBadgeSheetHost />
+      <AchievementSheetHost />
     </SafeAreaView>
   );
 };

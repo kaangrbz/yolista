@@ -1,21 +1,27 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useThemedStyles } from '../../theme/useThemedStyles';
+import { buildProfileTabs, type ProfileTabKey } from '../../lib/profileTabs';
 
 interface ProfileTabsProps {
-  activeTab: number;
+  activeTabKey: ProfileTabKey;
   isCurrentUserProfile: boolean;
-  onTabChange: (tabIndex: number) => void;
+  onTabChange: (tabKey: ProfileTabKey) => void;
 }
 
 const ProfileTabs: React.FC<ProfileTabsProps> = ({
-  activeTab,
+  activeTabKey,
   isCurrentUserProfile,
   onTabChange,
 }) => {
   const theme = useAppTheme();
+  const tabs = useMemo(
+    () => buildProfileTabs(isCurrentUserProfile),
+    [isCurrentUserProfile],
+  );
+
   const styles = useThemedStyles((t) => ({
     tabContainer: {
       flexDirection: 'row',
@@ -34,30 +40,23 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
     },
   }));
 
-  const tabs = [
-    { index: 0, icon: 'grid', label: 'Grid' },
-    { index: 1, icon: 'format-list-bulleted', label: 'List' },
-  ];
-
-  if (isCurrentUserProfile) {
-    tabs.push(
-      { index: 2, icon: 'bookmark', label: 'Saved' },
-      { index: 3, icon: 'heart', label: 'Liked' },
-    );
-  }
-
   return (
     <View style={styles.tabContainer}>
       {tabs.map((tab) => (
         <TouchableOpacity
-          key={tab.index}
-          style={[styles.tab, activeTab === tab.index && styles.activeTab]}
-          onPress={() => onTabChange(tab.index)}
+          key={tab.key}
+          style={[styles.tab, activeTabKey === tab.key && styles.activeTab]}
+          onPress={() => onTabChange(tab.key)}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTabKey === tab.key }}
+          accessibilityLabel={
+            tab.key === 'achievements' ? 'Başarılar' : tab.key
+          }
         >
           <Icon
             name={tab.icon}
             size={20}
-            color={activeTab === tab.index ? '#1DA1F2' : theme.textSecondary}
+            color={activeTabKey === tab.key ? '#1DA1F2' : theme.textSecondary}
           />
         </TouchableOpacity>
       ))}

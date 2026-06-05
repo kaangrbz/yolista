@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
+import { triggerAchievementChecks } from '../../lib/achievements';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../utils/alert';
 import { resizeImage } from '../../utils/imageUtils';
@@ -410,6 +411,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
 
       if (data) {
         onUpdate(data);
+        triggerAchievementChecks([profile.id]);
         showToast('success', 'Profil başarıyla güncellendi');
         onClose();
       }

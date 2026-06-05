@@ -1,3 +1,4 @@
+import { triggerAchievementChecks } from '../lib/achievements';
 import { supabase } from '../lib/supabase';
 import NotificationModel from './notifications.model';
 
@@ -190,6 +191,8 @@ const UserModel = {
       recipientId: followingId,
       entityType: 'follow',
     });
+
+    triggerAchievementChecks([followerId, followingId]);
 
     return {
       success: true,

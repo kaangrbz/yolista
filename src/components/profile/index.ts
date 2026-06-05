@@ -1,6 +1,10 @@
 export { default as ProfileHeader } from './ProfileHeader';
 export { default as ProfileSettingsModal } from './ProfileSettingsModal';
 export { default as ProfileInfo } from './ProfileInfo';
+export { default as ProfileAchievements } from './ProfileAchievements';
+export { default as ProfileAchievementsTab } from './ProfileAchievementsTab';
+export { default as AchievementsProgressHeader } from './AchievementsProgressHeader';
+export { AchievementsGrid } from './AchievementsGrid';
 export { default as ProfileStats } from './ProfileStats';
 export { default as ProfileTabs } from './ProfileTabs';
 export { default as ProfilePostsGrid } from './ProfilePostsGrid';

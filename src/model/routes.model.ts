@@ -1,3 +1,4 @@
+import { triggerAchievementChecks } from '../lib/achievements';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/alert';
 import NotificationModel from './notifications.model';
@@ -335,12 +336,24 @@ const RouteModel = {
   },
 
   async toggleSavedCollectionItem(userId: string, collectionId: string, routeId: string) {
-    return SaveCollectionsService.toggleCollectionItem({
+    const result = await SaveCollectionsService.toggleCollectionItem({
       collectionId,
       entityType: 'route',
       entityId: routeId,
       userId,
     });
+
+    if (result.isSaved) {
+      const { data: routeRow } = await supabase
+        .from('routes')
+        .select('user_id')
+        .eq('id', routeId)
+        .maybeSingle();
+      const ownerId = routeRow?.user_id as string | undefined;
+      triggerAchievementChecks([userId, ownerId].filter(Boolean) as string[]);
+    }
+
+    return result;
   },
 
   async getSavedRoutesForUser({ userId, loggedUserId, limit = 20, offset = 0 }: UserRouteCollectionParams): Promise<UserRouteCollectionResult> {
@@ -672,6 +685,8 @@ const RouteModel = {
         .select('*', { count: 'exact' })
         .eq('entity_id', routeId)
         .eq('entity_type', 'route');
+
+      triggerAchievementChecks([userId, routeOwnerId]);
 
       return {
         success: true,

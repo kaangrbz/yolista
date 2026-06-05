@@ -5,12 +5,13 @@ import type { PostImageSlide } from '../types/postImage.types';
 import { normalizeImageDimension } from '../utils/imageUtils';
 
 export const ROUTE_IMAGE_SELECT =
-  'id, parent_id, image_url, order_index, user_id, image_width, image_height, image_alignment, title';
+  'id, parent_id, image_url, image_preview_url, order_index, user_id, image_width, image_height, image_alignment, title';
 
 export interface RouteImageRow {
   id: string;
   parent_id?: string | null;
   image_url: string | null;
+  image_preview_url?: string | null;
   order_index: number;
   user_id: string | null;
   image_width?: number | null;
@@ -117,10 +118,8 @@ async function downloadRouteAsSlide(route: RouteImageRow): Promise<PostImageSlid
   }
 
   try {
-    const imageUri = await ImageService.downloadPostImage(
-      route.image_url,
-      route.user_id,
-    );
+    // Gönderi galerisi: tam çözünürlük (image_url). Harita: image_preview_url (ayrı akış).
+    const imageUri = await ImageService.downloadPostImage(route.image_url, route.user_id);
 
     return {
       uri: imageUri,
