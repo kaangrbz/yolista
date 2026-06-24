@@ -1,20 +1,30 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-// import styles from '../styles';
 import Seperator from './Seperator';
 import { DropdownMenu } from './DropdownMenu';
 import { getTimeAgo } from '../utils/timeAgo';
 import RouteModel from '../model/routes.model';
 import { showToast } from '../utils/alert';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
-import { DefaultAvatar, NoImage } from '../assets';
-import { useProfileImageDownload } from '../hooks/useImageDownload';
+import SmartImage from './common/smart-image/SmartImage';
+import { DefaultAvatar } from '../assets';
 import { buildProfileNavigationParams } from '../utils/profileSlug';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useThemedStyles } from '../theme/useThemedStyles';
 
-const AuthorInfo = ({ fullName, image_url, image_preview_url, isVerified, username, createdAt, authorId, callback, loggedUserId, routeId, cityName }: {
+const AuthorInfo = ({
+  fullName,
+  image_url,
+  image_preview_url,
+  isVerified,
+  username,
+  createdAt,
+  authorId,
+  callback,
+  loggedUserId,
+  routeId,
+}: {
   fullName: string;
   image_url?: string;
   image_preview_url?: string;
@@ -65,9 +75,6 @@ const AuthorInfo = ({ fullName, image_url, image_preview_url, isVerified, userna
       color: t.textSecondary,
       marginLeft: 4,
     },
-    moreButton: {
-      padding: 4,
-    },
     timeAgo: {
       fontSize: 12,
       color: t.textMuted,
@@ -91,15 +98,11 @@ const AuthorInfo = ({ fullName, image_url, image_preview_url, isVerified, userna
   const navigation = useNavigation();
   const screenName = useNavigationState((state) => state.routes[state.index].name);
 
-  // Use the new profile image download hook
-  const { imageUri, loading: imageLoading, error: imageError } = useProfileImageDownload(image_url, authorId, image_preview_url);
-  console.log('🚀 ~ AuthorInfo ~ imageUri:', imageUri);
-
   const handleDeleteRoute = async () => {
     try {
-      const { data, error } = await RouteModel.deleteRoute(routeId);
+      const { error } = await RouteModel.deleteRoute(routeId);
+
       if (error) {
-        console.error('Error deleting route:', error);
         showToast('error', 'Rota silme işlemi sırasında bir hata oluştu');
         return;
       }
@@ -107,28 +110,23 @@ const AuthorInfo = ({ fullName, image_url, image_preview_url, isVerified, userna
       showToast('success', 'Rota silme işlemi başarılı');
       setVisibleDropdown(false);
 
-      try {
-        if (callback && typeof callback === 'function') {
-          callback();
-          if (screenName === 'RouteDetail') {
-            navigation.goBack();
-          }
+      if (callback && typeof callback === 'function') {
+        callback();
+
+        if (screenName === 'RouteDetail') {
+          navigation.goBack();
         }
-      } catch (error) {
-        console.error('Error deleting route:', error);
-        showToast('error', 'Rota silme işlemi sırasında bir hata oluştu');
       }
-    } catch (error) {
-      console.error('Error deleting route:', error);
+    } catch {
       showToast('error', 'Rota silme işlemi sırasında bir hata oluştu');
     }
   };
 
   const handleHideRoute = async () => {
     try {
-      const { data, error } = await RouteModel.hideRoute(routeId);
+      const { error } = await RouteModel.hideRoute(routeId);
+
       if (error) {
-        console.error('Error hiding route:', error);
         showToast('error', 'Rota gizleme işlemi sırasında bir hata oluştu');
         return;
       }
@@ -136,35 +134,27 @@ const AuthorInfo = ({ fullName, image_url, image_preview_url, isVerified, userna
       showToast('success', 'Rota gizleme işlemi başarılı');
       setVisibleDropdown(false);
 
-      try {
-        if (callback && typeof callback === 'function') {
-          callback();
-          if (screenName === 'RouteDetail') {
-            navigation.goBack();
-          }
+      if (callback && typeof callback === 'function') {
+        callback();
+
+        if (screenName === 'RouteDetail') {
+          navigation.goBack();
         }
-      } catch (error) {
-        console.error('Error hiding route:', error);
-        showToast('error', 'Rota gizleme işlemi sırasında bir hata oluştu');
       }
-    } catch (error) {
-      console.error('Error hiding route:', error);
+    } catch {
       showToast('error', 'Rota gizleme işlemi sırasında bir hata oluştu');
     }
   };
 
-  const handleEditRoute = async () => {
+  const handleEditRoute = () => {
     showToast('warning', 'Düzenleme özelliği henüz aktif değil');
     setVisibleDropdown(false);
   };
 
-  const handleReportRoute = async () => {
+  const handleReportRoute = () => {
     showToast('warning', 'Raporlama özelliği henüz aktif değil');
     setVisibleDropdown(false);
   };
-
-
-  // Image loading is now handled by the hook automatically
 
   return (
     <View style={styles.authorContainer}>
@@ -178,36 +168,39 @@ const AuthorInfo = ({ fullName, image_url, image_preview_url, isVerified, userna
             )
           }
         >
-          <Image
-            source={imageUri ? { uri: imageUri } : DefaultAvatar}
+          <SmartImage
+            kind="user"
+            userId={authorId}
+            imageUrl={image_url}
+            imagePreviewUrl={image_preview_url}
+            width={40}
+            height={40}
+            borderRadius={20}
             style={styles.authorImage}
-            resizeMode="contain"
+            fallbackSource={DefaultAvatar}
           />
-          <Text style={styles.authorName}>
-            {fullName}
-          </Text>
-          {(isVerified || false) && (
+          <Text style={styles.authorName}>{fullName}</Text>
+          {isVerified ? (
             <Icon
               name="check-decagram"
               size={16}
               color="#1DA1F2"
               style={styles.verifiedIcon}
             />
-          )}
-          <Text style={styles.authorUsername}>
-            @{username}
-          </Text>
-
+          ) : null}
+          <Text style={styles.authorUsername}>@{username}</Text>
         </TouchableOpacity>
         <Seperator />
         <Text style={styles.timeAgo}>{getTimeAgo(createdAt)}</Text>
       </View>
-      <DropdownMenu visible={visibleDropdown} handleOpen={() => setVisibleDropdown(true)} handleClose={() => setVisibleDropdown(false)} trigger={<Icon name="dots-vertical" size={20} color={theme.textSecondary} />}>
-        {/* <TouchableOpacity style={styles.menuOption}>
-              <Icon name="pencil" size={20} color="#666" style={styles.menuItemIcon} />
-              <Text style={styles.menuText}>Edit</Text>
-            </TouchableOpacity> */}
-        {loggedUserId === authorId && (
+
+      <DropdownMenu
+        visible={visibleDropdown}
+        handleOpen={() => setVisibleDropdown(true)}
+        handleClose={() => setVisibleDropdown(false)}
+        trigger={<Icon name="dots-vertical" size={20} color={theme.textSecondary} />}
+      >
+        {loggedUserId === authorId ? (
           <>
             <TouchableOpacity style={styles.menuOption} onPress={handleDeleteRoute}>
               <Icon name="delete" size={20} color="#c00" style={styles.menuItemIcon} />
@@ -224,14 +217,12 @@ const AuthorInfo = ({ fullName, image_url, image_preview_url, isVerified, userna
               <Text style={styles.menuText}>Düzenle</Text>
             </TouchableOpacity>
           </>
-        )}
-
-        {loggedUserId !== authorId &&
+        ) : (
           <TouchableOpacity style={styles.menuOption} onPress={handleReportRoute}>
             <Icon name="alert-octagon" size={20} color="#c00" style={styles.menuItemIcon} />
             <Text style={styles.menuText}>Raporla</Text>
           </TouchableOpacity>
-        }
+        )}
       </DropdownMenu>
     </View>
   );

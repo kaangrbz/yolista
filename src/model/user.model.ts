@@ -115,12 +115,13 @@ const UserModel = {
   async isFollowing(followerId: string, followingId: string): Promise<boolean> {
     const { data, error } = await supabase
       .from('follows')
-      .select('*')
+      .select('id')
       .eq('follower_id', followerId)
       .eq('followed_id', followingId)
-      .single();
+      .eq('followed_type', 'profile')
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 is the error code for no rows returned
+    if (error) {
       console.error('Error checking follow status:', error);
       throw error;
     }
@@ -160,44 +161,56 @@ const UserModel = {
 
   // Follow a user
   async followUser(followerId: string, followingId: string): Promise<FollowResponse> {
-    // First check if already following
-    const isAlreadyFollowing = await this.isFollowing(followerId, followingId);
+    try {
+      const isAlreadyFollowing = await this.isFollowing(followerId, followingId);
 
-    if (isAlreadyFollowing) {
-      return {
-        success: false,
-        message: 'Zaten takip ediyorsunuz',
+      if (isAlreadyFollowing) {
+        return {
+          success: false,
+          message: 'Zaten takip ediyorsunuz',
+        };
+      }
+
+      const data: FollowType = {
+        follower_id: followerId,
+        followed_id: followingId,
+        followed_type: 'profile',
       };
-    }
-    const data: FollowType = {
-      follower_id: followerId,
-      followed_id: followingId,
-      followed_type: 'profile',
-    };
-    const { error } = await supabase
-      .from('follows')
-      .insert(data);
+      const { error } = await supabase
+        .from('follows')
+        .insert(data);
 
-    if (error) {
+      if (error) {
+        console.error('Error following user:', error);
+        return {
+          success: false,
+          message: 'Takip edilirken bir hata oluştu',
+        };
+      }
+
+      try {
+        await NotificationModel.createNotification({
+          senderId: followerId,
+          recipientId: followingId,
+          entityType: 'follow',
+        });
+      } catch (notificationError) {
+        console.error('Error sending follow notification:', notificationError);
+      }
+
+      triggerAchievementChecks([followerId, followingId]);
+
+      return {
+        success: true,
+        message: 'Kullanıcı takip edildi',
+      };
+    } catch (error) {
       console.error('Error following user:', error);
       return {
         success: false,
         message: 'Takip edilirken bir hata oluştu',
       };
     }
-
-    await NotificationModel.createNotification({
-      senderId: followerId,
-      recipientId: followingId,
-      entityType: 'follow',
-    });
-
-    triggerAchievementChecks([followerId, followingId]);
-
-    return {
-      success: true,
-      message: 'Kullanıcı takip edildi',
-    };
   },
 
   // Unfollow a user

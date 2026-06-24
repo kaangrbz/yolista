@@ -103,7 +103,7 @@ To learn more about React Native, take a look at the following resources:
 | [docs/AUTH_AND_DEEP_LINKING.md](docs/AUTH_AND_DEEP_LINKING.md) | Giriş, kayıt, şifre sıfırlama, e-posta doğrulama, App / Universal Links |
 | [docs/APP.md](docs/APP.md) | Genel mimari ve Supabase özeti |
 
-Yayınlanan site (paylaşım + auth redirect): **https://yolista.roulista.com**
+Yayınlanan site (paylaşım + auth redirect): **https://web.youlistaapp.com**
 
 # Kimlik doğrulama (özet)
 
@@ -111,7 +111,7 @@ Yayınlanan site (paylaşım + auth redirect): **https://yolista.roulista.com**
 - **Şifremi unuttum:** OTP veya e-posta linki → `ForgotPassword` → `ResetPassword`
 - **E-posta doğrulama:** `VerifyEmail`; profilde banner + Ayarlar satırı
 - **Auth API:** `src/context/AuthContext.tsx`
-- **Supabase redirect:** `https://yolista.roulista.com/auth/mobile` (ayrıntı: [docs/AUTH_AND_DEEP_LINKING.md](docs/AUTH_AND_DEEP_LINKING.md))
+- **Supabase redirect:** `https://web.youlistaapp.com/auth/mobile` (ayrıntı: [docs/AUTH_AND_DEEP_LINKING.md](docs/AUTH_AND_DEEP_LINKING.md))
 
 # Deep link (özet)
 
@@ -153,7 +153,7 @@ Servisler: `DeepLinkingService`, `AuthLinkingService` — detaylar [docs/AUTH_AN
 - [x] Route images
 - [x] Route descriptions
 - [ ] Route comments
-- [x] Share routes (web deep link: yolista.roulista.com/post/…)
+- [x] Share routes (web deep link: web.youlistaapp.com/post/…)
 - [ ] Edit route
 - [ ] Like/Unlike routes
 - [ ] Save/Unsave routes

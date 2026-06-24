@@ -1,5 +1,10 @@
 import { supabase } from '../lib/supabase';
 import { ImageService } from './ImageService';
+import {
+  FeedImageDownloadCancelledError,
+  feedImageDownloadQueue,
+} from './FeedImageDownloadQueue';
+import { feedImageDownloadLog } from './feedImageDownloadDebug';
 import type { RouteImageAlignment } from '../model/routes.model';
 import type { PostImageSlide } from '../types/postImage.types';
 import { normalizeImageDimension } from '../utils/imageUtils';
@@ -31,6 +36,9 @@ function mapRouteRowToSlideMeta(route: RouteImageRow) {
     width: normalizeImageDimension(route.image_width ?? undefined),
     height: normalizeImageDimension(route.image_height ?? undefined),
     imageAlignment: route.image_alignment ?? null,
+    imageUrl: route.image_url,
+    imagePreviewUrl: route.image_preview_url ?? null,
+    userId: route.user_id ?? null,
   };
 }
 
@@ -133,42 +141,190 @@ async function downloadRouteAsSlide(route: RouteImageRow): Promise<PostImageSlid
   }
 }
 
+export function getSlideWindowIndices(
+  currentIndex: number,
+  length: number,
+  prefetchAhead = 1,
+): number[] {
+  if (length <= 0) {
+    return [];
+  }
+
+  const start = Math.max(0, currentIndex);
+  const end = Math.min(length - 1, currentIndex + prefetchAhead);
+  const indices: number[] = [];
+
+  for (let index = start; index <= end; index += 1) {
+    indices.push(index);
+  }
+
+  return indices;
+}
+
+async function slideFromCacheOnly(route: RouteImageRow): Promise<PostImageSlide> {
+  const meta = mapRouteRowToSlideMeta(route);
+
+  if (!route.image_url || !route.user_id) {
+    return { uri: null, ...meta };
+  }
+
+  const cachedUri = await ImageService.getCachedRouteImageUri(
+    route.image_url,
+    route.user_id,
+  );
+
+  return {
+    uri: cachedUri,
+    ...meta,
+  };
+}
+
+export interface DownloadSlidesWithWindowOptions {
+  currentIndex: number;
+  prefetchAhead?: number;
+  eagerSlides?: boolean;
+  allowNetwork?: boolean;
+  shouldContinue?: () => boolean;
+  onSlidesUpdate: (slides: PostImageSlide[]) => void;
+  existingSlides?: PostImageSlide[];
+  postId?: string;
+  postIndex?: number;
+  downloadGeneration?: number;
+}
+
+export async function downloadSlidesWithWindow(
+  routes: RouteImageRow[],
+  options: DownloadSlidesWithWindowOptions,
+): Promise<PostImageSlide[]> {
+  const prefetchAhead = options.prefetchAhead ?? 1;
+  const allowNetwork = options.allowNetwork !== false;
+  const slides: PostImageSlide[] = options.existingSlides
+    ? [...options.existingSlides]
+    : metaSlidesFromRows(routes);
+
+  if (!options.existingSlides) {
+    options.onSlidesUpdate([...slides]);
+  }
+
+  if (routes.length === 0) {
+    return slides;
+  }
+
+  const indices = options.eagerSlides
+    ? routes.map((_, index) => index)
+    : getSlideWindowIndices(options.currentIndex, routes.length, prefetchAhead);
+
+  const useDownloadQueue =
+    allowNetwork &&
+    options.postId !== undefined &&
+    options.postIndex !== undefined;
+  const postId = options.postId ?? '';
+  const postIndex = options.postIndex ?? -1;
+  const downloadGeneration = options.downloadGeneration ?? 0;
+
+  feedImageDownloadLog('download window started', {
+    postId: options.postId,
+    postIndex: options.postIndex,
+    currentIndex: options.currentIndex,
+    indices,
+    allowNetwork,
+    useDownloadQueue,
+  });
+
+  for (const index of indices) {
+    if (options.shouldContinue && !options.shouldContinue()) {
+      feedImageDownloadLog('download loop stopped (stale)', {
+        postId: options.postId,
+        slideIndex: index,
+      });
+      break;
+    }
+
+    if (slides[index]?.uri) {
+      feedImageDownloadLog('slide skipped (cached)', {
+        postId: options.postId,
+        slideIndex: index,
+      });
+      continue;
+    }
+
+    const route = routes[index];
+
+    if (!route) {
+      continue;
+    }
+
+    try {
+      if (useDownloadQueue) {
+        await feedImageDownloadQueue.acquire({
+          postId,
+          postIndex,
+          slideIndex: index,
+          carouselIndex: options.currentIndex,
+          generation: downloadGeneration,
+          shouldContinue: options.shouldContinue ?? (() => true),
+        });
+      }
+
+      try {
+        if (allowNetwork) {
+          feedImageDownloadLog('downloading slide', {
+            postId: options.postId,
+            postIndex: options.postIndex,
+            slideIndex: index,
+          });
+          slides[index] = await downloadRouteAsSlide(route);
+        } else {
+          slides[index] = await slideFromCacheOnly(route);
+        }
+      } finally {
+        if (useDownloadQueue) {
+          feedImageDownloadQueue.release(postId, index);
+        }
+      }
+    } catch (error) {
+      if (error instanceof FeedImageDownloadCancelledError) {
+        feedImageDownloadLog('download cancelled', {
+          postId: options.postId,
+          slideIndex: index,
+          reason: error.message,
+        });
+        break;
+      }
+
+      throw error;
+    }
+
+    if (options.shouldContinue && !options.shouldContinue()) {
+      feedImageDownloadLog('download aborted after slide (stale)', {
+        postId: options.postId,
+        slideIndex: index,
+      });
+      break;
+    }
+
+    options.onSlidesUpdate([...slides]);
+  }
+
+  feedImageDownloadLog('download window finished', {
+    postId: options.postId,
+    postIndex: options.postIndex,
+    loadedSlides: slides.filter((slide) => slide.uri !== null).length,
+  });
+
+  return slides;
+}
+
 export async function downloadSlidesProgressive(
   routes: RouteImageRow[],
   onSlidesUpdate: (slides: PostImageSlide[]) => void,
 ): Promise<PostImageSlide[]> {
-  const metaSlides = metaSlidesFromRows(routes);
-
-  onSlidesUpdate(metaSlides);
-
-  if (routes.length === 0) {
-    return metaSlides;
-  }
-
-  const slides: PostImageSlide[] = [...metaSlides];
-  const firstRoute = routes[0];
-
-  if (!firstRoute) {
-    return slides;
-  }
-
-  slides[0] = await downloadRouteAsSlide(firstRoute);
-  onSlidesUpdate([...slides]);
-
-  if (routes.length === 1) {
-    return slides;
-  }
-
-  const restRoutes = routes.slice(1);
-  const restSlides = await Promise.all(restRoutes.map(downloadRouteAsSlide));
-
-  for (let index = 0; index < restSlides.length; index++) {
-    slides[index + 1] = restSlides[index];
-  }
-
-  onSlidesUpdate([...slides]);
-
-  return slides;
+  return downloadSlidesWithWindow(routes, {
+    currentIndex: 0,
+    prefetchAhead: routes.length,
+    eagerSlides: true,
+    onSlidesUpdate,
+  });
 }
 
 export function rowsByPostIdToMetaSlides(

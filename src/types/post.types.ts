@@ -1,5 +1,7 @@
 import type { RouteWithProfile } from '../model/routes.model';
 import type { RouteImageRow } from '../services/PostImageSlidesService';
+import type { ImageResizeMode } from 'react-native';
+import type { PostImageSlide } from './postImage.types';
 
 export interface Post {
   id: string;
@@ -47,20 +49,34 @@ export interface PostProps {
   prefetchedImageRows?: RouteImageRow[];
   showFullScreen?: boolean;
   actions?: PostActions;
-  /** @deprecated carousel altında tab içeriği için detailBelowCarouselSlot kullanın */
   detailExperienceSlot?: React.ReactNode;
-  /** Rota detay: carousel altında tab bar + tab paneli. */
-  detailBelowCarouselSlot?: React.ReactNode;
   /** Feed listesinde durak sayısı ipucu (Rotayı aç CTA). */
   stopCountHint?: number | null;
   /** Carousel ↔ harita senkronu. */
   activeSlideIndex?: number;
   onActiveSlideIndexChange?: (index: number) => void;
+  /** Feed listesinde ağ indirmesine izin ver (viewport penceresi). */
+  imageDownloadEnabled?: boolean;
+  /** Feed scroll iptali için generation token. */
+  downloadGeneration?: number;
+  /** Feed listesindeki sıra; indirme önceliği için. */
+  feedIndex?: number;
+  /**
+   * Carousel çerçevesi ilk fotoğrafın image_width/image_height oranına kilitlenir;
+   * diğer slaytlar aynı en-boy kutusunda gösterilir, kaydırınca yükseklik değişmez.
+   * (varsayılan: true)
+   */
+  lockCarouselToFirstPhotoDimensions?: boolean;
+  /**
+   * Ana fotoğraf (ilk slayt) dışındaki görsellerin resizeMode tercihi.
+   * (varsayılan: cover)
+   */
+  secondaryImageResizeMode?: ImageResizeMode;
 }
 
 export interface ImageCarouselProps {
-  images: string[];
-  /** DB title — fotoğraf ipucu; images ile aynı indeks */
+  slides: PostImageSlide[];
+  /** DB title — fotoğraf ipucu; slides ile aynı indeks */
   hints?: (string | null | undefined)[];
   currentIndex: number;
   onIndexChange: (index: number) => void;
@@ -72,6 +88,13 @@ export interface ImageCarouselProps {
   minHeight?: number;
   isLiked?: boolean;
   onDoubleTap?: () => void;
+  onImagePress?: (index: number) => void;
+  /** true: tüm slaytlar ilk fotoğrafın boyut çerçevesinde; kaydırınca yükseklik sabit. */
+  lockToFirstPhotoDimensions?: boolean;
+  /** İlk slayt dışındaki görsellerin resizeMode tercihi (varsayılan: cover). */
+  secondaryImageResizeMode?: ImageResizeMode;
+  /** Feed / detay: ağ indirmesine izin ver (varsayılan: true). */
+  downloadEnabled?: boolean;
 }
 
 export interface PostHeaderProps {
@@ -95,6 +118,8 @@ export interface PostHeaderProps {
   isVerified?: boolean;
 }
 
+export type PostActionsVariant = 'default' | 'compact';
+
 export interface PostActionsProps {
   isLiked: boolean;
   isSaved?: boolean;
@@ -105,6 +130,7 @@ export interface PostActionsProps {
   onComment: () => void;
   onShare: () => void;
   onSave: () => void;
+  variant?: PostActionsVariant;
 }
 
 export interface PostCaptionProps {
@@ -117,4 +143,8 @@ export interface PostCaptionProps {
   onLikesPress?: () => void;
   isExpanded?: boolean;
   onToggleExpanded?: () => void;
+  /** Rota detayda açıklama üstte önizlenir; alttaki caption tekrar etmez. */
+  hideDescription?: boolean;
+  /** Rota detayda yorum linki ayrı satırda gösterilir. */
+  hideCommentPreview?: boolean;
 }

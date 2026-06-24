@@ -247,15 +247,24 @@ export class ImageService {
   }
 
   /** Disk önbelleğinde varsa file URI döner; ağ isteği yapmaz. */
-  static async getCachedRouteImageUri(
+  static async getCachedImageUri(
     imageUrl: string,
+    bucketName: string,
     userId: string,
   ): Promise<string | null> {
     await CacheManager.ensureReady();
 
-    const cacheKey = this.buildDiskCacheKey('routes', imageUrl, userId);
+    const cacheKey = this.buildDiskCacheKey(bucketName, imageUrl, userId);
 
     return CacheManager.getFileUriIfCached(cacheKey);
+  }
+
+  /** Disk önbelleğinde varsa file URI döner; ağ isteği yapmaz. */
+  static async getCachedRouteImageUri(
+    imageUrl: string,
+    userId: string,
+  ): Promise<string | null> {
+    return this.getCachedImageUri(imageUrl, 'routes', userId);
   }
 
   private static async loadImageWithRetry(

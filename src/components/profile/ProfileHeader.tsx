@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import CachedImage from '../common/CachedImage';
+import SmartImage from '../common/smart-image/SmartImage';
 import { useThemedStyles } from '../../theme/useThemedStyles';
 import ProfileHeaderSkeleton from './ProfileHeaderSkeleton';
 
@@ -9,6 +9,8 @@ const DEFAULT_HEADER_BACKGROUND = '#667eea';
 
 interface ProfileHeaderProps {
   headerImageUri: string | null;
+  headerImageUrl?: string | null;
+  headerImagePreviewUrl?: string | null;
   isCurrentUserProfile: boolean;
   onHeaderImagePress: () => void;
   onSettingsPress: () => void;
@@ -19,6 +21,8 @@ interface ProfileHeaderProps {
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   headerImageUri,
+  headerImageUrl,
+  headerImagePreviewUrl,
   isCurrentUserProfile,
   onHeaderImagePress,
   onSettingsPress,
@@ -69,14 +73,14 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         disabled={!headerImageUri}
         style={styles.headerTouchable}
       >
-        {headerImageUri ? (
-          <CachedImage
-            source={{ uri: headerImageUri }}
-            style={styles.headerImage}
-            resizeMode="cover"
-            bucketName="headers"
-            userId={userId}
-            showRetryButton={false}
+        {headerImageUri || headerImageUrl ? (
+          <SmartImage
+            kind="header"
+            userId={userId || ''}
+            imageUrl={headerImageUrl || undefined}
+            imagePreviewUrl={headerImagePreviewUrl || undefined}
+            resolvedUri={headerImageUri || undefined}
+          style={[styles.headerImage, { width: '100%', height: 200 }]}
           />
         ) : (
           <View style={styles.headerPlaceholder} />

@@ -842,6 +842,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
       >
         <ProfileHeader
           headerImageUri={displayHeaderUri}
+          headerImageUrl={user?.header_image_url}
+          headerImagePreviewUrl={user?.header_image_preview_url}
           isCurrentUserProfile={!!isCurrentUserProfile}
           onHeaderImagePress={handleHeaderImageOpen}
           onSettingsPress={() => setIsSettingsModalVisible(true)}

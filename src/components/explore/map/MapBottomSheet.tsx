@@ -8,7 +8,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -17,7 +16,6 @@ import {
 import BottomSheet, {
   BottomSheetFlatList,
   BottomSheetHandle,
-  TouchableOpacity,
 } from '@gorhom/bottom-sheet';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../../model/routes.model';
@@ -26,19 +24,10 @@ import {
   mapSheetSnapHeight,
   type MapBottomSheetSnapHeights,
 } from '../../../constants/mapDefaults';
-import { getRouteDisplayLabel } from '../../../utils/getRouteDisplayLabel';
-import { getRouteDistanceLabel } from '../../../utils/routeDistance';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
 import MapRouteRow from './MapRouteRow';
-import MapRouteDirectionsPanel from './MapRouteDirectionsPanel';
-import MapRouteSheetTabs from './MapRouteSheetTabs';
-import MapSelectedRouteStops from './MapSelectedRouteStops';
-import { getMapStopKey } from './MapRouteStopCard';
 import MapBottomSheetHeader from './MapBottomSheetHeader';
-import { getStopPhotoHintLabel } from '../../../utils/getStopPhotoHintLabel';
-import type { RouteSegment, RouteSheetTab } from '../../../types/routeSegment.types';
-import { useCommentsSheet } from '../../../context/CommentsSheetContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export type BottomSheetSnap = 'small' | 'medium' | 'large';
@@ -56,39 +45,13 @@ export interface MapBottomSheetHandle {
 interface MapBottomSheetProps {
   routes: RouteWithProfile[];
   loading: boolean;
-  selectedRouteId: string | null;
-  selectedRoute: RouteWithProfile | null;
-  selectedRouteStops: RouteWithProfile[];
-  showRouteStopsPanel?: boolean;
-  activeStopId?: string | null;
-  stopsLoading: boolean;
   onSelectRoute: (route: RouteWithProfile) => void;
-  onStopPress?: (stop: RouteWithProfile) => void;
-  onDismissRouteStops?: () => void;
-  onOpenRouteInMaps?: () => void;
-  onOpenStopInMaps?: (stop: RouteWithProfile) => void;
-  startFromUserLocation?: boolean;
-  onStartFromUserLocationChange?: (enabled: boolean) => void;
-  canStartFromUserLocation?: boolean;
-  routeSheetTab?: RouteSheetTab;
-  onRouteSheetTabChange?: (tab: RouteSheetTab) => void;
-  routeSegments?: RouteSegment[];
-  activeSegmentIndex?: number;
-  segmentsLoading?: boolean;
-  onSegmentPress?: (index: number) => void;
-  onOpenActiveStopInMaps?: () => void;
-  onOpenRouteDetail?: () => void;
   onSnapChange?: (snap: BottomSheetSnap, metrics: MapBottomSheetSnapMetrics) => void;
   /** Sheet tam açıkken handle safe-area üst boşluğu. */
   topInset?: number;
   /** Hava durumu rozeti için aktif konum (genelde haritanın merkezi). */
   weatherLatitude?: number | null;
   weatherLongitude?: number | null;
-  onClearSelectedRoute?: () => void;
-  onShareRoute?: () => void;
-  onSaveRoute?: () => void;
-  isRouteSaved?: boolean;
-  saveLoading?: boolean;
 }
 
 const snapIndexFromName = (snap: BottomSheetSnap): number => {
@@ -116,177 +79,26 @@ const snapNameFromIndex = (index: number): BottomSheetSnap => {
 };
 
 type MapBottomSheetListHeaderProps = {
-  showSelectedRouteStops: boolean;
-  selectedRouteStops: RouteWithProfile[];
-  stopsLoading: boolean;
-  selectedRoute: RouteWithProfile | null;
-  activeStopId: string | null;
-  onStopPress?: (stop: RouteWithProfile) => void;
-  onDismissRouteStops?: () => void;
-  onOpenRouteInMaps?: () => void;
-  onOpenStopInMaps?: (stop: RouteWithProfile) => void;
-  startFromUserLocation?: boolean;
-  onStartFromUserLocationChange?: (enabled: boolean) => void;
-  canStartFromUserLocation?: boolean;
-  routeSheetTab: RouteSheetTab;
-  onRouteSheetTabChange?: (tab: RouteSheetTab) => void;
-  routeSegments: RouteSegment[];
-  activeSegmentIndex: number;
-  segmentsLoading: boolean;
-  onSegmentPress?: (index: number) => void;
-  onOpenActiveStopInMaps?: () => void;
-  onOpenRouteDetail?: () => void;
   routes: RouteWithProfile[];
-  isViewingSelectedRoute: boolean;
   sectionTitle: string;
-  routePreviewLabel: string | null;
-  routePreviewMeta: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   styles: Record<string, any>;
-  textSecondary: string;
-  accent: string;
 };
 
 const MapBottomSheetListHeader: React.FC<MapBottomSheetListHeaderProps> = ({
-  showSelectedRouteStops,
-  selectedRouteStops,
-  stopsLoading,
-  selectedRoute,
-  activeStopId,
-  onStopPress,
-  onDismissRouteStops,
-  onOpenRouteInMaps,
-  onOpenStopInMaps,
-  startFromUserLocation = false,
-  onStartFromUserLocationChange,
-  canStartFromUserLocation = false,
-  routeSheetTab,
-  onRouteSheetTabChange,
-  routeSegments,
-  activeSegmentIndex,
-  segmentsLoading,
-  onSegmentPress,
-  onOpenActiveStopInMaps,
-  onOpenRouteDetail,
   routes,
-  isViewingSelectedRoute,
   sectionTitle,
-  routePreviewLabel,
-  routePreviewMeta,
   styles,
-  textSecondary,
-  accent,
 }) => {
-  const { openComments } = useCommentsSheet();
-
-  const handlePreviewCommentPress = () => {
-    if (!selectedRoute?.id) {
-      return;
-    }
-
-    openComments({
-      routeId: selectedRoute.id,
-      routeOwnerId: selectedRoute.user_id || selectedRoute.profiles?.id || '',
-      parentType: 'routeDetail',
-    });
-  };
+  if (routes.length === 0) {
+    return null;
+  }
 
   return (
-  <View>
-    {showSelectedRouteStops && selectedRoute ? (
-      <View style={styles.routePreviewStrip}>
-        <View style={styles.routePreviewIcon}>
-          <Icon name="map-marker-path" size={16} color={accent} />
-        </View>
-        <View style={styles.routePreviewTextGroup}>
-          <Text style={styles.routePreviewTitle} numberOfLines={1}>
-            {routePreviewLabel ?? getRouteDisplayLabel(selectedRoute)}
-          </Text>
-          {stopsLoading ? (
-            <ActivityIndicator
-              size="small"
-              color={textSecondary}
-              style={styles.routePreviewLoader}
-            />
-          ) : routePreviewMeta ? (
-            <Text style={styles.routePreviewMeta} numberOfLines={1}>
-              {routePreviewMeta}
-            </Text>
-          ) : null}
-        </View>
-        <TouchableOpacity
-          style={styles.routePreviewCommentButton}
-          onPress={handlePreviewCommentPress}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          accessibilityRole="button"
-          accessibilityLabel="Yorumları aç"
-        >
-          <Icon name="comment-outline" size={16} color={accent} />
-          {(selectedRoute.comment_count || 0) > 0 ? (
-            <Text style={styles.routePreviewMeta}>{selectedRoute.comment_count}</Text>
-          ) : null}
-        </TouchableOpacity>
-      </View>
-    ) : null}
-
-    {showSelectedRouteStops && onRouteSheetTabChange ? (
-      <MapRouteSheetTabs
-        activeTab={routeSheetTab}
-        onTabChange={onRouteSheetTabChange}
-      />
-    ) : null}
-
-    {showSelectedRouteStops && routeSheetTab === 'stops' ? (
-      <MapSelectedRouteStops
-        stops={selectedRouteStops}
-        loading={stopsLoading}
-        selectedRoute={selectedRoute}
-        activeStopId={activeStopId}
-        onStopPress={onStopPress}
-        onClearSelection={onDismissRouteStops}
-        onOpenRouteInMaps={onOpenRouteInMaps}
-        onOpenStopInMaps={onOpenStopInMaps}
-        startFromUserLocation={startFromUserLocation}
-        onStartFromUserLocationChange={onStartFromUserLocationChange}
-        canStartFromUserLocation={canStartFromUserLocation}
-        onOpenRouteDetail={onOpenRouteDetail}
-      />
-    ) : null}
-
-    {showSelectedRouteStops && routeSheetTab === 'directions' ? (
-      <MapRouteDirectionsPanel
-        selectedRoute={selectedRoute}
-        segments={routeSegments}
-        activeSegmentIndex={activeSegmentIndex}
-        loading={segmentsLoading || stopsLoading}
-        startFromUserLocation={startFromUserLocation}
-        canStartFromUserLocation={canStartFromUserLocation}
-        onSegmentPress={onSegmentPress ?? (() => undefined)}
-        onStartFromUserLocationChange={(enabled) => {
-          onStartFromUserLocationChange?.(enabled);
-        }}
-        onOpenRouteInMaps={onOpenRouteInMaps ?? (() => undefined)}
-        onOpenActiveStopInMaps={onOpenActiveStopInMaps ?? (() => undefined)}
-        onOpenRouteDetail={onOpenRouteDetail}
-      />
-    ) : null}
-
-    {!showSelectedRouteStops && routes.length > 0 ? (
-      <View
-        style={[
-          styles.sectionHeader,
-          isViewingSelectedRoute && styles.sectionHeaderBordered,
-        ]}
-      >
-        <Text style={styles.sectionHeaderTitle}>{sectionTitle}</Text>
-        {routes.length > 0 ? (
-          <Text style={styles.sectionHeaderHint}>
-            {routes.length} rota
-          </Text>
-        ) : null}
-      </View>
-    ) : null}
-  </View>
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionHeaderTitle}>{sectionTitle}</Text>
+      <Text style={styles.sectionHeaderHint}>{routes.length} rota</Text>
+    </View>
   );
 };
 
@@ -295,37 +107,11 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
     {
       routes,
       loading,
-      selectedRouteId,
-      selectedRoute,
-      selectedRouteStops,
-      showRouteStopsPanel = true,
-      activeStopId = null,
-      stopsLoading,
       onSelectRoute,
-      onStopPress,
-      onDismissRouteStops,
-      onOpenRouteInMaps,
-      onOpenStopInMaps,
-      startFromUserLocation = false,
-      onStartFromUserLocationChange,
-      canStartFromUserLocation = false,
-      routeSheetTab = 'stops',
-      onRouteSheetTabChange,
-      routeSegments = [],
-      activeSegmentIndex = 0,
-      segmentsLoading = false,
-      onSegmentPress,
-      onOpenActiveStopInMaps,
-      onOpenRouteDetail,
       onSnapChange,
       topInset = 0,
       weatherLatitude,
       weatherLongitude,
-      onClearSelectedRoute,
-      onShareRoute,
-      onSaveRoute,
-      isRouteSaved = false,
-      saveLoading = false,
     },
     ref,
   ) => {
@@ -355,58 +141,6 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
         width: 42,
         height: 4,
         borderRadius: 2,
-      },
-      routePreviewStrip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        marginHorizontal: 18,
-        marginBottom: 10,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderRadius: 12,
-        backgroundColor: t.surfaceMuted,
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: t.border,
-      },
-      routePreviewIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: t.background,
-      },
-      routePreviewTextGroup: {
-        flex: 1,
-        minWidth: 0,
-      },
-      routePreviewTitle: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: t.textPrimary,
-      },
-    routePreviewMeta: {
-      marginTop: 2,
-      fontSize: 12,
-      color: t.textSecondary,
-    },
-    routePreviewCommentButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      marginLeft: 8,
-      paddingHorizontal: 8,
-      paddingVertical: 6,
-      borderRadius: 999,
-      backgroundColor: t.background,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.border,
-    },
-    routePreviewLoader: {
-        alignSelf: 'flex-start',
-        marginTop: 4,
-        transform: [{ scale: 0.75 }],
       },
       sectionHeader: {
         flexDirection: 'row',
@@ -483,45 +217,20 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       return Math.max(windowHeight - snapHeights.closed, 0);
     }, [snapHeights.closed, windowHeight]);
 
-    const isViewingSelectedRoute = Boolean(
-      selectedRouteId && (stopsLoading || selectedRouteStops.length > 0),
-    );
-
-    const showSelectedRouteStops =
-      showRouteStopsPanel && (stopsLoading || selectedRouteStops.length > 0);
-
     const listContentContainerStyle = useMemo(
       () => [
         styles.verticalContent,
         {
-          minHeight:
-            !showSelectedRouteStops && routes.length > 0 ? contentMinHeight : undefined,
+          minHeight: routes.length > 0 ? contentMinHeight : undefined,
           paddingBottom: Math.max(insets.bottom, 30),
         },
       ],
-      [
-        contentMinHeight,
-        insets.bottom,
-        showSelectedRouteStops,
-        routes.length,
-        styles.verticalContent,
-      ],
+      [contentMinHeight, insets.bottom, routes.length, styles.verticalContent],
     );
 
     const handleTopInset = currentSnap === 'large' ? topInset : 0;
 
-    const sheetHeaderTitle = useMemo(() => {
-      if (!selectedRouteId || !activeStopId || selectedRouteStops.length === 0) {
-        return 'Paylaşılan Rotalar';
-      }
-
-      const activeStop = selectedRouteStops.find(
-        (stop) => getMapStopKey(stop) === activeStopId,
-      );
-      const stopTitle = activeStop ? getStopPhotoHintLabel(activeStop) : '';
-
-      return stopTitle || 'Paylaşılan Rotalar';
-    }, [activeStopId, selectedRouteId, selectedRouteStops]);
+    const sheetHeaderTitle = 'Paylaşılan Rotalar';
 
     const renderHandle = useCallback(
       (props: React.ComponentProps<typeof BottomSheetHandle>) => (
@@ -536,24 +245,13 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
             topInset={handleTopInset}
             weatherLatitude={weatherLatitude}
             weatherLongitude={weatherLongitude}
-            selectedRouteId={selectedRouteId}
-            isRouteSaved={isRouteSaved}
-            onClearSelectedRoute={onClearSelectedRoute}
-            onShareRoute={onShareRoute}
-            onSaveRoute={onSaveRoute}
-            saveLoading={saveLoading}
+            hideRouteActions
           />
         </BottomSheetHandle>
       ),
       [
         handleTopInset,
-        isRouteSaved,
         loading,
-        onClearSelectedRoute,
-        onSaveRoute,
-        onShareRoute,
-        saveLoading,
-        selectedRouteId,
         sheetHeaderTitle,
         styles.indicator,
         weatherLatitude,
@@ -607,68 +305,15 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       emitSnapMetrics(currentSnap);
     }, [currentSnap, emitSnapMetrics]);
 
-    const routePreviewLabel = useMemo(() => {
-      if (!selectedRoute) {
-        return null;
-      }
-
-      return getRouteDisplayLabel(selectedRoute);
-    }, [selectedRoute]);
-
-    const routePreviewMeta = useMemo(() => {
-      if (!selectedRoute || !showSelectedRouteStops) {
-        return null;
-      }
-
-      if (stopsLoading) {
-        return 'Duraklar yükleniyor…';
-      }
-
-      const parts: string[] = [];
-
-      if (selectedRouteStops.length > 0) {
-        parts.push(`${selectedRouteStops.length} durak`);
-      }
-
-      const distanceLabel = getRouteDistanceLabel(selectedRouteStops);
-
-      if (distanceLabel) {
-        parts.push(distanceLabel);
-      }
-
-      if (routeSheetTab === 'directions' && routeSegments.length > 0) {
-        parts.push(`${routeSegments.length} bacak`);
-      }
-
-      return parts.length > 0 ? parts.join(' · ') : null;
-    }, [
-      routeSegments.length,
-      routeSheetTab,
-      selectedRoute,
-      selectedRouteStops,
-      showSelectedRouteStops,
-      stopsLoading,
-    ]);
-
-    const selectedRouteDistanceLabel = useMemo(
-      () => getRouteDistanceLabel(selectedRouteStops),
-      [selectedRouteStops],
-    );
 
     const renderVerticalItem = useCallback(
-      ({ item }: { item: RouteWithProfile }) => {
-        const isSelected = item.id === selectedRouteId;
-
-        return (
-          <MapRouteRow
-            route={item}
-            selected={isSelected}
-            distanceLabel={isSelected ? selectedRouteDistanceLabel : null}
-            onPress={() => onSelectRoute(item)}
-          />
-        );
-      },
-      [onSelectRoute, selectedRouteDistanceLabel, selectedRouteId],
+      ({ item }: { item: RouteWithProfile }) => (
+        <MapRouteRow
+          route={item}
+          onPress={() => onSelectRoute(item)}
+        />
+      ),
+      [onSelectRoute],
     );
 
     const keyExtractor = useCallback(
@@ -676,72 +321,20 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       [],
     );
 
-    const sectionTitle = isViewingSelectedRoute
-      ? 'Bu bölgedeki rotalar'
-      : 'Tüm rotalar';
+    const sectionTitle = 'Tüm rotalar';
 
     const renderRowSeparator = useCallback(() => <View style={styles.rowDivider} />, [styles.rowDivider]);
 
     const listHeaderPropsRef = useRef<MapBottomSheetListHeaderProps>({
-      showSelectedRouteStops,
-      selectedRouteStops,
-      stopsLoading,
-      selectedRoute,
-      activeStopId,
-      onStopPress,
-      onDismissRouteStops,
-      onOpenRouteInMaps,
-      onOpenStopInMaps,
-      startFromUserLocation,
-      onStartFromUserLocationChange,
-      canStartFromUserLocation,
-      routeSheetTab,
-      onRouteSheetTabChange,
-      routeSegments,
-      activeSegmentIndex,
-      segmentsLoading,
-      onSegmentPress,
-      onOpenActiveStopInMaps,
-      onOpenRouteDetail,
       routes,
-      isViewingSelectedRoute,
       sectionTitle,
-      routePreviewLabel,
-      routePreviewMeta,
       styles,
-      textSecondary: theme.textSecondary,
-      accent: theme.accent,
     });
 
     listHeaderPropsRef.current = {
-      showSelectedRouteStops,
-      selectedRouteStops,
-      stopsLoading,
-      selectedRoute,
-      activeStopId,
-      onStopPress,
-      onDismissRouteStops,
-      onOpenRouteInMaps,
-      onOpenStopInMaps,
-      startFromUserLocation,
-      onStartFromUserLocationChange,
-      canStartFromUserLocation,
-      routeSheetTab,
-      onRouteSheetTabChange,
-      routeSegments,
-      activeSegmentIndex,
-      segmentsLoading,
-      onSegmentPress,
-      onOpenActiveStopInMaps,
-      onOpenRouteDetail,
       routes,
-      isViewingSelectedRoute,
       sectionTitle,
-      routePreviewLabel,
-      routePreviewMeta,
       styles,
-      textSecondary: theme.textSecondary,
-      accent: theme.accent,
     };
 
     const renderListHeader = useCallback(
@@ -749,14 +342,10 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       [],
     );
 
-    const listData = showSelectedRouteStops ? [] : routes;
+    const listData = routes;
 
     const renderListEmpty = useCallback(() => {
       if (loading) {
-        return null;
-      }
-
-      if (isViewingSelectedRoute) {
         return null;
       }
 
@@ -778,7 +367,6 @@ export const MapBottomSheet = forwardRef<MapBottomSheetHandle, MapBottomSheetPro
       );
     }, [
       currentSnap,
-      isViewingSelectedRoute,
       loading,
       styles.emptyState,
       styles.emptyText,

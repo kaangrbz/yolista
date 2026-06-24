@@ -34,7 +34,7 @@
 		</dict>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>roulista.com</string>
+			<string>web.youlistaapp.com</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>https</string>
@@ -90,6 +90,10 @@
 		<string>Zocial.ttf</string>
 		<string>Fontisto.ttf</string>
 	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>whatsapp</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UILaunchStoryboardName</key>
@@ -109,10 +113,12 @@
 	<false/>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:yolista.roulista.com</string>
-		<string>applinks:www.yolista.roulista.com</string>
-		<string>applinks:roulista.com</string>
-		<string>applinks:www.roulista.com</string>
+		<string>applinks:web.youlistaapp.com</string>
+		<string>applinks:www.web.youlistaapp.com</string>
+		<string>applinks:web.youlistaapp.com</string>
+		<string>applinks:www.web.youlistaapp.com</string>
+		<string>applinks:web.youlistaapp.com</string>
+		<string>applinks:www.web.youlistaapp.com</string>
 	</array>
 </dict>
 </plist>

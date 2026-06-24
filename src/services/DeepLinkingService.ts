@@ -115,7 +115,7 @@ class DeepLinkingService {
         };
       }
 
-      // https://yolista.roulista.com/route/123 (yayınlanan site)
+      // https://web.youlistaapp.com/route/123 (yayınlanan site)
       if (isAppLinkHost(parsedURL.hostname)) {
         const pathParts = parsedURL.pathname.split('/').filter(Boolean);
         let type = pathParts[0] as DeepLinkData['type'];

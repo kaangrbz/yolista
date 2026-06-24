@@ -3,8 +3,11 @@ import { Platform } from 'react-native';
 /** Tek kart — tüm modlarda aynı. */
 export const MAP_MARKER_CARD_SIZE = 46;
 
+/** Görsel destede en fazla render edilen kart sayısı. */
+export const MAP_MARKER_MAX_VISIBLE = 3;
+
 /**
- * Marker konteyneri — 1/2/3/4/5+ stack modunda boyut ASLA değişmez.
+ * Marker konteyneri — 1/2/3+ stack modunda boyut ASLA değişmez.
  * Snapshot genişliği / yüksekliği sabit kalmalı (anchor drift önlemi).
  */
 export const MAP_MARKER_WIDTH = 76;
@@ -35,49 +38,92 @@ export interface MapMarkerCardSlot {
   opacity: number;
 }
 
-/** Iskambil fan — transform sadece translateX + rotate (scale yok). */
-const STACK_SLOTS: MapMarkerCardSlot[][] = [
-  [{ translateX: 0, rotate: '0deg', zIndex: 1, opacity: 1 }],
-  [
-    { translateX: -6, rotate: '-12deg', zIndex: 1, opacity: 0.88 },
-    { translateX: 6, rotate: '8deg', zIndex: 2, opacity: 1 },
-  ],
-  [
-    { translateX: -10, rotate: '-16deg', zIndex: 1, opacity: 0.82 },
-    { translateX: 0, rotate: '0deg', zIndex: 2, opacity: 0.92 },
-    { translateX: 10, rotate: '14deg', zIndex: 3, opacity: 1 },
-  ],
-  [
-    { translateX: -12, rotate: '-18deg', zIndex: 1, opacity: 0.78 },
-    { translateX: -4, rotate: '-7deg', zIndex: 2, opacity: 0.86 },
-    { translateX: 4, rotate: '7deg', zIndex: 3, opacity: 0.94 },
-    { translateX: 12, rotate: '16deg', zIndex: 4, opacity: 1 },
-  ],
-  [
-    { translateX: -14, rotate: '-20deg', zIndex: 1, opacity: 0.75 },
-    { translateX: -7, rotate: '-10deg', zIndex: 2, opacity: 0.84 },
-    { translateX: 0, rotate: '0deg', zIndex: 3, opacity: 0.92 },
-    { translateX: 7, rotate: '10deg', zIndex: 4, opacity: 0.96 },
-    { translateX: 14, rotate: '18deg', zIndex: 5, opacity: 1 },
-  ],
-];
+const MAX_SPREAD = 10;
+const MAX_ANGLE = 16;
 
+/**
+ * Iskambil fan — transform sadece translateX + rotate (scale yok).
+ * En ön kart (son indeks) her zaman merkezde düz; arkadakiler yelpaze.
+ * Parite visibleCount üzerinden uygulanır.
+ */
 export const getMapMarkerStackSlots = (count: number): MapMarkerCardSlot[] => {
-  const safeCount = Math.min(Math.max(count, 1), 5);
-  return STACK_SLOTS[safeCount - 1];
+  const visibleCount = Math.min(Math.max(count, 1), MAP_MARKER_MAX_VISIBLE);
+  const isEven = visibleCount % 2 === 0;
+  const backCount = visibleCount - 1;
+  const slots: MapMarkerCardSlot[] = [];
+
+  for (let index = 0; index < visibleCount; index += 1) {
+    const isFront = index === visibleCount - 1;
+    const zIndex = index + 1;
+    const soften =
+      backCount === 0 ? 1 : (index + 1) / visibleCount;
+    const opacity = isFront ? 1 : 0.68 + soften * 0.22;
+
+    if (isFront) {
+      slots.push({ translateX: 0, rotate: '0deg', zIndex, opacity: 1 });
+      continue;
+    }
+
+    if (isEven) {
+      if (backCount === 1) {
+        slots.push({
+          translateX: -MAX_SPREAD,
+          rotate: `-${MAX_ANGLE}deg`,
+          zIndex,
+          opacity,
+        });
+        continue;
+      }
+
+      const half = backCount / 2;
+      const isLeft = index < half;
+      const sideIndex = isLeft ? index : index - half;
+      const sign = isLeft ? -1 : 1;
+      const t = (sideIndex + 1) / half;
+      slots.push({
+        translateX: sign * MAX_SPREAD * t,
+        rotate: `${sign * MAX_ANGLE * t}deg`,
+        zIndex,
+        opacity,
+      });
+      continue;
+    }
+
+    const leftCount = Math.floor(backCount / 2);
+    const rightCount = backCount - leftCount;
+
+    if (index < leftCount) {
+      const t = leftCount === 0 ? 1 : (index + 1) / leftCount;
+      slots.push({
+        translateX: -MAX_SPREAD * t,
+        rotate: `${-MAX_ANGLE * t}deg`,
+        zIndex,
+        opacity,
+      });
+      continue;
+    }
+
+    const rightIndex = index - leftCount;
+    const t = rightCount === 0 ? 0 : (rightCount - rightIndex) / rightCount;
+    const softenFactor = 0.65 + t * 0.35;
+    slots.push({
+      translateX: MAX_SPREAD * softenFactor,
+      rotate: `${MAX_ANGLE * softenFactor}deg`,
+      zIndex,
+      opacity,
+    });
+  }
+
+  return slots;
 };
 
 export const getMapMarkerVisibleCount = (count: number): number => {
-  return Math.min(Math.max(count, 1), 5);
+  return Math.min(Math.max(count, 1), MAP_MARKER_MAX_VISIBLE);
 };
 
 export const getMapMarkerBadgeLabel = (count: number): string | null => {
   if (count <= 1) {
     return null;
-  }
-
-  if (count > 5) {
-    return '5+';
   }
 
   return String(count);

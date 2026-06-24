@@ -12,7 +12,6 @@ interface MapRouteGroupMarkerProps {
   selectedRouteId: string | null;
   dimmed?: boolean;
   onPress: (route: RouteWithProfile) => void;
-  onCalloutPress: (route: RouteWithProfile) => void;
 }
 
 export const MapRouteGroupMarker: React.FC<MapRouteGroupMarkerProps> = ({
@@ -20,7 +19,6 @@ export const MapRouteGroupMarker: React.FC<MapRouteGroupMarkerProps> = ({
   selectedRouteId,
   dimmed = false,
   onPress,
-  onCalloutPress,
 }) => {
   const primary = group[0];
   const { tracksViewChanges, handleMarkerReady } = useMapMarkerViewTracking({
@@ -52,7 +50,6 @@ export const MapRouteGroupMarker: React.FC<MapRouteGroupMarkerProps> = ({
         event.stopPropagation();
         onPress(primary);
       }}
-      onCalloutPress={() => onCalloutPress(primary)}
       title={
         group.length > 1 ? `${group.length} rota` : getRouteDisplayLabel(primary)
       }

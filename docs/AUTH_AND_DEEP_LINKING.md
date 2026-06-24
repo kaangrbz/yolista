@@ -1,6 +1,6 @@
 # Kimlik doğrulama ve deep link
 
-Yayınlanan site: [https://yolista.roulista.com](https://yolista.roulista.com)
+Yayınlanan site: [https://web.youlistaapp.com](https://web.youlistaapp.com)
 
 ## Kimlik doğrulama ekranları
 
@@ -17,7 +17,7 @@ Paylaşılan UI: `src/components/auth/shared/` (`AuthScreenLayout`, `AuthTextInp
 ### AuthContext metodları
 
 - `signIn`, `signUp`, `logout`
-- `resetPasswordForEmail` — redirect: `https://yolista.roulista.com/auth/mobile?flow=recovery`
+- `resetPasswordForEmail` — redirect: `https://web.youlistaapp.com/auth/mobile?flow=recovery`
 - `verifyEmailOtp`, `verifyRecoveryOtp`, `updatePassword`
 - `resendSignupConfirmation` — `emailRedirectTo: .../auth/mobile?flow=signup` ile yeniden gönderim
 - `isEmailConfirmed`, `refreshAuthSession`
@@ -42,9 +42,9 @@ yolista://auth/mobile?flow=recovery&...
 
 ### Universal link / App Link hostları
 
-- `yolista.roulista.com` (birincil)
-- `www.yolista.roulista.com`
-- `roulista.com`, `www.roulista.com` (eski uyumluluk)
+- `web.youlistaapp.com` (birincil)
+- `www.web.youlistaapp.com`
+- `web.youlistaapp.com`, `www.web.youlistaapp.com` (eski uyumluluk)
 
 ### Servisler
 
@@ -59,9 +59,9 @@ Auth linkleri önce `AuthLinkingService`’te işlenir (`App.tsx` → `DeepLinki
 ### Web paylaşım URL’leri
 
 ```
-https://yolista.roulista.com/post/{routeId}
-https://yolista.roulista.com/profile/{username}
-https://yolista.roulista.com/route/{routeId}   (alternatif)
+https://web.youlistaapp.com/post/{routeId}
+https://web.youlistaapp.com/profile/{username}
+https://web.youlistaapp.com/route/{routeId}   (alternatif)
 ```
 
 `ShareService.generatePostUrl()` ve `DeepLinkingService.generateShareURL()` bu domain’i kullanır. Web’de `/post/{id}` açılır; uygulama bunu `route` olarak yorumlar.
@@ -76,8 +76,8 @@ https://yolista.roulista.com/route/{routeId}   (alternatif)
 Dashboard → **Authentication** → **URL Configuration** → **Redirect URLs**:
 
 ```
-https://yolista.roulista.com/auth/mobile
-https://yolista.roulista.com/auth/mobile/**
+https://web.youlistaapp.com/auth/mobile
+https://web.youlistaapp.com/auth/mobile/**
 yolista://auth/mobile
 yolista://reset-password
 ```
@@ -95,7 +95,7 @@ Production: Supabase Dashboard → Authentication → Email Templates (HTML + su
 
 - Gönderen: `Yolista` / `noreply@yolista.app`
 - Destek linki (şablon): `mailto:yolistaapp@gmail.com`
-- Logo: `https://yolista.roulista.com/logo-email.png`
+- Logo: `https://web.youlistaapp.com/logo-email.png`
 
 ### Test
 
@@ -106,7 +106,7 @@ Geliştirmede `src/utils/deepLinkTester.ts` örnek URL’ler loglar.
 xcrun simctl openurl booted "yolista://route/ROTA_UUID"
 
 # Android
-adb shell am start -a android.intent.action.VIEW -d "https://yolista.roulista.com/post/ROTA_UUID"
+adb shell am start -a android.intent.action.VIEW -d "https://web.youlistaapp.com/post/ROTA_UUID"
 ```
 
 ## İlgili web dokümantasyonu

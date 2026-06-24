@@ -5,6 +5,7 @@ import RouteTabBar from '../../routeDetail/RouteTabBar';
 interface MapRouteSheetTabsProps {
   activeTab: RouteSheetTab;
   onTabChange: (tab: RouteSheetTab) => void;
+  disabledTabs?: Partial<Record<RouteSheetTab, string>>;
 }
 
 export const MapRouteSheetTabs: React.FC<MapRouteSheetTabsProps> = (props) => (

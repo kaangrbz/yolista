@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Image,
   Text,
   TouchableOpacity,
   View,
@@ -14,10 +13,7 @@ import {
   getRouteLocationLabel,
   getRouteLocationSource,
 } from '../../../utils/routeLocationLabel';
-import {
-  useMapPreviewImageDownload,
-  useProfileImageDownload,
-} from '../../../hooks/useImageDownload';
+import SmartImage from '../../common/smart-image/SmartImage';
 import { MAP_ACTIVE_ROUTE_BORDER } from '../../../constants/mapDefaults';
 
 interface MapRouteCardProps {
@@ -195,18 +191,6 @@ export const MapRouteCard: React.FC<MapRouteCardProps> = ({
     },
   }));
 
-  const { imageUri } = useMapPreviewImageDownload(
-    route.image_url,
-    route.user_id || '',
-    route.image_preview_url || undefined,
-  );
-
-  const { imageUri: avatarUri } = useProfileImageDownload(
-    route.profiles?.image_url,
-    route.user_id || '',
-    route.profiles?.image_preview_url,
-  );
-
   const username = route.profiles?.username?.trim() || null;
   const locationLabel = getRouteLocationLabel(getRouteLocationSource(route));
 
@@ -217,17 +201,15 @@ export const MapRouteCard: React.FC<MapRouteCardProps> = ({
       style={[styles.card, selected && styles.cardSelected]}
     >
       <View style={styles.imageWrapper}>
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.imageFill} />
-        ) : (
-          <View style={[styles.imageFill, styles.imagePlaceholder]}>
-            <Icon
-              name="image-outline"
-              size={28}
-              color={theme.textMuted}
-            />
-          </View>
-        )}
+        <SmartImage
+          kind="routePreview"
+          userId={route.user_id || ''}
+          imageUrl={route.image_url}
+          imagePreviewUrl={route.image_preview_url}
+          width={CARD_WIDTH}
+          height={IMAGE_HEIGHT}
+          style={styles.imageFill}
+        />
 
         <View style={styles.imageOverlayRow} pointerEvents="box-none">
           {route.categories?.name ? (
@@ -259,13 +241,16 @@ export const MapRouteCard: React.FC<MapRouteCardProps> = ({
 
         {username ? (
           <View style={styles.authorRow}>
-            {avatarUri ? (
-              <Image source={{ uri: avatarUri }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarFallback]}>
-                <Icon name="account" size={10} color={theme.textMuted} />
-              </View>
-            )}
+            <SmartImage
+              kind="user"
+              userId={route.user_id || ''}
+              imageUrl={route.profiles?.image_url}
+              imagePreviewUrl={route.profiles?.image_preview_url}
+              width={16}
+              height={16}
+              borderRadius={8}
+              style={styles.avatar}
+            />
             <Text numberOfLines={1} style={styles.authorName}>
               @{username}
             </Text>

@@ -44,7 +44,7 @@ export const logTestUrls = () => {
     `${APP_PUBLISHED_ORIGIN}/category/travel`,
     `${APP_PUBLISHED_ORIGIN}/explore`,
     // Legacy domain (uyumluluk)
-    'https://roulista.com/post/123',
+    'https://web.youlistaapp.com/post/123',
 
     // App scheme URLs (direct app opening)
     'yolista://route/123',

@@ -11,39 +11,84 @@ const CAROUSEL_HEIGHT_OPTIONS = {
   defaultHeight: 400,
 } as const;
 
+interface UsePostImageLayoutOptions {
+  /** Rota detay: uri olmayan placeholder slide'ları da carousel indeksine dahil et. */
+  keepPlaceholderSlides?: boolean;
+  /**
+   * Carousel çerçevesi ilk slaytın image_width/image_height oranına kilitlenir
+   * (varsayılan: true).
+   */
+  lockToFirstPhotoDimensions?: boolean;
+  /** Yüksekliği min/max aralığına sıkıştır (varsayılan: kilitli modda kapalı). */
+  clampHeight?: boolean;
+  /** image_width/height yoksa image_alignment yedeği (varsayılan: kilitli modda kapalı). */
+  useImageAlignmentFallback?: boolean;
+}
+
 export function usePostImageLayout(
   imageSlides: PostImageSlide[],
   leadSlide: PostImageSlideMeta | null,
+  options?: UsePostImageLayoutOptions,
 ) {
-  const getSlideDisplayHeight = useCallback((slide: PostImageSlideMeta) => {
-    return getPostCarouselDisplayHeight(
-      SCREEN_WIDTH,
-      slide.width,
-      slide.height,
-      slide.imageAlignment,
-      CAROUSEL_HEIGHT_OPTIONS,
-    );
-  }, []);
+  const keepPlaceholderSlides = options?.keepPlaceholderSlides ?? false;
+  const lockToFirstPhotoDimensions = options?.lockToFirstPhotoDimensions ?? true;
+  const clampHeight = options?.clampHeight ?? !lockToFirstPhotoDimensions;
+  const useImageAlignmentFallback =
+    options?.useImageAlignmentFallback ?? !lockToFirstPhotoDimensions;
 
-  const readyImageSlides = useMemo(
-    () => imageSlides.filter((slide) => slide.uri !== null),
-    [imageSlides],
+  const heightOptions = useMemo(
+    () => ({
+      ...CAROUSEL_HEIGHT_OPTIONS,
+      clamp: clampHeight,
+      useImageAlignmentFallback,
+    }),
+    [clampHeight, useImageAlignmentFallback],
+  );
+
+  const getSlideDisplayHeight = useCallback(
+    (slide: PostImageSlideMeta) => {
+      return getPostCarouselDisplayHeight(
+        SCREEN_WIDTH,
+        slide.width,
+        slide.height,
+        slide.imageAlignment,
+        heightOptions,
+      );
+    },
+    [heightOptions],
+  );
+
+  const carouselSlides = useMemo(
+    () =>
+      keepPlaceholderSlides
+        ? imageSlides
+        : imageSlides.filter((slide) => slide.uri !== null),
+    [imageSlides, keepPlaceholderSlides],
   );
 
   const carouselImages = useMemo(
-    () => readyImageSlides.map((slide) => slide.uri as string),
-    [readyImageSlides],
+    () => carouselSlides.map((slide) => slide.uri),
+    [carouselSlides],
   );
 
   const carouselHints = useMemo(
-    () => readyImageSlides.map((slide) => slide.hint?.trim() || null),
-    [readyImageSlides],
+    () => carouselSlides.map((slide) => slide.hint?.trim() || null),
+    [carouselSlides],
   );
 
-  const displayHeights = useMemo(
-    () => readyImageSlides.map((slide) => getSlideDisplayHeight(slide)),
-    [readyImageSlides, getSlideDisplayHeight],
-  );
+  const displayHeights = useMemo(() => {
+    if (carouselSlides.length === 0) {
+      return [];
+    }
+
+    if (lockToFirstPhotoDimensions) {
+      const firstSlideHeight = getSlideDisplayHeight(carouselSlides[0]);
+
+      return carouselSlides.map(() => firstSlideHeight);
+    }
+
+    return carouselSlides.map((slide) => getSlideDisplayHeight(slide));
+  }, [carouselSlides, getSlideDisplayHeight, lockToFirstPhotoDimensions]);
 
   const imagePlaceholderHeight = useMemo(() => {
     if (imageSlides.length > 0) {
@@ -61,7 +106,7 @@ export function usePostImageLayout(
     carouselHeightOptions: CAROUSEL_HEIGHT_OPTIONS,
     screenWidth: SCREEN_WIDTH,
     imagePlaceholderHeight,
-    readyImageSlides,
+    carouselSlides,
     carouselImages,
     carouselHints,
     displayHeights,

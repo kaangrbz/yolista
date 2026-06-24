@@ -10,12 +10,14 @@ interface RouteTabBarProps {
   activeTab: RouteSheetTab;
   onTabChange: (tab: RouteSheetTab) => void;
   marginHorizontal?: number;
+  disabledTabs?: Partial<Record<RouteSheetTab, string>>;
 }
 
 export const RouteTabBar: React.FC<RouteTabBarProps> = ({
   activeTab,
   onTabChange,
   marginHorizontal = 18,
+  disabledTabs,
 }) => {
   const theme = useAppTheme();
   const styles = useThemedStyles((t) => ({
@@ -54,38 +56,83 @@ export const RouteTabBar: React.FC<RouteTabBarProps> = ({
       color: MAP_ACTIVE_ROUTE_BORDER,
       fontWeight: '700',
     },
+    tabDisabled: {
+      opacity: 0.45,
+    },
+    tabTextDisabled: {
+      color: t.textMuted,
+    },
+    disabledHint: {
+      marginHorizontal,
+      marginTop: -4,
+      marginBottom: 10,
+      paddingHorizontal: 4,
+      fontSize: 11,
+      lineHeight: 15,
+      color: t.textMuted,
+      textAlign: 'center',
+    },
   }));
 
   const tabs: { id: RouteSheetTab; label: string; icon: string }[] = [
     { id: 'stops', label: 'Duraklar', icon: 'map-marker-outline' },
-    { id: 'directions', label: 'Rota', icon: 'sign-direction' },
+    { id: 'directions', label: 'Navigasyon', icon: 'sign-direction' },
   ];
 
-  return (
-    <View style={styles.row}>
-      {tabs.map((tab) => {
-        const isActive = activeTab === tab.id;
+  const directionsDisabledReason = disabledTabs?.directions;
 
-        return (
-          <TouchableOpacity
-            key={tab.id}
-            style={[styles.tab, isActive && styles.tabActive]}
-            activeOpacity={0.85}
-            onPress={() => onTabChange(tab.id)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isActive }}
-          >
-            <Icon
-              name={tab.icon}
-              size={16}
-              color={isActive ? MAP_ACTIVE_ROUTE_BORDER : theme.textSecondary}
-            />
-            <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+  return (
+    <View>
+      <View style={styles.row}>
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          const isDisabled = Boolean(disabledTabs?.[tab.id]);
+
+          return (
+            <TouchableOpacity
+              key={tab.id}
+              style={[
+                styles.tab,
+                isActive && styles.tabActive,
+                isDisabled && styles.tabDisabled,
+              ]}
+              activeOpacity={isDisabled ? 1 : 0.85}
+              onPress={() => {
+                if (!isDisabled) {
+                  onTabChange(tab.id);
+                }
+              }}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive, disabled: isDisabled }}
+            >
+              <Icon
+                name={tab.icon}
+                size={16}
+                color={
+                  isDisabled
+                    ? theme.textMuted
+                    : isActive
+                      ? MAP_ACTIVE_ROUTE_BORDER
+                      : theme.textSecondary
+                }
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  isActive && styles.tabTextActive,
+                  isDisabled && styles.tabTextDisabled,
+                ]}
+              >
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {directionsDisabledReason ? (
+        <Text style={styles.disabledHint}>{directionsDisabledReason}</Text>
+      ) : null}
     </View>
   );
 };

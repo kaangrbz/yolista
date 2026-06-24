@@ -7,7 +7,7 @@ Ayrı bir klasik REST API client yok; backend tarafı doğrudan Supabase ile kul
 Supabase client merkezi: src/lib/supabase.ts.
 Auth akışı: AuthContext içinde signInWithPassword, signUp, getSession, onAuthStateChange; şifre sıfırlama, e-posta doğrulama, deep link auth → bkz. [AUTH_AND_DEEP_LINKING.md](./AUTH_AND_DEEP_LINKING.md).
 
-Deep link: DeepLinkingService (rota/profil/keşfet) + AuthLinkingService (auth/mobile); paylaşım URL’leri https://yolista.roulista.com — aynı belgede.
+Deep link: DeepLinkingService (rota/profil/keşfet) + AuthLinkingService (auth/mobile); paylaşım URL’leri https://web.youlistaapp.com — aynı belgede.
 Veri erişimi çoğunlukla model katmanında:
 src/model/routes.model.ts
 src/model/user.model.ts

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SavedCollection } from '../../services/SaveCollectionsService';
-import CachedImage from './CachedImage';
+import SmartImage from './smart-image/SmartImage';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useThemedStyles } from '../../theme/useThemedStyles';
 
@@ -43,13 +43,6 @@ const SavedCollectionRow: React.FC<SavedCollectionRowProps> = ({
       width: 48,
       height: 48,
       borderRadius: 8,
-      backgroundColor: t.borderStrong,
-    },
-    thumbnailPlaceholder: {
-      width: 48,
-      height: 48,
-      borderRadius: 8,
-      backgroundColor: t.surfaceMuted,
     },
     textContainer: {
       flex: 1,
@@ -67,7 +60,7 @@ const SavedCollectionRow: React.FC<SavedCollectionRowProps> = ({
     },
   }));
 
-  const hasPreview = !!previewUrl && previewUrl.length > 0;
+  const hasPreview = Boolean(previewUrl);
 
   return (
     <Pressable
@@ -80,15 +73,17 @@ const SavedCollectionRow: React.FC<SavedCollectionRowProps> = ({
     >
       <View style={styles.thumbnailWrap}>
         {hasPreview ? (
-          <CachedImage
-            source={{ uri: previewUrl as string }}
+          <SmartImage
+            kind="routePreview"
+            userId={collection.id}
+            resolvedUri={previewUrl}
+            width={48}
+            height={48}
+            borderRadius={8}
             style={styles.thumbnail}
-            resizeMode="cover"
-            suppressErrorText={true}
-            showRetryButton={false}
           />
         ) : (
-          <View style={styles.thumbnailPlaceholder} />
+          <View style={[styles.thumbnail, { backgroundColor: theme.surfaceMuted }]} />
         )}
       </View>
 

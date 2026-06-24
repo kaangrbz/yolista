@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
 import {
-  Image,
   Text,
   View,
 } from 'react-native';
@@ -11,10 +10,7 @@ import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
 import { getRouteDisplayLabel } from '../../../utils/getRouteDisplayLabel';
 import { getStopPhotoHintLabel } from '../../../utils/getStopPhotoHintLabel';
-import {
-  useMapPreviewImageDownload,
-  useProfileImageDownload,
-} from '../../../hooks/useImageDownload';
+import SmartImage from '../../common/smart-image/SmartImage';
 import { MAP_ACTIVE_ROUTE_BORDER } from '../../../constants/mapDefaults';
 import { useCommentsSheet } from '../../../context/CommentsSheetContext';
 
@@ -135,19 +131,6 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
     },
   }));
 
-  const { imageUri } = useMapPreviewImageDownload(
-    route.image_url,
-    route.user_id || '',
-    route.image_preview_url || undefined,
-    { cacheOnly: true, previewOnly: true },
-  );
-
-  const { imageUri: avatarUri } = useProfileImageDownload(
-    route.profiles?.image_url,
-    route.user_id || '',
-    route.profiles?.image_preview_url,
-  );
-
   const stopTitle = getStopPhotoHintLabel(route);
   const routeLabel = getRouteDisplayLabel(route);
   const username = route.profiles?.username?.trim() || null;
@@ -184,7 +167,14 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
     stopTitle,
   ]);
 
-  const showAuthor = !subtitle && Boolean(username);
+  const metaLine =
+    subtitle ||
+    (username ? `@${username}` : null) ||
+    route.cities?.name ||
+    route.categories?.name ||
+    routeLabel;
+
+  const showAuthor = Boolean(username) && !subtitle;
 
   const handleCommentPress = useCallback(() => {
     if (!route.id) {
@@ -202,54 +192,62 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
   const commentCount = route.comment_count || 0;
 
   return (
-    <View style={[styles.row, selected && styles.rowSelected]}>
+    <TouchableOpacity
+      style={[styles.row, selected && styles.rowSelected]}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+    >
       {selected ? <View style={styles.selectedAccent} /> : null}
 
-      <TouchableOpacity
-        onPress={onPress}
-        disabled={selected}
-        activeOpacity={selected ? 1 : 0.7}
-        accessibilityState={{ selected }}
-        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}
-      >
-        <View style={[styles.imageWrapper, selected && styles.imageWrapperSelected]}>
-          {imageUri ? (
-            <Image source={{ uri: imageUri }} style={styles.image} />
-          ) : (
-            <View style={[styles.image, styles.imagePlaceholder]}>
-              <Icon name="image-outline" size={28} color={theme.textMuted} />
-            </View>
-          )}
-        </View>
+      <View style={[styles.imageWrapper, selected && styles.imageWrapperSelected]}>
+        <SmartImage
+          kind="routePreview"
+          userId={route.user_id || ''}
+          imageUrl={route.image_url}
+          imagePreviewUrl={route.image_preview_url}
+          cacheOnly
+          previewOnly
+          width={THUMB_SIZE}
+          height={THUMB_SIZE}
+          borderRadius={12}
+        />
+      </View>
 
-        <View style={styles.content}>
-          <Text numberOfLines={2} style={styles.title}>
-            {primaryTitle}
+      <View style={styles.content}>
+        <Text numberOfLines={2} style={styles.title}>
+          {primaryTitle}
+        </Text>
+
+        {subtitle ? (
+          <Text numberOfLines={1} style={styles.subtitle}>
+            {subtitle}
           </Text>
-
-          {subtitle ? (
-            <Text numberOfLines={1} style={styles.subtitle}>
-              {subtitle}
+        ) : showAuthor ? (
+          <View style={styles.authorRow}>
+            <SmartImage
+              kind="user"
+              userId={route.user_id || ''}
+              imageUrl={route.profiles?.image_url}
+              imagePreviewUrl={route.profiles?.image_preview_url}
+              width={18}
+              height={18}
+              borderRadius={9}
+            />
+            <Text numberOfLines={1} style={styles.authorName}>
+              @{username}
             </Text>
-          ) : showAuthor ? (
-            <View style={styles.authorRow}>
-              {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarFallback]}>
-                  <Icon name="account" size={11} color={theme.textMuted} />
-                </View>
-              )}
-              <Text numberOfLines={1} style={styles.authorName}>
-                @{username}
-              </Text>
-              {route.profiles?.is_verified ? (
-                <Icon name="check-decagram" size={12} color={theme.accent} />
-              ) : null}
-            </View>
-          ) : null}
-        </View>
-      </TouchableOpacity>
+            {route.profiles?.is_verified ? (
+              <Icon name="check-decagram" size={12} color={theme.accent} />
+            ) : null}
+          </View>
+        ) : metaLine ? (
+          <Text numberOfLines={1} style={styles.subtitle}>
+            {metaLine}
+          </Text>
+        ) : null}
+      </View>
 
       <View style={styles.trailing}>
         <View style={styles.statButton}>
@@ -259,7 +257,10 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
 
         <TouchableOpacity
           style={styles.statButton}
-          onPress={handleCommentPress}
+          onPress={(event) => {
+            event.stopPropagation?.();
+            handleCommentPress();
+          }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel={
@@ -270,7 +271,7 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
           <Text style={styles.statText}>{commentCount}</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

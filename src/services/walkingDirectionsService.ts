@@ -1,8 +1,17 @@
 import type { RouteWithProfile } from '../model/routes.model';
-import type { RouteSegment } from '../types/routeSegment.types';
+import type { DirectionStep, RouteSegment } from '../types/routeSegment.types';
 import type { LatLng, LatLngLike } from '../utils/routeDistance';
-import { extractValidCoordinates } from '../utils/routeDistance';
-import { getStopPhotoHintLabel } from '../utils/getStopPhotoHintLabel';
+import {
+  estimateWalkingMinutes,
+  extractValidCoordinates,
+  totalRouteDistanceKmFromPoints,
+} from '../utils/routeDistance';
+import { resolveManeuverType } from '../utils/directionStepIcons';
+import {
+  getStandardStopSegmentLabel,
+  getStopLetterLabel,
+} from '../utils/getStopOrderLabel';
+import { optimizeStopsForShortestPath } from '../utils/routeOrderOptimization';
 
 export type WalkingDirectionsSource = 'osrm' | 'straight-line';
 
@@ -11,12 +20,14 @@ export interface WalkingDirectionsResult {
   distanceMeters: number | null;
   durationSeconds: number | null;
   source: WalkingDirectionsSource;
-  stepInstructions: string[];
+  directionSteps: DirectionStep[];
 }
 
 export interface BuildRouteSegmentsOptions {
   userLocation?: LatLng | null;
   startFromUser?: boolean;
+  /** İlk durak sabit, kalanlar en kısa yürüyüş için yeniden sıralanır. */
+  optimizeOrder?: boolean;
 }
 
 const OSRM_WALKING_BASE = 'https://router.project-osrm.org/route/v1/walking';
@@ -32,19 +43,42 @@ const straightLineResult = (stops: LatLng[]): WalkingDirectionsResult => ({
   distanceMeters: null,
   durationSeconds: null,
   source: 'straight-line',
-  stepInstructions: [],
+  directionSteps: [],
 });
 
-type OsrmLeg = {
-  steps?: Array<{ maneuver?: { instruction?: string }; name?: string }>;
+const estimatedStraightLineResult = (stops: LatLng[]): WalkingDirectionsResult => {
+  if (stops.length < 2) {
+    return straightLineResult(stops);
+  }
+
+  const distanceKm = totalRouteDistanceKmFromPoints(stops);
+
+  return {
+    coordinates: stops,
+    distanceMeters: Math.round(distanceKm * 1000),
+    durationSeconds: estimateWalkingMinutes(distanceKm) * 60,
+    source: 'straight-line',
+    directionSteps: [],
+  };
 };
 
-const parseOsrmStepInstructions = (legs: OsrmLeg[] | undefined): string[] => {
+type OsrmLeg = {
+  steps?: Array<{
+    maneuver?: {
+      type?: string;
+      modifier?: string;
+      instruction?: string;
+    };
+    name?: string;
+  }>;
+};
+
+const parseOsrmDirectionSteps = (legs: OsrmLeg[] | undefined): DirectionStep[] => {
   if (!legs?.length) {
     return [];
   }
 
-  const instructions: string[] = [];
+  const steps: DirectionStep[] = [];
 
   legs.forEach((leg) => {
     leg.steps?.forEach((step) => {
@@ -54,12 +88,15 @@ const parseOsrmStepInstructions = (legs: OsrmLeg[] | undefined): string[] => {
         '';
 
       if (text) {
-        instructions.push(text);
+        steps.push({
+          instruction: text,
+          maneuverType: resolveManeuverType(step.maneuver),
+        });
       }
     });
   });
 
-  return instructions.slice(0, 8);
+  return steps.slice(0, 8);
 };
 
 /**
@@ -100,9 +137,7 @@ async function fetchWalkingDirectionsFromOsrm(
       geometry?: {
         coordinates?: [number, number][];
       };
-      legs?: Array<{
-        steps?: Array<{ maneuver?: { instruction?: string }; name?: string }>;
-      }>;
+      legs?: OsrmLeg[];
     }>;
   };
 
@@ -123,8 +158,8 @@ async function fetchWalkingDirectionsFromOsrm(
     durationSeconds:
       typeof route.duration === 'number' ? route.duration : null,
     source: 'osrm',
-    stepInstructions: includeSteps
-      ? parseOsrmStepInstructions(route.legs)
+    directionSteps: includeSteps
+      ? parseOsrmDirectionSteps(route.legs)
       : [],
   };
 }
@@ -164,21 +199,16 @@ export async function fetchWalkingDirections(
     console.warn('Walking directions OSRM error:', error);
   }
 
-  const fallback = straightLineResult(coords);
+  const fallback = estimatedStraightLineResult(coords);
   routeCache.set(cacheKey, fallback);
   return fallback;
 }
 
-const getStopLabel = (stop: RouteWithProfile): string => {
-  const hint = getStopPhotoHintLabel(stop);
+const getVisitLabel = (stop: RouteWithProfile, visitIndex: number): string => {
+  const letter = getStopLetterLabel(visitIndex);
+  const title = stop.title?.trim();
 
-  if (hint) {
-    return hint;
-  }
-
-  const order = stop.order_index ?? 0;
-
-  return order === 0 ? 'Başlangıç' : `Durak ${order + 1}`;
+  return title ? `${letter} · ${title}` : letter;
 };
 
 export async function buildRouteSegments(
@@ -189,13 +219,20 @@ export async function buildRouteSegments(
     (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0),
   );
 
-  const coordStops = sorted.filter(
+  let coordStops = sorted.filter(
     (stop) =>
       typeof stop.latitude === 'number' && typeof stop.longitude === 'number',
   );
 
   if (coordStops.length === 0) {
     return [];
+  }
+
+  const navigationOptimized =
+    Boolean(options.optimizeOrder) && coordStops.length >= 3;
+
+  if (navigationOptimized) {
+    coordStops = optimizeStopsForShortestPath(coordStops);
   }
 
   const legs: Array<{
@@ -206,6 +243,8 @@ export async function buildRouteSegments(
     to: LatLng;
     variant: 'approach' | 'route';
     targetStopOrderIndex: number;
+    targetStopId: string | null;
+    visitIndex: number;
   }> = [];
 
   const firstStop = coordStops[0];
@@ -218,22 +257,31 @@ export async function buildRouteSegments(
     legs.push({
       id: 'approach-0',
       fromLabel: 'Konumum',
-      toLabel: getStopLabel(firstStop),
+      toLabel: navigationOptimized
+        ? getVisitLabel(firstStop, 0)
+        : getStandardStopSegmentLabel(firstStop),
       from: options.userLocation,
       to: firstCoord,
       variant: 'approach',
       targetStopOrderIndex: firstStop.order_index ?? 0,
+      targetStopId: firstStop.id ? String(firstStop.id) : null,
+      visitIndex: 0,
     });
   }
 
   for (let index = 0; index < coordStops.length - 1; index += 1) {
     const fromStop = coordStops[index];
     const toStop = coordStops[index + 1];
+    const toVisitIndex = index + 1;
 
     legs.push({
       id: `leg-${index}`,
-      fromLabel: getStopLabel(fromStop),
-      toLabel: getStopLabel(toStop),
+      fromLabel: navigationOptimized
+        ? getVisitLabel(fromStop, index)
+        : getStandardStopSegmentLabel(fromStop),
+      toLabel: navigationOptimized
+        ? getVisitLabel(toStop, toVisitIndex)
+        : getStandardStopSegmentLabel(toStop),
       from: {
         latitude: fromStop.latitude as number,
         longitude: fromStop.longitude as number,
@@ -243,7 +291,9 @@ export async function buildRouteSegments(
         longitude: toStop.longitude as number,
       },
       variant: 'route',
-      targetStopOrderIndex: toStop.order_index ?? index + 1,
+      targetStopOrderIndex: toStop.order_index ?? toVisitIndex,
+      targetStopId: toStop.id ? String(toStop.id) : null,
+      visitIndex: toVisitIndex,
     });
   }
 
@@ -264,7 +314,11 @@ export async function buildRouteSegments(
         durationSeconds: directions.durationSeconds,
         variant: leg.variant,
         targetStopOrderIndex: leg.targetStopOrderIndex,
-        stepInstructions: directions.stepInstructions,
+        targetStopId: leg.targetStopId,
+        visitIndex: leg.visitIndex,
+        navigationOptimized,
+        directionSteps: directions.directionSteps,
+        isEstimated: directions.source !== 'osrm',
       } satisfies RouteSegment;
     }),
   );

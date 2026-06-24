@@ -71,7 +71,7 @@ export const GeocodingService = {
       const response = await fetch(`${NOMINATIM_ENDPOINT}?${params.toString()}`, {
         method: 'GET',
         headers: {
-          'User-Agent': 'YolistaApp/0.1 (https://roulista.com)',
+          'User-Agent': 'YolistaApp/0.1 (https://web.youlistaapp.com)',
           Accept: 'application/json',
         },
         signal: controller.signal,
@@ -146,7 +146,7 @@ export const GeocodingService = {
       const response = await fetch(`${REVERSE_ENDPOINT}?${params.toString()}`, {
         method: 'GET',
         headers: {
-          'User-Agent': 'YolistaApp/0.1 (https://roulista.com)',
+          'User-Agent': 'YolistaApp/0.1 (https://web.youlistaapp.com)',
           Accept: 'application/json',
         },
         signal: controller.signal,

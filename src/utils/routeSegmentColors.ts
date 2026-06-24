@@ -31,6 +31,26 @@ export const getSegmentStrokeColor = (
   return ROUTE_SEGMENT_UPCOMING;
 };
 
+/** Aktif olmayan bacaklar — daha soluk çizgi. */
+export const getSegmentStrokeColorFaded = (
+  status: RouteSegmentStatus,
+  variant: RouteSegmentVariant,
+): string => {
+  if (status === 'active') {
+    return getSegmentStrokeColor(status, variant);
+  }
+
+  if (variant === 'approach') {
+    return '#64748b55';
+  }
+
+  if (status === 'past') {
+    return '#94a3b866';
+  }
+
+  return '#cbd5e155';
+};
+
 export const formatDurationFromSeconds = (
   seconds: number | null,
 ): string | null => {

@@ -14,6 +14,8 @@ const PostCaption: React.FC<PostCaptionProps> = ({
   onLikesPress,
   isExpanded,
   onToggleExpanded,
+  hideDescription = false,
+  hideCommentPreview = false,
 }) => {
   const trimmedDescription = description?.trim() ?? '';
 
@@ -89,7 +91,7 @@ const PostCaption: React.FC<PostCaptionProps> = ({
         <Text style={styles.caption}>
           <Text style={styles.username}>{username}</Text>
         </Text>
-        {trimmedDescription ? (
+        {trimmedDescription && !hideDescription ? (
           <View>
             <Text
               style={styles.description}
@@ -111,23 +113,25 @@ const PostCaption: React.FC<PostCaptionProps> = ({
         ) : null}
       </View>
 
-      <TouchableOpacity
-        style={styles.commentsPreview}
-        onPress={onComment}
-        activeOpacity={0.65}
-        accessibilityRole="button"
-        accessibilityLabel={
-          commentCount > 0
-            ? `${commentCount} yorum, tümünü gör`
-            : 'İlk yorumu sen yap'
-        }
-      >
-        <Text style={styles.commentsText}>
-          {commentCount > 0
-            ? `${commentCount} yorumun tümünü gör`
-            : 'İlk yorumu sen ol'}
-        </Text>
-      </TouchableOpacity>
+      {!hideCommentPreview ? (
+        <TouchableOpacity
+          style={styles.commentsPreview}
+          onPress={onComment}
+          activeOpacity={0.65}
+          accessibilityRole="button"
+          accessibilityLabel={
+            commentCount > 0
+              ? `${commentCount} yorum, tümünü gör`
+              : 'İlk yorumu sen yap'
+          }
+        >
+          <Text style={styles.commentsText}>
+            {commentCount > 0
+              ? `${commentCount} yorumun tümünü gör`
+              : 'İlk yorumu sen ol'}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
 
       <Text style={styles.timeText}>{getTimeAgo(createdAt)}</Text>
     </View>

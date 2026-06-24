@@ -11,13 +11,13 @@ import {
   Platform,
   Share as RNShare,
   Image,
+  ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Clipboard from '@react-native-clipboard/clipboard';
 import { useGlobalAlert } from '../hooks/useGlobalAlert';
 import ModalSheetSafeArea from './common/ModalSheetSafeArea';
-import { KeyboardAwareContainer } from './common';
 import { ShareService } from '../services/ShareService';
+import { composeRouteShareText } from '../utils/composeRouteShareText';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useThemedStyles } from '../theme/useThemedStyles';
 
@@ -30,6 +30,11 @@ interface ShareModalProps {
   postTitle: string;
   postImage?: string;
   postUrl?: string;
+  cityName?: string | null;
+  categoryName?: string | null;
+  stopCount?: number;
+  stopTitles?: string[];
+  authorUsername?: string | null;
 }
 
 const ShareModal: React.FC<ShareModalProps> = ({
@@ -39,6 +44,11 @@ const ShareModal: React.FC<ShareModalProps> = ({
   postTitle,
   postImage,
   postUrl,
+  cityName,
+  categoryName,
+  stopCount,
+  stopTitles,
+  authorUsername,
 }) => {
   const theme = useAppTheme();
   const styles = useThemedStyles((t) => ({
@@ -54,9 +64,8 @@ const ShareModal: React.FC<ShareModalProps> = ({
       maxHeight: screenHeight * 0.85,
       alignSelf: 'stretch',
     },
-    modalInner: {
+    scrollContent: {
       flexGrow: 0,
-      flexShrink: 1,
     },
     header: {
       flexDirection: 'row',
@@ -74,6 +83,56 @@ const ShareModal: React.FC<ShareModalProps> = ({
     },
     closeButton: {
       padding: 4,
+    },
+    previewContainer: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.hairlineBorder,
+    },
+    previewTitle: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: t.textPrimary,
+      marginBottom: 12,
+    },
+    previewCard: {
+      flexDirection: 'row',
+      backgroundColor: t.surfaceMuted,
+      borderRadius: 8,
+      padding: 12,
+      minHeight: 80,
+    },
+    previewImage: {
+      width: 60,
+      height: 60,
+      backgroundColor: t.borderStrong,
+      borderRadius: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+      overflow: 'hidden',
+    },
+    previewImageContent: {
+      width: '100%',
+      height: '100%',
+    },
+    previewContent: {
+      flex: 1,
+      justifyContent: 'center',
+      minHeight: 60,
+    },
+    previewPostTitle: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: t.textPrimary,
+      marginBottom: 4,
+      lineHeight: 18,
+    },
+    previewUrl: {
+      fontSize: 12,
+      color: t.textSecondary,
+      lineHeight: 16,
     },
     messageContainer: {
       paddingHorizontal: 20,
@@ -126,77 +185,56 @@ const ShareModal: React.FC<ShareModalProps> = ({
       color: t.textPrimary,
       textAlign: 'center',
     },
-    loadingIndicator: {
-      position: 'absolute',
-      right: 0,
-      top: 0,
-    },
-    previewContainer: {
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: t.hairlineBorder,
-    },
-    previewTitle: {
-      fontSize: 16,
-      fontWeight: '500',
-      color: t.textPrimary,
-      marginBottom: 12,
-    },
-    previewCard: {
-      flexDirection: 'row',
-      backgroundColor: t.surfaceMuted,
-      borderRadius: 8,
-      padding: 12,
-      minHeight: 80,
-    },
-    previewImage: {
-      width: 60,
-      height: 60,
-      backgroundColor: t.borderStrong,
-      borderRadius: 8,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 12,
-      overflow: 'hidden',
-    },
-    previewImageContent: {
-      width: '100%',
-      height: '100%',
-    },
-    previewContent: {
-      flex: 1,
-      justifyContent: 'center',
-      minHeight: 60,
-    },
-    previewPostTitle: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: t.textPrimary,
-      marginBottom: 4,
-      lineHeight: 18,
-    },
-    previewUrl: {
-      fontSize: 12,
-      color: t.textSecondary,
-      lineHeight: 16,
-    },
   }));
 
   const [customMessage, setCustomMessage] = useState('');
-  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const { copyToClipboard, showAlert } = useGlobalAlert();
 
   const resolvePostUrl = () => {
     return postUrl || ShareService.generatePostUrl(postId);
   };
 
-  const shareNativeLink = async (url: string, optionalMessage: string) => {
-    const message = ShareService.composeShareMessage(
-      postTitle,
-      url,
-      optionalMessage,
-    );
+  const richShareContext = {
+    cityName,
+    categoryName,
+    stopCount,
+    stopTitles,
+    authorUsername,
+  };
+
+  const usesRichShare = ShareService.hasRichShareContext(richShareContext);
+
+  const composeMessage = () => {
+    const url = resolvePostUrl();
+
+    if (usesRichShare) {
+      return composeRouteShareText({
+        cityName,
+        categoryName,
+        stopCount: stopCount ?? 0,
+        stopTitles,
+        authorUsername,
+        url,
+        customMessage,
+      });
+    }
+
+    return ShareService.composeShareMessage(postTitle, url, customMessage);
+  };
+
+  const shareNativeLink = async () => {
+    const url = resolvePostUrl();
+    const message = usesRichShare
+      ? composeRouteShareText({
+          cityName,
+          categoryName,
+          stopCount: stopCount ?? 0,
+          stopTitles,
+          authorUsername,
+          url,
+          customMessage,
+        })
+      : ShareService.composeShareMessage(postTitle, url, customMessage);
 
     return RNShare.share({
       message,
@@ -205,28 +243,24 @@ const ShareModal: React.FC<ShareModalProps> = ({
     });
   };
 
-  const handleShareLink = async () => {
+  const handleWhatsAppShare = async () => {
     try {
-      setIsGeneratingLink(true);
+      const shared = await ShareService.shareToWhatsApp(composeMessage());
 
-      const url = resolvePostUrl();
-
-      await shareNativeLink(url, customMessage);
-
-      onClose();
+      if (shared) {
+        onClose();
+      } else {
+        showAlert('WhatsApp açılamadı. Diğer uygulamalar seçeneğini deneyin.');
+      }
     } catch (error) {
-      console.error('Error sharing:', error);
+      console.error('Error sharing to WhatsApp:', error);
       Alert.alert('Hata', 'Paylaşım sırasında bir hata oluştu');
-    } finally {
-      setIsGeneratingLink(false);
     }
   };
 
   const handleCopyLink = async () => {
     try {
-      const url = resolvePostUrl();
-      const text = ShareService.composeShareMessage(postTitle, url, customMessage);
-      await copyToClipboard(text, 'Paylaşım metni panoya kopyalandı!');
+      await copyToClipboard(composeMessage(), 'Paylaşım metni panoya kopyalandı!');
       onClose();
     } catch (error) {
       console.error('Error copying link:', error);
@@ -234,26 +268,23 @@ const ShareModal: React.FC<ShareModalProps> = ({
     }
   };
 
-  const handleSocialShare = async () => {
-    const url = resolvePostUrl();
-
+  const handleMoreShare = async () => {
     try {
-      await shareNativeLink(url, customMessage);
+      await shareNativeLink();
+      onClose();
     } catch (error) {
       console.error('Error sharing:', error);
       Alert.alert('Hata', 'Paylaşım sırasında bir hata oluştu');
     }
-
-    onClose();
   };
 
   const shareOptions = [
     {
-      id: 'link',
-      title: 'Link Paylaş',
-      icon: 'link-variant',
-      color: '#007AFF',
-      onPress: handleShareLink,
+      id: 'whatsapp',
+      title: 'WhatsApp',
+      icon: 'whatsapp',
+      color: '#25D366',
+      onPress: handleWhatsAppShare,
     },
     {
       id: 'copy',
@@ -263,43 +294,11 @@ const ShareModal: React.FC<ShareModalProps> = ({
       onPress: handleCopyLink,
     },
     {
-      id: 'whatsapp',
-      title: 'WhatsApp',
-      icon: 'whatsapp',
-      color: '#25D366',
-      onPress: handleSocialShare,
-    },
-    {
-      id: 'telegram',
-      title: 'Telegram',
-      icon: 'telegram',
-      color: '#0088CC',
-      onPress: handleSocialShare,
-    },
-    {
-      id: 'twitter',
-      title: 'Twitter',
-      icon: 'twitter',
-      color: '#1DA1F2',
-      onPress: handleSocialShare,
-    },
-    {
       id: 'more',
-      title: 'Daha Fazla',
-      icon: 'dots-horizontal',
+      title: 'Diğer uygulamalar',
+      icon: 'share-variant',
       color: '#8E8E93',
-      onPress: async () => {
-        const url = resolvePostUrl();
-
-        try {
-          await shareNativeLink(url, customMessage);
-        } catch (error) {
-          console.error('Error sharing:', error);
-          Alert.alert('Hata', 'Paylaşım sırasında bir hata oluştu');
-        }
-
-        onClose();
-      },
+      onPress: handleMoreShare,
     },
   ];
 
@@ -312,12 +311,12 @@ const ShareModal: React.FC<ShareModalProps> = ({
     >
       <View style={styles.overlay}>
         <ModalSheetSafeArea style={styles.modalContainer}>
-        <KeyboardAwareContainer
-          style={styles.modalInner}
-          enableScrollView={false}
-          keyboardVerticalOffset={50}
-        >
-          {/* Header */}
+          <ScrollView
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
           <View style={styles.header}>
             <Text style={styles.title}>Paylaş</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -325,47 +324,6 @@ const ShareModal: React.FC<ShareModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Custom Message Input */}
-          <View style={styles.messageContainer}>
-            <Text style={styles.messageLabel}>Mesajınız (isteğe bağlı)</Text>
-            <TextInput
-              style={styles.messageInput}
-              placeholder="Gönderiyle birlikte paylaşmak istediğiniz mesajı yazın..."
-              placeholderTextColor={theme.textMuted}
-              value={customMessage}
-              onChangeText={setCustomMessage}
-              multiline
-              maxLength={200}
-              textAlignVertical="top"
-            />
-            <Text style={styles.characterCount}>
-              {customMessage.length}/200
-            </Text>
-          </View>
-
-          {/* Share Options */}
-          <View style={styles.optionsContainer}>
-            {shareOptions.map((option) => (
-              <TouchableOpacity
-                key={option.id}
-                style={styles.optionButton}
-                onPress={option.onPress}
-                disabled={isGeneratingLink && option.id === 'link'}
-              >
-                <View style={[styles.optionIcon, { backgroundColor: option.color }]}>
-                  <Icon name={option.icon} size={24} color="#fff" />
-                </View>
-                <Text style={styles.optionTitle}>{option.title}</Text>
-                {isGeneratingLink && option.id === 'link' && (
-                  <View style={styles.loadingIndicator}>
-                    <Icon name="loading" size={16} color={theme.textMuted} />
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Post Preview */}
           <View style={styles.previewContainer}>
             <Text style={styles.previewTitle}>Önizleme</Text>
             <View style={styles.previewCard}>
@@ -385,16 +343,44 @@ const ShareModal: React.FC<ShareModalProps> = ({
                   {postTitle}
                 </Text>
                 <Text style={styles.previewUrl} numberOfLines={2}>
-                  {ShareService.composeShareMessage(
-                    postTitle,
-                    resolvePostUrl(),
-                    customMessage,
-                  )}
+                  {composeMessage()}
                 </Text>
               </View>
             </View>
           </View>
-        </KeyboardAwareContainer>
+
+          <View style={styles.messageContainer}>
+            <Text style={styles.messageLabel}>Mesajınız (isteğe bağlı)</Text>
+            <TextInput
+              style={styles.messageInput}
+              placeholder="Gönderiyle birlikte paylaşmak istediğiniz mesajı yazın..."
+              placeholderTextColor={theme.textMuted}
+              value={customMessage}
+              onChangeText={setCustomMessage}
+              multiline
+              maxLength={200}
+              textAlignVertical="top"
+            />
+            <Text style={styles.characterCount}>
+              {customMessage.length}/200
+            </Text>
+          </View>
+
+          <View style={styles.optionsContainer}>
+            {shareOptions.map((option) => (
+              <TouchableOpacity
+                key={option.id}
+                style={styles.optionButton}
+                onPress={option.onPress}
+              >
+                <View style={[styles.optionIcon, { backgroundColor: option.color }]}>
+                  <Icon name={option.icon} size={24} color="#fff" />
+                </View>
+                <Text style={styles.optionTitle}>{option.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          </ScrollView>
         </ModalSheetSafeArea>
       </View>
     </Modal>

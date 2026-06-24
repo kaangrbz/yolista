@@ -51,6 +51,10 @@ export interface PostCarouselHeightOptions {
   minHeight?: number;
   maxHeight?: number;
   defaultHeight?: number;
+  /** false ise piksel oranı olduğu gibi kullanılır (min/max uygulanmaz). */
+  clamp?: boolean;
+  /** image_width/height yoksa image_alignment ile yükseklik hesapla. */
+  useImageAlignmentFallback?: boolean;
 }
 
 /**
@@ -66,6 +70,8 @@ export function getPostCarouselDisplayHeight(
   const minHeight = options.minHeight ?? 250;
   const maxHeight = options.maxHeight ?? 1080;
   const defaultHeight = options.defaultHeight ?? 400;
+  const clamp = options.clamp !== false;
+  const useImageAlignmentFallback = options.useImageAlignmentFallback === true;
 
   const width = normalizeImageDimension(imageWidth);
   const height = normalizeImageDimension(imageHeight);
@@ -74,11 +80,19 @@ export function getPostCarouselDisplayHeight(
     const aspectRatio = height / width;
     const adjustedHeight = screenWidth * aspectRatio;
 
+    if (!clamp) {
+      return adjustedHeight;
+    }
+
     return Math.max(minHeight, Math.min(maxHeight, adjustedHeight));
   }
 
-  if (imageAlignment) {
+  if (useImageAlignmentFallback && imageAlignment) {
     const fromAlignment = getExploreTileHeight(imageAlignment, screenWidth);
+
+    if (!clamp) {
+      return fromAlignment;
+    }
 
     return Math.max(minHeight, Math.min(maxHeight, fromAlignment));
   }

@@ -31,6 +31,7 @@ interface MapSelectedRouteStopsProps {
   onOpenRouteInMaps?: () => void;
   onOpenStopInMaps?: (stop: RouteWithProfile) => void;
   onOpenRouteDetail?: () => void;
+  onExpandSheet?: () => void;
   startFromUserLocation?: boolean;
   onStartFromUserLocationChange?: (enabled: boolean) => void;
   canStartFromUserLocation?: boolean;
@@ -46,6 +47,7 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
   onOpenRouteInMaps,
   onOpenStopInMaps,
   onOpenRouteDetail,
+  onExpandSheet,
   startFromUserLocation = false,
   onStartFromUserLocationChange,
   canStartFromUserLocation = false,
@@ -343,7 +345,10 @@ const MapSelectedRouteStops: React.FC<MapSelectedRouteStopsProps> = ({
       ) : null}
 
       {onOpenRouteDetail ? (
-        <MapRouteDetailButton onPress={onOpenRouteDetail} />
+        <MapRouteDetailButton
+          onPress={onOpenRouteDetail}
+          onExpandSheet={onExpandSheet}
+        />
       ) : null}
 
       {loading ? (

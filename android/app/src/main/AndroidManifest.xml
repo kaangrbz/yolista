@@ -19,6 +19,14 @@
 
   <uses-permission android:name="android.permission.CAMERA" />
 
+  <queries>
+    <package android:name="com.whatsapp" />
+    <intent>
+      <action android:name="android.intent.action.VIEW" />
+      <data android:scheme="whatsapp" />
+    </intent>
+  </queries>
+
   <!-- Location (Android 12+ requires both FINE and COARSE declared together) -->
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -58,7 +66,7 @@
         <category android:name="android.intent.category.DEFAULT" />
         <category android:name="android.intent.category.BROWSABLE" />
         <data android:scheme="https"
-              android:host="yolista.roulista.com" />
+              android:host="web.youlistaapp.com" />
       </intent-filter>
 
       <intent-filter android:autoVerify="true">
@@ -66,7 +74,23 @@
         <category android:name="android.intent.category.DEFAULT" />
         <category android:name="android.intent.category.BROWSABLE" />
         <data android:scheme="https"
-              android:host="www.yolista.roulista.com" />
+              android:host="www.web.youlistaapp.com" />
+      </intent-filter>
+
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="https"
+              android:host="web.youlistaapp.com" />
+      </intent-filter>
+
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="https"
+              android:host="www.web.youlistaapp.com" />
       </intent-filter>
 
       <intent-filter android:autoVerify="true">
@@ -74,7 +98,7 @@
         <category android:name="android.intent.category.DEFAULT" />
         <category android:name="android.intent.category.BROWSABLE" />
         <data android:scheme="https" 
-              android:host="roulista.com" />
+              android:host="web.youlistaapp.com" />
       </intent-filter>
       
       <intent-filter android:autoVerify="true">
@@ -82,7 +106,7 @@
         <category android:name="android.intent.category.DEFAULT" />
         <category android:name="android.intent.category.BROWSABLE" />
         <data android:scheme="https" 
-              android:host="www.roulista.com" />
+              android:host="www.web.youlistaapp.com" />
       </intent-filter>
       
       <intent-filter>

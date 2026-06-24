@@ -1,9 +1,8 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { DefaultAvatar } from '../../assets';
 import { PostHeaderProps } from '../../types/post.types';
-import { useProfileImageDownload } from '../../hooks/useImageDownload';
+import SmartImage from '../common/smart-image/SmartImage';
 import PostDropdownMenu from '../PostDropdownMenu';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useThemedStyles } from '../../theme/useThemedStyles';
@@ -70,25 +69,18 @@ const PostHeader: React.FC<PostHeaderProps> = ({
     },
   }));
 
-  const { imageUri: downloadedImageUri } = useProfileImageDownload(
-    userId ? userImage : undefined,
-    userId || '',
-    userImagePreview,
-  );
-
-  const profileImageSource = downloadedImageUri
-    ? { uri: downloadedImageUri }
-    : userImage
-    ? { uri: userImage }
-    : DefaultAvatar;
-
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.userInfo} onPress={onProfilePress}>
-        <Image
-          source={profileImageSource}
+        <SmartImage
+          kind="user"
+          userId={userId || ''}
+          imageUrl={userId ? userImage : undefined}
+          imagePreviewUrl={userImagePreview}
+          width={32}
+          height={32}
+          borderRadius={16}
           style={styles.profileImage}
-          resizeMode="cover"
         />
         <View style={styles.userDetails}>
           <View style={styles.usernameRow}>

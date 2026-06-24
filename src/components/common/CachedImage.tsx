@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+/** @deprecated SmartImage kullanın — bu bileşen geriye dönük uyumluluk için tutuluyor. */
 import { View, Image, StyleSheet, TouchableOpacity, Text, Pressable } from 'react-native';
 import { ImageService } from '../../services/ImageService';
 import SimpleSkeletonLoader from './SimpleSkeletonLoader';

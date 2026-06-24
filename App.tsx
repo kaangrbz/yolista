@@ -19,6 +19,7 @@ import { Logo } from './src/components/Logo';
 import { ImageService } from './src/services/ImageService';
 import GlobalAlert from './src/components/common/GlobalAlert';
 import CreateFlowExitModalHost from './src/components/createFlow/CreateFlowExitModal';
+import PublishSharePrompt from './src/components/share/PublishSharePrompt';
 import { ConfirmModalHost } from './src/components/common/ConfirmModal';
 import { getCachedCategories } from './src/services/categoriesCache';
 import DeepLinkingService from './src/services/DeepLinkingService';
@@ -155,6 +156,7 @@ const AppContent = (): React.JSX.Element => {
       />
       <CreateFlowExitModalHost />
       <ConfirmModalHost />
+      <PublishSharePrompt />
     </>
   );
 };

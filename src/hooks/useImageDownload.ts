@@ -38,6 +38,13 @@ export const useImageDownload = (
       return;
     }
 
+    setState({
+      imageUri: null,
+      loading: true,
+      error: null,
+      retryCount: 0,
+    });
+
     const downloadImage = async () => {
       const result = await ImageService.downloadImage(
         imageUrl,

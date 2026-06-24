@@ -5,6 +5,7 @@ import {
   applyRouteLocationMetadata,
   mergeRoutesById,
 } from '../utils/applyRouteLocationMetadata';
+import { isAbortError, throwIfAborted } from '../utils/abortError';
 
 export interface BoundingBox {
   minLat: number;
@@ -26,6 +27,7 @@ export interface FetchRoutesInBboxParams {
   bbox: BoundingBox;
   filters?: DiscoveryFilters;
   limit?: number;
+  signal?: AbortSignal;
 }
 
 interface CacheEntry {
@@ -69,18 +71,28 @@ const haversineKm = (
 const enrichRoutes = async (
   routes: any[],
   loggedUserId: string | null,
+  signal?: AbortSignal,
 ): Promise<RouteWithProfile[]> => {
+  throwIfAborted(signal);
+
   if (routes.length === 0) {
     return [];
   }
 
   const ids = routes.map((row) => row.id);
 
-  const { data: likesData } = await supabase
+  let likesQuery = supabase
     .from('likes')
     .select('entity_id, user_id')
     .eq('entity_type', 'route')
     .in('entity_id', ids);
+
+  if (signal) {
+    likesQuery = likesQuery.abortSignal(signal);
+  }
+
+  const { data: likesData } = await likesQuery;
+  throwIfAborted(signal);
 
   const likeCountMap: Record<string, number> = {};
   const userLikedMap: Record<string, boolean> = {};
@@ -93,9 +105,16 @@ const enrichRoutes = async (
     }
   });
 
-  const { data: commentCounts } = await supabase.rpc('count_comments_by_route_ids', {
+  let commentCountsQuery = supabase.rpc('count_comments_by_route_ids', {
     route_ids: ids,
   });
+
+  if (signal) {
+    commentCountsQuery = commentCountsQuery.abortSignal(signal);
+  }
+
+  const { data: commentCounts } = await commentCountsQuery;
+  throwIfAborted(signal);
 
   const commentCountsMap = (commentCounts || []).reduce(
     (acc: Record<string, number>, row: { route_id: string; comment_count: number }) => {
@@ -127,7 +146,9 @@ const fetchLegacyCityCenterRoutesInBbox = async (
   bbox: BoundingBox,
   categoryId?: number,
   limit = 200,
+  signal?: AbortSignal,
 ): Promise<any[]> => {
+  throwIfAborted(signal);
   const cityIdsInBbox = getCityIdsInBbox(bbox);
 
   if (cityIdsInBbox.length === 0) {
@@ -149,7 +170,12 @@ const fetchLegacyCityCenterRoutesInBbox = async (
     query = query.eq('category_id', categoryId);
   }
 
+  if (signal) {
+    query = query.abortSignal(signal);
+  }
+
   const { data, error } = await query;
+  throwIfAborted(signal);
 
   if (error) {
     console.warn('RouteDiscoveryService legacy city-center fetch:', error);
@@ -163,8 +189,11 @@ const fetchViaRpc = async (
   bbox: BoundingBox,
   categoryId?: number,
   limit = 200,
+  signal?: AbortSignal,
 ): Promise<any[] | null> => {
-  const { data, error } = await supabase.rpc('routes_in_bbox', {
+  throwIfAborted(signal);
+
+  let rpcQuery = supabase.rpc('routes_in_bbox', {
     min_lat: bbox.minLat,
     max_lat: bbox.maxLat,
     min_lng: bbox.minLng,
@@ -172,6 +201,13 @@ const fetchViaRpc = async (
     p_category_id: categoryId && categoryId !== 0 ? categoryId : null,
     result_limit: limit,
   });
+
+  if (signal) {
+    rpcQuery = rpcQuery.abortSignal(signal);
+  }
+
+  const { data, error } = await rpcQuery;
+  throwIfAborted(signal);
 
   if (error) {
     if (
@@ -190,11 +226,18 @@ const fetchViaRpc = async (
 
   const ids = data.map((row: { id: string }) => row.id);
 
-  const { data: enriched, error: enrichError } = await supabase
+  let enrichQuery = supabase
     .from('routes')
     .select(ROUTE_SELECT)
     .in('id', ids)
     .order('created_at', { ascending: false });
+
+  if (signal) {
+    enrichQuery = enrichQuery.abortSignal(signal);
+  }
+
+  const { data: enriched, error: enrichError } = await enrichQuery;
+  throwIfAborted(signal);
 
   if (enrichError) {
     console.warn('RouteDiscoveryService RPC enrich fallback:', enrichError);
@@ -208,7 +251,9 @@ const fetchClientRoutesInBbox = async (
   bbox: BoundingBox,
   categoryId?: number,
   limit = 200,
+  signal?: AbortSignal,
 ): Promise<any[]> => {
+  throwIfAborted(signal);
   const cityIdsInBbox = getCityIdsInBbox(bbox);
   const orFilters: string[] = [
     `and(latitude.gte.${bbox.minLat},latitude.lte.${bbox.maxLat},longitude.gte.${bbox.minLng},longitude.lte.${bbox.maxLng})`,
@@ -234,7 +279,12 @@ const fetchClientRoutesInBbox = async (
     query = query.eq('category_id', categoryId);
   }
 
+  if (signal) {
+    query = query.abortSignal(signal);
+  }
+
   const { data, error } = await query;
+  throwIfAborted(signal);
 
   if (error) {
     console.error('RouteDiscoveryService.fetchClientRoutesInBbox:', error);
@@ -256,37 +306,46 @@ export const RouteDiscoveryService = {
     params: FetchRoutesInBboxParams,
     loggedUserId: string | null = null,
   ): Promise<RouteWithProfile[]> {
-    const { bbox, filters, limit = 200 } = params;
+    const { bbox, filters, limit = 200, signal } = params;
+    throwIfAborted(signal);
+
     const cacheKey = buildCacheKey(params);
     const cached = cache.get(cacheKey);
 
     if (cached && cached.expiresAt > Date.now()) {
+      throwIfAborted(signal);
       return cached.data;
     }
 
     let rows: any[] = [];
 
     try {
-      const rpcRows = await fetchViaRpc(bbox, filters?.categoryId, limit);
+      const rpcRows = await fetchViaRpc(bbox, filters?.categoryId, limit, signal);
 
       if (rpcRows !== null) {
         const legacyRows = await fetchLegacyCityCenterRoutesInBbox(
           bbox,
           filters?.categoryId,
           limit,
+          signal,
         );
         rows = mergeRoutesById(rpcRows, legacyRows);
       } else {
-        rows = await fetchClientRoutesInBbox(bbox, filters?.categoryId, limit);
+        rows = await fetchClientRoutesInBbox(bbox, filters?.categoryId, limit, signal);
       }
     } catch (rpcError) {
+      if (isAbortError(rpcError)) {
+        throw rpcError;
+      }
+
       console.warn(
         'RouteDiscoveryService RPC unavailable, using client query:',
         rpcError,
       );
-      rows = await fetchClientRoutesInBbox(bbox, filters?.categoryId, limit);
+      rows = await fetchClientRoutesInBbox(bbox, filters?.categoryId, limit, signal);
     }
 
+    throwIfAborted(signal);
     rows = rows.map((row) => applyRouteLocationMetadata(row));
 
     if (
@@ -311,7 +370,8 @@ export const RouteDiscoveryService = {
       });
     }
 
-    const enriched = await enrichRoutes(rows, loggedUserId);
+    const enriched = await enrichRoutes(rows, loggedUserId, signal);
+    throwIfAborted(signal);
 
     cache.set(cacheKey, {
       data: enriched,

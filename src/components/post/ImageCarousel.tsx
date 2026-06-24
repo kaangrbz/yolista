@@ -1,14 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Image, ScrollView, Dimensions, TouchableOpacity, Animated } from 'react-native';
+import {
+  View,
+  ScrollView,
+  Dimensions,
+  TouchableOpacity,
+  Animated,
+} from 'react-native';
+import SmartImage from '../common/smart-image/SmartImage';
+import RouteImageSkeleton from '../common/smart-image/RouteImageSkeleton';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { ImageCarouselProps } from '../../types/post.types';
+import { useAppTheme } from '../../context/AppThemeContext';
 import { useThemedStyles } from '../../theme/useThemedStyles';
 import PhotoHintOverlay from './PhotoHintOverlay';
 
 const { width: screenWidth } = Dimensions.get('window');
+const doubleTapDelay = 300;
 
 const ImageCarousel: React.FC<ImageCarouselProps> = ({
-  images,
+  slides,
   hints = [],
   currentIndex,
   onIndexChange,
@@ -19,7 +29,12 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   minHeight = 200,
   isLiked = false,
   onDoubleTap,
+  onImagePress,
+  lockToFirstPhotoDimensions = true,
+  secondaryImageResizeMode = 'cover',
+  downloadEnabled = true,
 }) => {
+  const theme = useAppTheme();
   const styles = useThemedStyles((t) => ({
     container: {
       position: 'relative',
@@ -29,16 +44,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
     },
     image: {
       width: screenWidth,
-    },
-    placeholder: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: t.surfaceMuted,
-    },
-    placeholderText: {
-      fontSize: 16,
-      color: t.textMuted,
     },
     indicators: {
       position: 'absolute',
@@ -76,8 +81,24 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   const heartScale = useRef(new Animated.Value(0)).current;
   const heartOpacity = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView>(null);
+  const syncedIndexRef = useRef(currentIndex);
+  const lastTap = useRef(0);
+  const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    return () => {
+      if (singleTapTimer.current) {
+        clearTimeout(singleTapTimer.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (currentIndex === syncedIndexRef.current) {
+      return;
+    }
+
+    syncedIndexRef.current = currentIndex;
     scrollRef.current?.scrollTo({
       x: currentIndex * screenWidth,
       animated: true,
@@ -85,6 +106,12 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   }, [currentIndex]);
 
   useEffect(() => {
+    if (lockToFirstPhotoDimensions) {
+      const lockedHeight = displayHeights?.[0] ?? height;
+      setCalculatedHeight(lockedHeight);
+      return;
+    }
+
     if (!dynamicHeight) {
       setCalculatedHeight(height);
       return;
@@ -96,37 +123,33 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
     }
 
     setCalculatedHeight(height);
-  }, [dynamicHeight, hasPresetHeights, displayHeights, currentIndex, height]);
+  }, [
+    dynamicHeight,
+    displayHeights,
+    currentIndex,
+    hasPresetHeights,
+    height,
+    lockToFirstPhotoDimensions,
+  ]);
 
   const handleImageScroll = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(contentOffsetX / screenWidth);
+    syncedIndexRef.current = index;
     onIndexChange(index);
   };
 
   const getImageHeight = (index: number) => {
-    if (dynamicHeight && displayHeights && displayHeights[index] !== undefined) {
+    if (
+      !lockToFirstPhotoDimensions &&
+      dynamicHeight &&
+      displayHeights &&
+      displayHeights[index] !== undefined
+    ) {
       return displayHeights[index];
     }
 
     return calculatedHeight;
-  };
-
-  const lastTap = useRef<number>(0);
-  const doubleTapDelay = 300;
-
-  const handleDoubleTap = () => {
-    const now = Date.now();
-
-    if (now - lastTap.current < doubleTapDelay) {
-      showHeartAnimation();
-
-      if (onDoubleTap && !isLiked) {
-        onDoubleTap();
-      }
-    }
-
-    lastTap.current = now;
   };
 
   const showHeartAnimation = () => {
@@ -147,12 +170,50 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
     ]).start();
   };
 
-  if (images.length === 0) {
+  const handlePress = (index: number) => {
+    const now = Date.now();
+    const slide = slides[index];
+    const hasOpenableImage = Boolean(slide?.uri);
+
+    if (now - lastTap.current < doubleTapDelay) {
+      if (singleTapTimer.current) {
+        clearTimeout(singleTapTimer.current);
+        singleTapTimer.current = null;
+      }
+
+      showHeartAnimation();
+
+      if (onDoubleTap && !isLiked) {
+        onDoubleTap();
+      }
+
+      lastTap.current = 0;
+      return;
+    }
+
+    lastTap.current = now;
+
+    if (!onImagePress || !hasOpenableImage) {
+      return;
+    }
+
+    singleTapTimer.current = setTimeout(() => {
+      singleTapTimer.current = null;
+      onImagePress(index);
+    }, doubleTapDelay);
+  };
+
+  const getImageResizeMode = (index: number) =>
+    index === 0 ? 'cover' : secondaryImageResizeMode;
+
+  if (slides.length === 0) {
     return (
       <View style={[styles.container, { height: calculatedHeight }]}>
-        <View style={styles.placeholder}>
-          <Text style={styles.placeholderText}>Resim yok</Text>
-        </View>
+        <RouteImageSkeleton
+          width={screenWidth}
+          height={calculatedHeight}
+          borderRadius={0}
+        />
       </View>
     );
   }
@@ -169,31 +230,41 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         onMomentumScrollEnd={handleImageScroll}
         style={styles.scrollView}
       >
-        {images.map((imageUri, index) => (
-          <TouchableOpacity
-            key={index}
-            activeOpacity={1}
-            onPress={handleDoubleTap}
-            style={styles.imageTouchable}
-          >
-            <Image
-              source={{ uri: imageUri }}
-              style={[
-                styles.image,
-                {
-                  height: getImageHeight(index),
-                  width: screenWidth,
-                },
-              ]}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
-        ))}
+        {slides.map((slide, index) => {
+          const imageHeight = getImageHeight(index);
+          const hasOpenableImage = Boolean(slide.uri);
+
+          return (
+            <TouchableOpacity
+              key={index}
+              activeOpacity={1}
+              onPress={() => handlePress(index)}
+              style={styles.imageTouchable}
+            >
+              <SmartImage
+                kind="route"
+                userId={slide.userId ?? ''}
+                imageUrl={slide.imageUrl}
+                imagePreviewUrl={slide.imagePreviewUrl}
+                resolvedUri={slide.uri}
+                downloadEnabled={downloadEnabled}
+                cacheOnly={!downloadEnabled}
+                width={screenWidth}
+                height={imageHeight}
+                resizeMode={getImageResizeMode(index)}
+                style={styles.image}
+                accessibilityLabel={
+                  hasOpenableImage ? 'Gönderi fotoğrafı' : 'Görsel yüklenemedi'
+                }
+              />
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
-      {images.length > 1 && (
+      {slides.length > 1 && (
         <View style={styles.indicators}>
-          {images.map((_, index) => (
+          {slides.map((_, index) => (
             <View
               key={index}
               style={[

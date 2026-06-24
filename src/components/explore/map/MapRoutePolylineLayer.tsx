@@ -9,7 +9,10 @@ import {
 import type { RouteSegment } from '../../../types/routeSegment.types';
 import { getRouteSegmentStatus } from '../../../types/routeSegment.types';
 import { getPolylineDirectionMarkers } from '../../../utils/mapPolyline';
-import { getSegmentStrokeColor } from '../../../utils/routeSegmentColors';
+import {
+  getSegmentStrokeColor,
+  getSegmentStrokeColorFaded,
+} from '../../../utils/routeSegmentColors';
 
 interface MapRoutePolylineLayerProps {
   showRoute: boolean;
@@ -83,10 +86,12 @@ export const MapRoutePolylineLayer: React.FC<MapRoutePolylineLayerProps> = ({
           }
 
           const status = getRouteSegmentStatus(index, activeSegmentIndex);
-          const strokeColor = getSegmentStrokeColor(status, segment.variant);
-          const isApproach = segment.variant === 'approach';
           const isActive = status === 'active';
-          const strokeWidth = isActive ? 3.5 : 2.5;
+          const isApproach = segment.variant === 'approach';
+          const strokeColor = isActive
+            ? getSegmentStrokeColor(status, segment.variant)
+            : getSegmentStrokeColorFaded(status, segment.variant);
+          const strokeWidth = isActive ? 3.5 : 2;
 
           return (
             <React.Fragment key={segment.id}>
@@ -104,7 +109,9 @@ export const MapRoutePolylineLayer: React.FC<MapRoutePolylineLayerProps> = ({
                 coordinates={segment.coordinates}
                 strokeColor={strokeColor}
                 strokeWidth={strokeWidth}
-                lineDashPattern={isApproach ? [8, 6] : undefined}
+                lineDashPattern={
+                  isApproach ? [8, 6] : isActive ? undefined : [10, 8]
+                }
                 lineCap="round"
                 lineJoin="round"
                 zIndex={18 + index}

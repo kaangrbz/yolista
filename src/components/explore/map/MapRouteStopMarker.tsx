@@ -5,6 +5,7 @@ import { RouteWithProfile } from '../../../model/routes.model';
 import { getMapMarkerAnchorProps } from '../../../constants/mapMarkerLayout';
 import { useMapMarkerViewTracking } from '../../../hooks/useMapMarkerViewTracking';
 import { getMapStopLabel } from './MapRouteStopCard';
+import { getStopLetterLabel } from '../../../utils/getStopOrderLabel';
 import MapRouteMarker from './MapRouteMarker';
 
 interface MapRouteStopMarkerProps {
@@ -56,7 +57,7 @@ export const MapRouteStopMarker: React.FC<MapRouteStopMarkerProps> = ({
         userId={stop.user_id || null}
         iconName={stop.categories?.icon_name}
         selected={selected}
-        orderLabel={String((stop.order_index ?? 0) + 1)}
+        orderLabel={getStopLetterLabel(stop.order_index ?? 0)}
         onImageReady={handleMarkerReady}
         collapsable={Platform.OS === 'android' ? false : undefined}
       />

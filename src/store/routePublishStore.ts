@@ -11,6 +11,15 @@ import type { RoutePublishEnqueuePayload } from '../services/routePublishTypes';
 
 export type PublishPhase = 'idle' | 'uploading' | 'creating' | 'success' | 'failed';
 
+export interface PublishedRouteMeta {
+  cityName?: string;
+  categoryName?: string;
+  previewUri?: string | null;
+  stopCount?: number;
+  stopTitles?: string[];
+  authorUsername?: string;
+}
+
 interface WorkerUploadPayload {
   jobId: string;
   currentImageIndex: number;
@@ -32,8 +41,12 @@ interface RoutePublishState {
   subtitleLine: string;
   lastError: string | null;
   draftSaved: boolean;
+  publishedRouteId: string | null;
+  publishedRouteMeta: PublishedRouteMeta | null;
+  sharePromptVisible: boolean;
   enqueue: (payload: RoutePublishEnqueuePayload) => Promise<boolean>;
   dismissFailure: () => void;
+  dismissSharePrompt: () => void;
   resetAfterSuccess: () => void;
   retryFromDraft: () => Promise<void>;
   resumePendingDraftIfAny: () => Promise<void>;
@@ -44,7 +57,11 @@ interface RoutePublishState {
     subtitleLine: string;
     progress01: number;
   }) => void;
-  workerSuccess: (payload: { progress01: number }) => void;
+  workerSuccess: (payload: {
+    progress01: number;
+    routeId: string;
+    meta: PublishedRouteMeta;
+  }) => void;
   workerFailed: (payload: { lastError: string; draftSaved: boolean }) => void;
 }
 
@@ -59,6 +76,9 @@ export const useRoutePublishStore = create<RoutePublishState>((set, get) => ({
   subtitleLine: '',
   lastError: null,
   draftSaved: false,
+  publishedRouteId: null,
+  publishedRouteMeta: null,
+  sharePromptVisible: false,
 
   workerUploadTick: (payload) => {
     set({
@@ -90,6 +110,9 @@ export const useRoutePublishStore = create<RoutePublishState>((set, get) => ({
       progress01: payload.progress01,
       lastError: null,
       draftSaved: false,
+      publishedRouteId: payload.routeId,
+      publishedRouteMeta: payload.meta,
+      sharePromptVisible: true,
     });
 
     showToast('success', 'Rota başarıyla paylaşıldı', 'Başarılı');
@@ -142,6 +165,9 @@ export const useRoutePublishStore = create<RoutePublishState>((set, get) => ({
       totalImages: payload.selectedPhotos.length,
       currentImageIndex: 0,
       previewUri: payload.selectedPhotos[0]?.uri || null,
+      publishedRouteId: null,
+      publishedRouteMeta: null,
+      sharePromptVisible: false,
     });
 
     beginRoutePublishFromEnqueue(payload, user.id).catch(() => {
@@ -149,6 +175,14 @@ export const useRoutePublishStore = create<RoutePublishState>((set, get) => ({
     });
 
     return true;
+  },
+
+  dismissSharePrompt: () => {
+    set({
+      publishedRouteId: null,
+      publishedRouteMeta: null,
+      sharePromptVisible: false,
+    });
   },
 
   dismissFailure: () => {

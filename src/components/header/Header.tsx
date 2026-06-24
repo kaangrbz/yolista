@@ -109,18 +109,31 @@ export const HomeHeader = () => {
   return <BaseHeader title="Yolista" centerTitle />;
 };
 
-export const RouteDetailHeader = ({ navigation }: { navigation?: any }) => {
+export const RouteDetailHeader = ({
+  navigation,
+  title = 'Rota Detayı',
+  rightComponent,
+}: {
+  navigation?: any;
+  title?: string;
+  rightComponent?: React.ReactNode;
+}) => {
   const theme = useAppTheme();
 
   return (
     <BaseHeader
-      title="Rota Detayı"
+      title={title}
       style={{ justifyContent: 'space-between' }}
       leftComponent={
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Geri"
+        >
           <Icon name="arrow-left" size={24} color={theme.textPrimary} />
         </TouchableOpacity>
       }
+      rightComponent={rightComponent}
     />
   );
 };

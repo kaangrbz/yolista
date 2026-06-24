@@ -1,12 +1,34 @@
+const DEFAULT_SITE_URL = 'https://web.youlistaapp.com';
+
 /** Yayınlanan site ve uygulama deep link kökleri */
 export const APP_PUBLISHED_ORIGIN =
-  process.env.EXPO_PUBLIC_SITE_URL ?? 'https://yolista.roulista.com';
+  process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
+
+const LEGACY_APP_LINK_HOSTS = [
+  'web.youlistaapp.com',
+  'www.web.youlistaapp.com',
+  'web.youlistaapp.com',
+  'www.web.youlistaapp.com',
+] as const;
+
+function hostsFromOrigin(origin: string): string[] {
+  try {
+    const hostname = new URL(origin).hostname;
+    const hosts = [hostname];
+
+    if (!hostname.startsWith('www.')) {
+      hosts.push(`www.${hostname}`);
+    }
+
+    return hosts;
+  } catch {
+    return [];
+  }
+}
 
 export const APP_LINK_HOSTS = [
-  'yolista.roulista.com',
-  'www.yolista.roulista.com',
-  'roulista.com',
-  'www.roulista.com',
+  ...hostsFromOrigin(APP_PUBLISHED_ORIGIN),
+  ...LEGACY_APP_LINK_HOSTS,
 ] as const;
 
 export const APP_SCHEME = 'yolista';

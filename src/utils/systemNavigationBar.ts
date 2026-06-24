@@ -11,3 +11,12 @@ export function applySystemNavigationBar(theme: AppThemeColors): void {
   const lightSystemBars = theme.statusBarStyle === 'dark-content';
   SystemNavigationBar.setStyle(theme.background, lightSystemBars);
 }
+
+/** Tam ekran fotoğraf önizleme — koyu arka plan, açık sistem ikonları. */
+export function applyMediaPreviewSystemBars(backdropColor: string): void {
+  if (Platform.OS !== 'android' || !SystemNavigationBar?.setStyle) {
+    return;
+  }
+
+  SystemNavigationBar.setStyle(backdropColor, false);
+}

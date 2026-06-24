@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAppTheme } from '../../context/AppThemeContext';
@@ -9,11 +9,15 @@ import { MAP_ACTIVE_ROUTE_BORDER } from '../../constants/mapDefaults';
 interface RouteDetailCTAProps {
   routeId: string;
   stopCountHint?: number | null;
+  loading?: boolean;
+  onPress?: () => void;
 }
 
 export const RouteDetailCTA: React.FC<RouteDetailCTAProps> = ({
   routeId,
   stopCountHint = null,
+  loading = false,
+  onPress,
 }) => {
   const navigation = useNavigation<any>();
   const theme = useAppTheme();
@@ -24,6 +28,8 @@ export const RouteDetailCTA: React.FC<RouteDetailCTAProps> = ({
       paddingVertical: 8,
     },
     button: {
+      position: 'relative',
+      overflow: 'hidden',
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
@@ -34,6 +40,15 @@ export const RouteDetailCTA: React.FC<RouteDetailCTAProps> = ({
       backgroundColor: t.surfaceMuted,
       borderWidth: 1,
       borderColor: t.border,
+    },
+    buttonContentDimmed: {
+      opacity: 0.45,
+    },
+    loadingOverlay: {
+      ...StyleSheet.absoluteFill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(255,255,255,0.08)',
     },
     iconWrap: {
       width: 36,
@@ -71,6 +86,15 @@ export const RouteDetailCTA: React.FC<RouteDetailCTAProps> = ({
   }, [stopCountHint]);
 
   const handlePress = () => {
+    if (loading) {
+      return;
+    }
+
+    if (onPress) {
+      onPress();
+      return;
+    }
+
     navigation.navigate('RouteDetail', {
       routeId,
       initialTab: 'stops',
@@ -83,19 +107,28 @@ export const RouteDetailCTA: React.FC<RouteDetailCTAProps> = ({
         style={styles.button}
         activeOpacity={0.85}
         onPress={handlePress}
+        disabled={loading}
         accessibilityRole="button"
         accessibilityLabel="Rotayı aç"
+        accessibilityState={{ busy: loading }}
       >
-        <View style={styles.iconWrap}>
+        <View style={[styles.iconWrap, loading && styles.buttonContentDimmed]}>
           <Icon name="map-marker-path" size={18} color={MAP_ACTIVE_ROUTE_BORDER} />
         </View>
-        <View style={styles.textGroup}>
+        <View style={[styles.textGroup, loading && styles.buttonContentDimmed]}>
           <Text style={styles.label}>Rotayı aç</Text>
           <Text style={styles.meta} numberOfLines={1}>
             {metaLabel}
           </Text>
         </View>
-        <Icon name="chevron-right" size={22} color={theme.textMuted} />
+        {!loading ? (
+          <Icon name="chevron-right" size={22} color={theme.textMuted} />
+        ) : null}
+        {loading ? (
+          <View style={styles.loadingOverlay} pointerEvents="none">
+            <ActivityIndicator size="small" color={MAP_ACTIVE_ROUTE_BORDER} />
+          </View>
+        ) : null}
       </TouchableOpacity>
     </View>
   );

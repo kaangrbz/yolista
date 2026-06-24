@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,9 @@ import PostCaption from './post/PostCaption';
 import ShareModal from './ShareModal';
 import { ShareService } from '../services/ShareService';
 import { getRouteShareLabel } from '../utils/getRouteDisplayLabel';
+import {
+  composeRouteShareText,
+} from '../utils/composeRouteShareText';
 import { PostProps } from '../types/post.types';
 import RouteModel from '../model/routes.model';
 import { useGlobalAlert } from '../hooks/useGlobalAlert';
@@ -30,6 +33,11 @@ import SavedCollectionsSheet from './common/SavedCollectionsSheet';
 import { useCommentsSheet } from '../context/CommentsSheetContext';
 import { useThemedStyles } from '../theme/useThemedStyles';
 import RouteDetailCTA from './routeDetail/RouteDetailCTA';
+import PostRoutePreviewSheet from './post/PostRoutePreviewSheet';
+import PostImagePreview, {
+  savePreviewSlide,
+  type PreviewMenuOption,
+} from './post/PostImagePreview';
 
 const { height: windowHeight } = Dimensions.get('window');
 const FULL_SCREEN_MIN_HEIGHT = Math.max(windowHeight - 160, 480);
@@ -43,10 +51,14 @@ const UniversalPost: React.FC<PostProps> = ({
   showFullScreen = false,
   actions,
   detailExperienceSlot,
-  detailBelowCarouselSlot,
   stopCountHint = null,
   activeSlideIndex,
   onActiveSlideIndexChange,
+  imageDownloadEnabled = true,
+  downloadGeneration = 0,
+  feedIndex,
+  lockCarouselToFirstPhotoDimensions = true,
+  secondaryImageResizeMode = 'cover',
 }) => {
   const navigation = useNavigation();
   const styles = useThemedStyles((t) => ({
@@ -115,6 +127,11 @@ const UniversalPost: React.FC<PostProps> = ({
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
+  const [isRoutePreviewVisible, setIsRoutePreviewVisible] = useState(false);
+  const [isRoutePreviewLoading, setIsRoutePreviewLoading] = useState(false);
+  const [isImagePreviewVisible, setIsImagePreviewVisible] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const previewIndexRef = useRef(0);
   const {
     isLiked,
     isSaved,
@@ -150,16 +167,41 @@ const UniversalPost: React.FC<PostProps> = ({
     leadSlide,
     batchMode: batchImages,
     prefetchedRows: prefetchedImageRows,
+    enabled: imageDownloadEnabled,
+    downloadGeneration,
+    feedIndex,
+    slidePrefetchAhead: showFullScreen ? 1 : 1,
+    eagerSlides: showFullScreen,
   });
 
   const {
     carouselHeightOptions,
     screenWidth,
     imagePlaceholderHeight,
+    carouselSlides,
     carouselImages,
     carouselHints,
     displayHeights,
-  } = usePostImageLayout(imageSlides, leadSlide);
+  } = usePostImageLayout(imageSlides, leadSlide, {
+    keepPlaceholderSlides: true,
+    lockToFirstPhotoDimensions: lockCarouselToFirstPhotoDimensions,
+  });
+
+  const routeShareMeta = useMemo(() => {
+    const slideTitles = imageSlides
+      .map((slide) => slide.hint?.trim() ?? '')
+      .filter((title) => title.length > 0);
+    const stopCount =
+      stopCountHint ??
+      (carouselImages.length > 0 ? carouselImages.length : slideTitles.length);
+
+    return {
+      stopCount,
+      stopTitles: slideTitles,
+    };
+  }, [carouselImages.length, imageSlides, stopCountHint]);
+
+  previewIndexRef.current = previewIndex;
 
   const { showAlert, copyToClipboard } = useGlobalAlert();
 
@@ -410,11 +452,68 @@ const UniversalPost: React.FC<PostProps> = ({
 
   const handleCopyLink = async () => {
     const url = ShareService.generatePostUrl(postId);
-    const shareLabel = post ? getRouteShareLabel(post) : '';
-    const text = ShareService.composeShareMessage(shareLabel, url);
+    const text = composeRouteShareText({
+      cityName: post?.cities?.name,
+      categoryName: post?.categories?.name,
+      stopCount: routeShareMeta.stopCount,
+      stopTitles: routeShareMeta.stopTitles,
+      authorUsername: post?.profiles?.username,
+      url,
+    });
 
     await copyToClipboard(text, 'Paylaşım metni panoya kopyalandı!');
   };
+
+  const previewMenuOptions = useMemo((): PreviewMenuOption[] => {
+    const options: PreviewMenuOption[] = [
+      {
+        id: 'download',
+        title: 'İndir',
+        icon: 'download',
+        onPress: () => {
+          void savePreviewSlide(carouselSlides[previewIndexRef.current]);
+        },
+      },
+      {
+        id: 'share',
+        title: 'Paylaş',
+        icon: 'share',
+        onPress: () => {
+          setIsImagePreviewVisible(false);
+          setIsShareModalVisible(true);
+        },
+      },
+      {
+        id: 'copy',
+        title: 'Linki Kopyala',
+        icon: 'content-copy',
+        onPress: () => {
+          void handleCopyLink();
+        },
+      },
+    ];
+
+    if (post?.user_id !== userId) {
+      options.push(
+        {
+          id: 'report',
+          title: 'Şikayet Et',
+          icon: 'flag',
+          color: '#ff4444',
+          onPress: handleReportPost,
+        },
+        {
+          id: 'block',
+          title: 'Engelle',
+          icon: 'block-helper',
+          color: '#ff4444',
+          onPress: handleBlockUser,
+        },
+      );
+    }
+
+    return options;
+  }, [carouselSlides, handleBlockUser, handleCopyLink, handleReportPost, post?.user_id, userId]);
 
   if (loading) {
     return (
@@ -446,39 +545,44 @@ const UniversalPost: React.FC<PostProps> = ({
     );
   }
 
-  return (
-    <View style={[styles.container, showFullScreen && styles.fullScreenContainer]}>
-      <PostHeader
-        username={post.profiles?.username || 'unknown'}
-        userImage={post.profiles?.image_url}
-        userImagePreview={post.profiles?.image_preview_url}
-        userId={post.user_id}
-        location={post.cities?.name}
-        onProfilePress={handleProfilePress}
-        isOwnPost={post.user_id === userId}
-        isFollowing={false}
-        isVerified={!!post.profiles?.is_verified}
-        onMorePress={handleEditPost}
-        onReportPress={handleReportPost}
-        onBlockPress={handleBlockUser}
-        onFollowPress={handleFollowUser}
-        onUnfollowPress={handleUnfollowUser}
-        onEditPress={handleEditPost}
-        onDeletePress={handleDeletePost}
-        onSharePress={handleSharePress}
-        onCopyLinkPress={handleCopyLink}
-      />
+  const postHeader = (
+    <PostHeader
+      username={post.profiles?.username || 'unknown'}
+      userImage={post.profiles?.image_url}
+      userImagePreview={post.profiles?.image_preview_url}
+      userId={post.user_id}
+      location={post.cities?.name}
+      onProfilePress={handleProfilePress}
+      isOwnPost={post.user_id === userId}
+      isFollowing={false}
+      isVerified={!!post.profiles?.is_verified}
+      onMorePress={handleEditPost}
+      onReportPress={handleReportPost}
+      onBlockPress={handleBlockUser}
+      onFollowPress={handleFollowUser}
+      onUnfollowPress={handleUnfollowUser}
+      onEditPress={handleEditPost}
+      onDeletePress={handleDeletePost}
+      onSharePress={handleSharePress}
+      onCopyLinkPress={handleCopyLink}
+    />
+  );
 
-      {detailExperienceSlot}
+  const hasCarouselSlides = imageSlides.length > 0;
+  const hasLoadedSlide = imageSlides.some((slide) => slide.uri !== null);
+  const showInitialImageSkeleton = imagesLoading && !hasLoadedSlide;
+  const showCarousel = hasCarouselSlides && !imagesError && (hasLoadedSlide || !imagesLoading);
 
-      {imagesLoading && (
+  const carouselBlock = (
+    <>
+      {showInitialImageSkeleton && (
         <PostImageSkeleton
           width={screenWidth}
           height={imagePlaceholderHeight}
         />
       )}
 
-      {imagesError && !imagesLoading && (
+      {imagesError && !showInitialImageSkeleton && !showCarousel && (
         <Pressable
           style={({ pressed }) => [
             styles.imagePlaceholder,
@@ -494,23 +598,31 @@ const UniversalPost: React.FC<PostProps> = ({
         </Pressable>
       )}
 
-      {!imagesLoading && !imagesError && carouselImages.length > 0 && (
+      {showCarousel && (
         <ImageCarousel
-          images={carouselImages}
+          slides={carouselSlides}
           hints={carouselHints}
           currentIndex={currentIndex}
           onIndexChange={handleCarouselIndexChange}
-          height={carouselHeightOptions.defaultHeight}
-          dynamicHeight={true}
+          height={displayHeights[0] ?? carouselHeightOptions.defaultHeight}
+          dynamicHeight={!lockCarouselToFirstPhotoDimensions}
+          lockToFirstPhotoDimensions={lockCarouselToFirstPhotoDimensions}
           displayHeights={displayHeights}
           maxHeight={carouselHeightOptions.maxHeight}
           minHeight={carouselHeightOptions.minHeight}
+          secondaryImageResizeMode={secondaryImageResizeMode}
           isLiked={isLiked}
           onDoubleTap={handleDoubleTapLike}
+          onImagePress={(index) => {
+            previewIndexRef.current = index;
+            setPreviewIndex(index);
+            setIsImagePreviewVisible(true);
+          }}
+          downloadEnabled={imageDownloadEnabled}
         />
       )}
 
-      {!imagesLoading && !imagesError && carouselImages.length === 0 && (
+      {!showCarousel && !showInitialImageSkeleton && !imagesError && !hasCarouselSlides && (
         <Pressable
           style={({ pressed }) => [
             styles.imagePlaceholder,
@@ -526,52 +638,74 @@ const UniversalPost: React.FC<PostProps> = ({
           </Text>
         </Pressable>
       )}
+    </>
+  );
 
-      {detailBelowCarouselSlot}
-
-      {!detailBelowCarouselSlot &&
-      !detailExperienceSlot &&
-      !showFullScreen ? (
-        <RouteDetailCTA
-          routeId={postId}
-          stopCountHint={
-            stopCountHint ??
-            (carouselImages.length > 0 ? carouselImages.length : null)
-          }
-        />
-      ) : null}
-
-      <PostActions
-        isLiked={isLiked}
-        isSaved={isSaved}
-        isSaveLoading={isCollectionsLoading}
-        likeCount={likeCount}
-        commentCount={commentCount}
-        onLike={handleLikePress}
-        onComment={handleCommentPress}
-        onShare={handleSharePress}
-        onSave={handleSavePress}
+  const feedRouteCta =
+    !detailExperienceSlot && !showFullScreen ? (
+      <RouteDetailCTA
+        routeId={postId}
+        stopCountHint={
+          stopCountHint ??
+          (carouselImages.length > 0 ? carouselImages.length : null)
+        }
+        loading={isRoutePreviewLoading}
+        onPress={() => {
+          setIsRoutePreviewLoading(true);
+          setIsRoutePreviewVisible(true);
+        }}
       />
+    ) : null;
 
-      <PostCaption
-        username={post.profiles?.username || 'unknown'}
-        description={post.description}
-        likeCount={likeCount}
-        commentCount={commentCount}
-        createdAt={post.created_at}
-        onComment={handleCommentPress}
-        onLikesPress={handleLikesCaptionPress}
-        isExpanded={isExpanded}
-        onToggleExpanded={handleToggleExpanded}
-      />
+  const postActions = (
+    <PostActions
+      isLiked={isLiked}
+      isSaved={isSaved}
+      isSaveLoading={isCollectionsLoading}
+      likeCount={likeCount}
+      commentCount={commentCount}
+      onLike={handleLikePress}
+      onComment={handleCommentPress}
+      onShare={handleSharePress}
+      onSave={handleSavePress}
+    />
+  );
+
+  const postCaption = (
+    <PostCaption
+      username={post.profiles?.username || 'unknown'}
+      description={post.description}
+      likeCount={likeCount}
+      commentCount={commentCount}
+      createdAt={post.created_at}
+      onComment={handleCommentPress}
+      onLikesPress={handleLikesCaptionPress}
+      isExpanded={isExpanded}
+      onToggleExpanded={handleToggleExpanded}
+    />
+  );
+
+  return (
+    <View style={[styles.container, showFullScreen && styles.fullScreenContainer]}>
+      {postHeader}
+      {detailExperienceSlot}
+      {carouselBlock}
+      {feedRouteCta}
+      {postActions}
+      {postCaption}
 
       <ShareModal
         visible={isShareModalVisible}
         onClose={() => setIsShareModalVisible(false)}
         postId={postId}
         postTitle={getRouteShareLabel(post)}
-        postImage={carouselImages[0]}
+        postImage={carouselImages.find((uri) => uri !== null) ?? undefined}
         postUrl={ShareService.generatePostUrl(postId)}
+        cityName={post?.cities?.name}
+        categoryName={post?.categories?.name}
+        stopCount={routeShareMeta.stopCount}
+        stopTitles={routeShareMeta.stopTitles}
+        authorUsername={post?.profiles?.username}
       />
 
       <SavedCollectionsSheet
@@ -583,6 +717,37 @@ const UniversalPost: React.FC<PostProps> = ({
         onClose={closeSaveSheet}
         onToggleCollection={toggleCollectionForPost}
         onCreateCollection={createCollectionForPost}
+      />
+
+      {!detailExperienceSlot && !showFullScreen ? (
+        <PostRoutePreviewSheet
+          visible={isRoutePreviewVisible}
+          routeId={postId}
+          userId={userId}
+          initialRoute={initialRoute ?? null}
+          isRouteSaved={isSaved}
+          saveLoading={isCollectionsLoading}
+          onClose={() => {
+            setIsRoutePreviewVisible(false);
+            setIsRoutePreviewLoading(false);
+          }}
+          onShare={() => setIsShareModalVisible(true)}
+          onSave={handleSavePress}
+          onLoadingChange={setIsRoutePreviewLoading}
+        />
+      ) : null}
+
+      <PostImagePreview
+        slides={carouselSlides}
+        visible={isImagePreviewVisible}
+        initialIndex={previewIndex}
+        description={post.description}
+        menuOptions={previewMenuOptions}
+        onRequestClose={() => setIsImagePreviewVisible(false)}
+        onIndexChange={(index) => {
+          previewIndexRef.current = index;
+          goToImage(index);
+        }}
       />
     </View>
   );

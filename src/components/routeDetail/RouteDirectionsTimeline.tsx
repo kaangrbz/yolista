@@ -14,6 +14,7 @@ import {
   formatDurationFromSeconds,
   getSegmentStrokeColor,
 } from '../../utils/routeSegmentColors';
+import { getStopLetterLabel } from '../../utils/getStopOrderLabel';
 
 const getTimelineDurationColor = (
   status: ReturnType<typeof getRouteSegmentStatus>,
@@ -69,6 +70,10 @@ export const RouteDirectionsTimeline: React.FC<RouteDirectionsTimelineProps> = (
       const isLast = index === segments.length - 1;
       const durationLabel = formatDurationFromSeconds(segment.durationSeconds);
       const distanceLabel = formatDistanceFromMeters(segment.distanceMeters);
+      const estimateSuffix = segment.isEstimated ? ' (tahmini)' : '';
+      const metricsLabel = [durationLabel, distanceLabel]
+        .filter(Boolean)
+        .join(' · ');
       const railColor = getSegmentStrokeColor(status, segment.variant);
       const durationColor = getTimelineDurationColor(status, segment.variant);
       const isUserOrigin = segment.variant === 'approach';
@@ -76,7 +81,7 @@ export const RouteDirectionsTimeline: React.FC<RouteDirectionsTimelineProps> = (
       return (
         <TouchableOpacity
           key={segment.id}
-          style={styles.timelineRow}
+          style={[styles.timelineRow, !isActive && { opacity: 0.42 }]}
           activeOpacity={0.85}
           onPress={() => onSegmentPress(index)}
         >
@@ -84,11 +89,15 @@ export const RouteDirectionsTimeline: React.FC<RouteDirectionsTimelineProps> = (
             <View
               style={[
                 styles.timelineDot,
-                { backgroundColor: railColor, borderColor: dotBorderColor },
+                {
+                  backgroundColor: railColor,
+                  borderColor: dotBorderColor,
+                  ...(isActive ? { transform: [{ scale: 1.12 }] } : {}),
+                },
               ]}
             >
               {isUserOrigin ? (
-                <Icon name="circle" size={8} color="#fff" />
+                <Icon name="crosshairs-gps" size={10} color="#fff" />
               ) : (
                 <Text
                   style={{
@@ -97,8 +106,10 @@ export const RouteDirectionsTimeline: React.FC<RouteDirectionsTimelineProps> = (
                     color: '#fff',
                   }}
                 >
-                  {String.fromCharCode(
-                    65 + Math.max(0, segment.targetStopOrderIndex),
+                  {getStopLetterLabel(
+                    segment.navigationOptimized
+                      ? segment.visitIndex
+                      : segment.targetStopOrderIndex,
                   )}
                 </Text>
               )}
@@ -116,17 +127,14 @@ export const RouteDirectionsTimeline: React.FC<RouteDirectionsTimelineProps> = (
               isActive && styles.timelineContentActive,
             ]}
           >
-            <Text style={styles.timelineLabel} numberOfLines={2}>
-              {segment.toLabel}
+            <Text style={styles.timelineLabel} numberOfLines={isActive ? 2 : 1}>
+              {isActive ? `${segment.fromLabel} → ${segment.toLabel}` : segment.toLabel}
             </Text>
-            <Text style={styles.timelineSub} numberOfLines={1}>
-              {segment.fromLabel} → {segment.toLabel}
-            </Text>
-            {durationLabel ? (
+            {metricsLabel ? (
               <Text
                 style={[styles.timelineDuration, { color: durationColor }]}
               >
-                {[durationLabel, distanceLabel].filter(Boolean).join(' · ')}
+                {`${metricsLabel}${estimateSuffix}`}
               </Text>
             ) : null}
           </View>

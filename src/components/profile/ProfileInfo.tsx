@@ -11,7 +11,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Profile } from '../../model/profile.model';
 import { DefaultAvatar } from '../../assets';
-import CachedImage from '../common/CachedImage';
+import SmartImage from '../common/smart-image/SmartImage';
 import ProfileInfoSkeleton from './ProfileInfoSkeleton';
 import ProfileBadges from './ProfileBadges';
 import type { ProfileBadge } from '../../model/profile.model';
@@ -233,12 +233,15 @@ const ProfileInfo: React.FC<ProfileInfoProps> = ({
           disabled={!imageUri}
           style={styles.profilePhotoContainer}
         >
-          <CachedImage
-            source={imageUri ? { uri: imageUri } : DefaultAvatar}
+          <SmartImage
+            kind="user"
+            userId={userId || user.id || ''}
+            imageUrl={user.image_url}
+            imagePreviewUrl={user.image_preview_url}
+            width={80}
+            height={80}
+            borderRadius={40}
             style={styles.profilePhoto}
-            resizeMode="cover"
-            bucketName="profiles"
-            userId={userId}
             fallbackSource={DefaultAvatar}
           />
         </TouchableOpacity>

@@ -6,7 +6,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  Text,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -65,6 +64,9 @@ import MapBottomSheet, {
   type BottomSheetSnap,
   type MapBottomSheetSnapMetrics,
 } from '../../components/explore/map/MapBottomSheet';
+import MapRoutePreviewSheet, {
+  type MapRoutePreviewSheetHandle,
+} from '../../components/explore/map/MapRoutePreviewSheet';
 import MapRoutePolylineLayer from '../../components/explore/map/MapRoutePolylineLayer';
 import { showToast } from '../../utils/alert';
 import { prefetchMapPreviewImages } from '../../utils/mapPreviewImageCache';
@@ -73,11 +75,13 @@ import {
   fetchWalkingDirections,
 } from '../../services/walkingDirectionsService';
 import { useRouteSegmentProgress } from '../../hooks/useRouteSegmentProgress';
-import type { RouteSegment, RouteSheetTab } from '../../types/routeSegment.types';
-import { openRouteInMaps, openStopInMaps } from '../../utils/openInMaps';
-import { extractValidCoordinates } from '../../utils/routeDistance';
+import type { RouteSegment } from '../../types/routeSegment.types';
+import { openStopInMaps } from '../../utils/openInMaps';
+import { getSegmentFocusCoordinates } from '../../utils/routeMapFit';
+import ShareModal from '../../components/ShareModal';
 import { ShareService } from '../../services/ShareService';
 import { getRouteShareLabel } from '../../utils/getRouteDisplayLabel';
+import { extractShareMetaFromStops } from '../../utils/composeRouteShareText';
 import { usePostActions } from '../../hooks/usePostActions';
 import SavedCollectionsSheet from '../../components/common/SavedCollectionsSheet';
 import {
@@ -100,6 +104,8 @@ const ExploreMapScreen: React.FC = () => {
 
   const mapRef = useRef<MapView>(null);
   const sheetRef = useRef<MapBottomSheetHandle>(null);
+  const previewSheetRef = useRef<MapRoutePreviewSheetHandle>(null);
+  const sheetSnapBeforePreviewRef = useRef<BottomSheetSnap>('medium');
   const searchBarRef = useRef<MapSearchBarHandle>(null);
   const lastFittedRouteIdRef = useRef<string | null>(null);
   const userCoordinateRef = useRef<LatLng | null>(getLastKnownLocationSync());
@@ -118,6 +124,7 @@ const ExploreMapScreen: React.FC = () => {
   const [selectedRouteMeta, setSelectedRouteMeta] = useState<RouteWithProfile | null>(
     null,
   );
+  const [isShareModalVisible, setIsShareModalVisible] = useState(false);
   const [selectedRouteStops, setSelectedRouteStops] = useState<RouteWithProfile[]>([]);
   const [routeStopsExpanded, setRouteStopsExpanded] = useState(true);
   const [activeStopId, setActiveStopId] = useState<string | null>(null);
@@ -125,11 +132,10 @@ const ExploreMapScreen: React.FC = () => {
   const [polylineCoords, setPolylineCoords] = useState<LatLng[]>([]);
   const [approachPolylineCoords, setApproachPolylineCoords] = useState<LatLng[]>([]);
   const [startFromUserLocation, setStartFromUserLocation] = useState(false);
-  const [routeSheetTab, setRouteSheetTab] = useState<RouteSheetTab>('stops');
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const [activeSegmentIndex, setActiveSegmentIndex] = useState(0);
   const [segmentsLoading, setSegmentsLoading] = useState(false);
-  const [polylineLoading, setPolylineLoading] = useState(false);
+  const [, setPolylineLoading] = useState(false);
   const [mapStyleMode, setMapStyleMode] = useState<MapStyleMode>('light');
   const [locating, setLocating] = useState(false);
   const [locationGranted, setLocationGranted] = useState(false);
@@ -142,11 +148,36 @@ const ExploreMapScreen: React.FC = () => {
     };
   });
   const [sheetSnap, setSheetSnap] = useState<BottomSheetSnap>('small');
+  const [previewSheetMetrics, setPreviewSheetMetrics] =
+    useState<MapBottomSheetSnapMetrics>(() => {
+      const snapHeights = computeMapBottomSheetSnapHeights(windowHeight, 0);
+
+      return {
+        sheetHeight: snapHeights.medium,
+        snapHeights,
+      };
+    });
+
+  const activeSheetHeight =
+    selectedRouteId && routeStopsExpanded
+      ? previewSheetMetrics.sheetHeight
+      : sheetMetrics.sheetHeight;
 
   const handleSheetSnapChange = useCallback(
     (snap: BottomSheetSnap, metrics: MapBottomSheetSnapMetrics) => {
       setSheetMetrics(metrics);
       setSheetSnap(snap);
+
+      if (snap === 'large') {
+        searchBarRef.current?.blur();
+      }
+    },
+    [],
+  );
+
+  const handlePreviewSheetSnapChange = useCallback(
+    (snap: BottomSheetSnap, metrics: MapBottomSheetSnapMetrics) => {
+      setPreviewSheetMetrics(metrics);
 
       if (snap === 'large') {
         searchBarRef.current?.blur();
@@ -182,7 +213,7 @@ const ExploreMapScreen: React.FC = () => {
       alignItems: 'center',
       paddingTop: 4,
     },
-    backButton: {
+    exploreFeedButton: {
       width: 44,
       height: 44,
       borderRadius: 22,
@@ -213,6 +244,15 @@ const ExploreMapScreen: React.FC = () => {
       left: 0,
       zIndex: 40,
       elevation: 40,
+    },
+    previewSheetHost: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      zIndex: 50,
+      elevation: 50,
     },
   }));
 
@@ -304,17 +344,7 @@ const ExploreMapScreen: React.FC = () => {
       return;
     }
 
-    const activeSegment = routeSegments[activeSegmentIndex];
-
-    if (routeSheetTab === 'directions' && activeSegment?.coordinates.length) {
-      mapRef.current?.fitToCoordinates(activeSegment.coordinates, {
-        edgePadding: mapSheetEdgePadding(sheetMetrics.sheetHeight),
-        animated: true,
-      });
-      return;
-    }
-
-    if (routeSheetTab !== 'stops' || polylineCoords.length < 2) {
+    if (polylineCoords.length < 2) {
       return;
     }
 
@@ -330,18 +360,16 @@ const ExploreMapScreen: React.FC = () => {
     ];
 
     mapRef.current?.fitToCoordinates(fitCoords, {
-      edgePadding: mapSheetEdgePadding(sheetMetrics.sheetHeight),
+      edgePadding: mapSheetEdgePadding(activeSheetHeight),
       animated: true,
     });
   }, [
-    activeSegmentIndex,
+    activeSheetHeight,
     approachPolylineCoords,
     polylineCoords,
-    routeSegments,
-    routeSheetTab,
     routeStopsExpanded,
     selectedRouteId,
-    sheetMetrics.sheetHeight,
+    selectedRouteStops,
   ]);
 
   const selectedStopsWithCoords = useMemo(
@@ -441,6 +469,11 @@ const ExploreMapScreen: React.FC = () => {
       selectedRouteStops[0]
     );
   }, [selectedRouteMeta, selectedRouteId, selectedRouteStops]);
+
+  const selectedRouteShareMeta = useMemo(
+    () => extractShareMetaFromStops(selectedRouteStops),
+    [selectedRouteStops],
+  );
 
   const selectedRouteOwnerId =
     resolvedSelectedRoute?.user_id || resolvedSelectedRoute?.profiles?.id || '';
@@ -805,13 +838,15 @@ const ExploreMapScreen: React.FC = () => {
         return;
       }
 
+      sheetSnapBeforePreviewRef.current = sheetSnap;
+      sheetRef.current?.snapTo('small');
+
       setSelectedRouteId(route.id);
       setSelectedRouteMeta(route);
       setRouteStopsExpanded(true);
       setActiveStopId(null);
       setStartFromUserLocation(false);
       setApproachPolylineCoords([]);
-      setRouteSheetTab('stops');
       setRouteSegments([]);
       setActiveSegmentIndex(0);
 
@@ -830,55 +865,48 @@ const ExploreMapScreen: React.FC = () => {
         );
       }
 
-      sheetRef.current?.scrollToRoute(route.id);
       void fetchRouteDetails(route.id);
     },
-    [fetchRouteDetails],
+    [fetchRouteDetails, sheetSnap],
   );
 
-  const handleStopPress = useCallback((stop: RouteWithProfile) => {
-    setActiveStopId(getMapStopKey(stop));
+  const focusDirectionsSegment = useCallback(
+    (segmentIndex: number) => {
+      const segment = routeSegments[segmentIndex];
+      const focusCoords = segment ? getSegmentFocusCoordinates(segment) : [];
 
-    if (
-      typeof stop.latitude !== 'number' ||
-      typeof stop.longitude !== 'number'
-    ) {
-      return;
-    }
-
-    mapRef.current?.animateToRegion(
-      regionForStopFocus({
-        latitude: stop.latitude,
-        longitude: stop.longitude,
-      }),
-      350,
-    );
-  }, []);
-
-  const handleStartFromUserLocationChange = useCallback(
-    async (enabled: boolean) => {
-      if (!enabled) {
-        setStartFromUserLocation(false);
-        setApproachPolylineCoords([]);
-        setActiveSegmentIndex(0);
+      if (focusCoords.length < 2) {
         return;
       }
 
-      if (!firstStopCoordinate) {
-        showToast('error', 'Rotanın başlangıç durağında konum yok');
-        return;
-      }
-
-      const coordinate = userCoordinate ?? (await ensureUserLocation());
-
-      if (!coordinate) {
-        return;
-      }
-
-      setStartFromUserLocation(true);
-      setActiveSegmentIndex(0);
+      mapRef.current?.fitToCoordinates(focusCoords, {
+        edgePadding: mapSheetEdgePadding(activeSheetHeight),
+        animated: true,
+      });
     },
-    [ensureUserLocation, firstStopCoordinate, userCoordinate],
+    [activeSheetHeight, routeSegments],
+  );
+
+  const handleStopPress = useCallback(
+    (stop: RouteWithProfile) => {
+      setActiveStopId(getMapStopKey(stop));
+
+      if (
+        typeof stop.latitude !== 'number' ||
+        typeof stop.longitude !== 'number'
+      ) {
+        return;
+      }
+
+      mapRef.current?.animateToRegion(
+        regionForStopFocus({
+          latitude: stop.latitude,
+          longitude: stop.longitude,
+        }),
+        350,
+      );
+    },
+    [],
   );
 
   const syncActiveStopFromSegment = useCallback(
@@ -889,9 +917,13 @@ const ExploreMapScreen: React.FC = () => {
         return;
       }
 
-      const targetStop = selectedRouteStops.find(
-        (stop) => stop.order_index === segment.targetStopOrderIndex,
-      );
+      const targetStop = segment.targetStopId
+        ? selectedRouteStops.find(
+            (stop) => stop.id && String(stop.id) === segment.targetStopId,
+          )
+        : selectedRouteStops.find(
+            (stop) => stop.order_index === segment.targetStopOrderIndex,
+          );
 
       if (targetStop) {
         setActiveStopId(getMapStopKey(targetStop));
@@ -904,33 +936,10 @@ const ExploreMapScreen: React.FC = () => {
     (index: number) => {
       setActiveSegmentIndex(index);
       syncActiveStopFromSegment(index);
-
-      const segment = routeSegments[index];
-
-      if (segment?.coordinates.length) {
-        mapRef.current?.fitToCoordinates(segment.coordinates, {
-          edgePadding: mapSheetEdgePadding(sheetMetrics.sheetHeight),
-          animated: true,
-        });
-      }
+      focusDirectionsSegment(index);
     },
-    [routeSegments, syncActiveStopFromSegment, sheetMetrics.sheetHeight],
+    [focusDirectionsSegment, syncActiveStopFromSegment],
   );
-
-  const handleRouteSheetTabChange = useCallback((tab: RouteSheetTab) => {
-    setRouteSheetTab(tab);
-
-    if (tab === 'directions') {
-      const segment = routeSegments[activeSegmentIndex];
-
-      if (segment?.coordinates.length) {
-        mapRef.current?.fitToCoordinates(segment.coordinates, {
-          edgePadding: mapSheetEdgePadding(sheetMetrics.sheetHeight),
-          animated: true,
-        });
-      }
-    }
-  }, [activeSegmentIndex, routeSegments, sheetMetrics.sheetHeight]);
 
   const handleOpenActiveStopInMaps = useCallback(() => {
     const segment = routeSegments[activeSegmentIndex];
@@ -944,112 +953,72 @@ const ExploreMapScreen: React.FC = () => {
 
   useRouteSegmentProgress({
     enabled: locationGranted && routeStopsExpanded,
-    routeSheetTab,
+    routeSheetTab: 'directions',
     userCoordinate,
     routeSegments,
     activeSegmentIndex,
     onAdvance: (nextIndex) => {
       setActiveSegmentIndex(nextIndex);
       syncActiveStopFromSegment(nextIndex);
-
-      const segment = routeSegments[nextIndex];
-
-      if (routeSheetTab === 'directions' && segment?.coordinates.length) {
-        mapRef.current?.fitToCoordinates(segment.coordinates, {
-          edgePadding: mapSheetEdgePadding(sheetMetrics.sheetHeight),
-          animated: true,
-        });
-      }
+      focusDirectionsSegment(nextIndex);
     },
   });
 
-  const handleOpenRouteInMaps = useCallback(() => {
-    const coords = extractValidCoordinates(
-      selectedRouteStops.map((stop) => ({
-        latitude: stop.latitude,
-        longitude: stop.longitude,
-      })),
+  const handleStartRouteFromUserLocation = useCallback(async () => {
+    if (!firstStopCoordinate) {
+      showToast('error', 'Rotanın başlangıç durağında konum yok');
+      return;
+    }
+
+    const coordinate = userCoordinate ?? (await ensureUserLocation());
+
+    if (!coordinate) {
+      return;
+    }
+
+    setStartFromUserLocation(true);
+    setActiveSegmentIndex(0);
+
+    const approachSegment = routeSegments.find(
+      (segment) => segment.variant === 'approach',
     );
 
-    if (coords.length === 0) {
+    if (approachSegment) {
+      void openStopInMaps(approachSegment.to, { from: approachSegment.from });
       return;
     }
 
-    void openRouteInMaps(coords);
-  }, [selectedRouteStops]);
-
-  const handleOpenStopInMaps = useCallback((stop: RouteWithProfile) => {
-    if (
-      typeof stop.latitude !== 'number' ||
-      typeof stop.longitude !== 'number'
-    ) {
-      return;
-    }
-
-    const destination = {
-      latitude: stop.latitude,
-      longitude: stop.longitude,
-    };
-
-    if (userCoordinate) {
-      void openStopInMaps(destination, { from: userCoordinate });
-      return;
-    }
-
-    void openStopInMaps(destination);
-  }, [userCoordinate]);
-
-  const handleMarkerPress = useCallback(
-    (route: RouteWithProfile) => {
-      handleSelectRoute(route);
-    },
-    [handleSelectRoute],
-  );
-
-  const handleCalloutPress = useCallback(
-    (route: RouteWithProfile) => {
-      if (!route.id) {
-        return;
-      }
-
-      navigation.navigate('RouteDetail', { routeId: route.id });
-    },
-    [navigation],
-  );
-
-  const handleOpenRouteDetail = useCallback(() => {
-    if (!selectedRouteId) {
-      return;
-    }
-
-    let initialStopIndex = 0;
-
-    if (activeStopId) {
-      const stopIndex = selectedRouteStops.findIndex(
-        (stop) => getMapStopKey(stop) === activeStopId,
-      );
-
-      if (stopIndex >= 0) {
-        initialStopIndex = stopIndex;
-      }
-    }
-
-    navigation.navigate('RouteDetail', {
-      routeId: selectedRouteId,
-      initialTab: routeSheetTab,
-      initialStopIndex,
-      initialSegmentIndex: activeSegmentIndex,
-      startFromUserLocation,
-    });
+    void openStopInMaps(firstStopCoordinate, { from: coordinate });
   }, [
-    activeSegmentIndex,
-    activeStopId,
-    navigation,
-    routeSheetTab,
-    selectedRouteId,
-    selectedRouteStops,
-    startFromUserLocation,
+    ensureUserLocation,
+    firstStopCoordinate,
+    routeSegments,
+    userCoordinate,
   ]);
+
+  const handleMarkerPress = useCallback((route: RouteWithProfile) => {
+    if (!route.id) {
+      return;
+    }
+
+    if (
+      typeof route.latitude === 'number' &&
+      typeof route.longitude === 'number'
+    ) {
+      mapRef.current?.animateToRegion(
+        {
+          latitude: route.latitude,
+          longitude: route.longitude,
+          latitudeDelta: ROUTE_FOCUS_ZOOM_DELTA,
+          longitudeDelta: ROUTE_FOCUS_ZOOM_DELTA,
+        },
+        350,
+      );
+    }
+
+    sheetRef.current?.snapTo('medium');
+    sheetRef.current?.scrollToRoute(route.id);
+  }, []);
 
   const handleMyLocationPress = useCallback(async () => {
     setLocating(true);
@@ -1098,6 +1067,19 @@ const ExploreMapScreen: React.FC = () => {
   const handleZoomIn = useCallback(() => handleZoom(0.5), [handleZoom]);
   const handleZoomOut = useCallback(() => handleZoom(2), [handleZoom]);
 
+  const handleGoToExploreFeed = useCallback(() => {
+    const hasExploreMain = navigation
+      .getState()
+      .routes.some((route: { name: string }) => route.name === 'ExploreMain');
+
+    if (hasExploreMain) {
+      navigation.navigate('ExploreMain');
+      return;
+    }
+
+    navigation.replace('ExploreMain');
+  }, [navigation]);
+
   const handleSearchResult = useCallback((result: GeocodingResult) => {
     if (result.boundingBox) {
       const { minLat, maxLat, minLng, maxLng } = result.boundingBox;
@@ -1130,43 +1112,6 @@ const ExploreMapScreen: React.FC = () => {
     );
   }, []);
 
-  const handleDismissRouteStops = useCallback(() => {
-    const mainRoute =
-      selectedRouteMeta ??
-      selectedRouteStops.find((stop) => stop.order_index === 0) ??
-      selectedRouteStops[0] ??
-      null;
-
-    setRouteStopsExpanded(false);
-    setPolylineCoords([]);
-    setApproachPolylineCoords([]);
-    setStartFromUserLocation(false);
-    setRouteSheetTab('stops');
-    setRouteSegments([]);
-    setActiveSegmentIndex(0);
-    setActiveStopId(null);
-
-    if (
-      mainRoute &&
-      typeof mainRoute.latitude === 'number' &&
-      typeof mainRoute.longitude === 'number'
-    ) {
-      mapRef.current?.animateToRegion(
-        {
-          latitude: mainRoute.latitude,
-          longitude: mainRoute.longitude,
-          latitudeDelta: ROUTE_FOCUS_ZOOM_DELTA,
-          longitudeDelta: ROUTE_FOCUS_ZOOM_DELTA,
-        },
-        350,
-      );
-    }
-
-    if (selectedRouteId) {
-      sheetRef.current?.scrollToRoute(selectedRouteId);
-    }
-  }, [selectedRouteId, selectedRouteMeta, selectedRouteStops]);
-
   const handleClearSelectedRoute = useCallback(() => {
     searchBarRef.current?.blur();
 
@@ -1177,7 +1122,6 @@ const ExploreMapScreen: React.FC = () => {
     setPolylineCoords([]);
     setApproachPolylineCoords([]);
     setStartFromUserLocation(false);
-    setRouteSheetTab('stops');
     setRouteSegments([]);
     setActiveSegmentIndex(0);
     setActiveStopId(null);
@@ -1185,17 +1129,20 @@ const ExploreMapScreen: React.FC = () => {
     setPolylineLoading(false);
     setSegmentsLoading(false);
     lastFittedRouteIdRef.current = null;
+
+    const snap = sheetSnapBeforePreviewRef.current;
+
+    requestAnimationFrame(() => {
+      sheetRef.current?.snapTo(snap);
+    });
   }, []);
 
-  const handleShareSelectedRoute = useCallback(async () => {
+  const handleShareSelectedRoute = useCallback(() => {
     if (!selectedRouteId || !resolvedSelectedRoute) {
       return;
     }
 
-    await ShareService.sharePost({
-      postId: selectedRouteId,
-      title: getRouteShareLabel(resolvedSelectedRoute),
-    });
+    setIsShareModalVisible(true);
   }, [resolvedSelectedRoute, selectedRouteId]);
 
   const handleSaveSelectedRoute = useCallback(async () => {
@@ -1274,12 +1221,10 @@ const ExploreMapScreen: React.FC = () => {
           selectedRouteId={selectedRouteId}
           dimmed={shouldDim}
           onPress={handleMarkerPress}
-          onCalloutPress={handleCalloutPress}
         />
       );
     },
     [
-      handleCalloutPress,
       handleClusterPress,
       handleMarkerPress,
       selectedRouteId,
@@ -1315,13 +1260,9 @@ const ExploreMapScreen: React.FC = () => {
 
         <MapRoutePolylineLayer
           showRoute={routeStopsExpanded}
-          routeCoordinates={
-            routeSheetTab === 'stops' ? polylineCoords : []
-          }
-          approachCoordinates={
-            routeSheetTab === 'stops' ? approachPolylineCoords : []
-          }
-          segments={routeSheetTab === 'directions' ? routeSegments : []}
+          routeCoordinates={polylineCoords}
+          approachCoordinates={approachPolylineCoords}
+          segments={[]}
           activeSegmentIndex={activeSegmentIndex}
         />
 
@@ -1345,17 +1286,13 @@ const ExploreMapScreen: React.FC = () => {
       >
         <View style={styles.searchRow} pointerEvents="box-none">
           <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => {
-              if (navigation.canGoBack()) {
-                navigation.goBack();
-              } else {
-                navigation.navigate('ExploreMain');
-              }
-            }}
+            style={styles.exploreFeedButton}
+            onPress={handleGoToExploreFeed}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Keşfet akışına dön"
           >
-            <Icon name="arrow-left" size={20} color={theme.textPrimary} />
+            <Icon name="view-grid-outline" size={20} color={theme.textPrimary} />
           </TouchableOpacity>
 
           <View style={styles.searchBarWrapper}>
@@ -1399,38 +1336,38 @@ const ExploreMapScreen: React.FC = () => {
           ref={sheetRef}
           routes={bottomSheetRoutes}
           loading={loading}
-          selectedRouteId={selectedRouteId}
-          selectedRoute={resolvedSelectedRoute}
-          selectedRouteStops={selectedRouteStops}
-          showRouteStopsPanel={routeStopsExpanded}
-          activeStopId={activeStopId}
-          stopsLoading={stopsLoading}
           onSelectRoute={handleSelectRoute}
-          onStopPress={handleStopPress}
-          onDismissRouteStops={handleDismissRouteStops}
-          onOpenRouteInMaps={handleOpenRouteInMaps}
-          onOpenStopInMaps={handleOpenStopInMaps}
-          startFromUserLocation={startFromUserLocation}
-          onStartFromUserLocationChange={handleStartFromUserLocationChange}
-          canStartFromUserLocation={firstStopCoordinate !== null}
-          routeSheetTab={routeSheetTab}
-          onRouteSheetTabChange={handleRouteSheetTabChange}
-          routeSegments={routeSegments}
-          activeSegmentIndex={activeSegmentIndex}
-          segmentsLoading={segmentsLoading}
-          onSegmentPress={handleSegmentPress}
-          onOpenActiveStopInMaps={handleOpenActiveStopInMaps}
-          onOpenRouteDetail={handleOpenRouteDetail}
           onSnapChange={handleSheetSnapChange}
           topInset={insets.top}
           weatherLatitude={region.latitude}
           weatherLongitude={region.longitude}
-          onClearSelectedRoute={handleClearSelectedRoute}
-          onShareRoute={handleShareSelectedRoute}
-          onSaveRoute={handleSaveSelectedRoute}
-          isRouteSaved={isSelectedRouteSaved}
-          saveLoading={isCollectionsLoading}
         />
+
+        {selectedRouteId && routeStopsExpanded ? (
+          <View style={styles.previewSheetHost} pointerEvents="box-none">
+            <MapRoutePreviewSheet
+              ref={previewSheetRef}
+              selectedRoute={resolvedSelectedRoute}
+              selectedRouteStops={selectedRouteStops}
+              stopsLoading={stopsLoading}
+              activeStopId={activeStopId}
+              routeSegments={routeSegments}
+              activeSegmentIndex={activeSegmentIndex}
+              segmentsLoading={segmentsLoading}
+              startFromUserLocation={startFromUserLocation}
+              isRouteSaved={isSelectedRouteSaved}
+              saveLoading={isCollectionsLoading}
+              onStopPress={handleStopPress}
+              onSegmentPress={handleSegmentPress}
+              onOpenRouteInMaps={handleStartRouteFromUserLocation}
+              onOpenActiveStopInMaps={handleOpenActiveStopInMaps}
+              onShareRoute={handleShareSelectedRoute}
+              onSaveRoute={handleSaveSelectedRoute}
+              onClose={handleClearSelectedRoute}
+              onSnapChange={handlePreviewSheetSnapChange}
+            />
+          </View>
+        ) : null}
       </View>
 
       <SavedCollectionsSheet
@@ -1443,6 +1380,26 @@ const ExploreMapScreen: React.FC = () => {
         onToggleCollection={toggleCollectionForPost}
         onCreateCollection={createCollectionForPost}
       />
+
+      {selectedRouteId && resolvedSelectedRoute ? (
+        <ShareModal
+          visible={isShareModalVisible}
+          onClose={() => setIsShareModalVisible(false)}
+          postId={selectedRouteId}
+          postTitle={getRouteShareLabel(resolvedSelectedRoute)}
+          postImage={
+            resolvedSelectedRoute.image_preview_url ||
+            resolvedSelectedRoute.image_url ||
+            undefined
+          }
+          postUrl={ShareService.generatePostUrl(selectedRouteId)}
+          cityName={resolvedSelectedRoute.cities?.name}
+          categoryName={resolvedSelectedRoute.categories?.name}
+          stopCount={selectedRouteShareMeta.stopCount}
+          stopTitles={selectedRouteShareMeta.stopTitles}
+          authorUsername={resolvedSelectedRoute.profiles?.username}
+        />
+      ) : null}
     </View>
   );
 };

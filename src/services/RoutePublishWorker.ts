@@ -200,15 +200,17 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
       progress01: computeProgress01(completedSteps, totalSteps),
     });
 
-    const { error } = await RouteModel.createRoute(
+    const { data: createdRoute, error } = await RouteModel.createRoute(
       finalRoutePoints,
       record.selectedCity?.id || 0,
       record.selectedCategory?.id || null,
     );
 
-    if (error) {
+    if (error || !createdRoute?.[0]?.id) {
       throw new Error('Rota kaydedilemedi');
     }
+
+    const mainRouteId = createdRoute[0].id;
 
     completedSteps += 1;
     await clearDraftStorage(record.jobId);
@@ -217,7 +219,20 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
 
     require('../store/createRouteFlowStore').useCreateRouteFlowStore.getState().completeFlow();
 
-    store.workerSuccess({ progress01: 1 });
+    store.workerSuccess({
+      progress01: 1,
+      routeId: mainRouteId,
+      meta: {
+        cityName: record.selectedCity?.name,
+        categoryName: record.selectedCategory?.name,
+        previewUri:
+          record.photosMeta[0]?.processedLocalUri || record.photosMeta[0]?.uri || null,
+        stopCount: record.routeStops.length,
+        stopTitles: record.routeStops
+          .map((stop) => stop.title.trim())
+          .filter((title) => title.length > 0),
+      },
+    });
 
     triggerAchievementChecks([record.userId]);
   } catch (error) {

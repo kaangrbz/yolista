@@ -3,15 +3,17 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  Platform,
   StatusBar,
 } from 'react-native';
 import ImageView from 'react-native-image-viewing';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { requestPhotos } from '../permissions';
-import * as FileSystem from 'react-native-fs';
-import { showToast } from '../utils/alert';
+import { saveImageToGallery } from '../utils/saveImageToGallery';
+import {
+  applyMediaPreviewSystemBars,
+  applySystemNavigationBar,
+} from '../utils/systemNavigationBar';
+import { useAppTheme } from '../context/AppThemeContext';
 
 interface ImageViewerProps {
   images: { uri: string }[];
@@ -29,52 +31,26 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
   initialIndex = 0,
 }) => {
   const insets = useSafeAreaInsets();
+  const theme = useAppTheme();
 
   useEffect(() => {
     if (!visible) {
       return;
     }
 
+    applyMediaPreviewSystemBars(theme.mediaBackdrop);
+
     const entry = StatusBar.pushStackEntry({
       barStyle: 'light-content',
+      backgroundColor: theme.mediaBackdrop,
       animated: true,
     });
 
     return () => {
       StatusBar.popStackEntry(entry);
+      applySystemNavigationBar(theme);
     };
-  }, [visible]);
-
-  const handleSave = async (imageUri: string) => {
-    try {
-      const hasPermission = await requestPhotos();
-      if (!hasPermission) {
-        showToast('error', 'Dosya erişim izni reddedildi');
-        return;
-      }
-
-      const timestamp = new Date().getTime();
-      const fileName = `yolista_${timestamp}.jpg`;
-      const destinationPath = Platform.select({
-        ios: `${FileSystem.DocumentDirectoryPath}/${fileName}`,
-        android: `${FileSystem.PicturesDirectoryPath}/${fileName}`,
-      });
-
-      if (!destinationPath) {
-        throw new Error('Could not determine save location');
-      }
-
-      await FileSystem.downloadFile({
-        fromUrl: imageUri,
-        toFile: destinationPath,
-      });
-
-      showToast('success', 'Fotoğraf başarıyla kaydedildi');
-    } catch (error) {
-      console.error('Save image error:', error);
-      showToast('error', 'Fotoğraf kaydedilirken bir hata oluştu');
-    }
-  };
+  }, [visible, theme]);
 
   const renderHeader = ({ imageIndex }: { imageIndex: number }) => (
     <View
@@ -97,7 +73,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
         <Icon name="close" size={24} color="#fff" />
       </TouchableOpacity>
       <TouchableOpacity
-        onPress={() => handleSave(images[imageIndex].uri)}
+        onPress={() => void saveImageToGallery(images[imageIndex].uri)}
         style={styles.button}
         hitSlop={hitSlop}
         accessibilityRole="button"

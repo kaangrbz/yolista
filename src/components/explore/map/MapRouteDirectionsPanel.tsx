@@ -21,6 +21,7 @@ import {
 import { getRouteDisplayLabel } from '../../../utils/getRouteDisplayLabel';
 import MapRouteDetailButton from './MapRouteDetailButton';
 import RouteDirectionsTimeline from '../../routeDetail/RouteDirectionsTimeline';
+import RouteDirectionsStepsList from '../../routeDetail/RouteDirectionsStepsList';
 
 interface MapRouteDirectionsPanelProps {
   selectedRoute: RouteWithProfile | null;
@@ -34,6 +35,7 @@ interface MapRouteDirectionsPanelProps {
   onOpenRouteInMaps: () => void;
   onOpenActiveStopInMaps: () => void;
   onOpenRouteDetail?: () => void;
+  onExpandSheet?: () => void;
 }
 
 export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = ({
@@ -48,6 +50,7 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
   onOpenRouteInMaps,
   onOpenActiveStopInMaps,
   onOpenRouteDetail,
+  onExpandSheet,
 }) => {
   const theme = useAppTheme();
 
@@ -254,7 +257,8 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
   }, [segments]);
 
   const activeSegment = segments[activeSegmentIndex];
-  const activeSteps = activeSegment?.stepInstructions ?? [];
+  const activeSteps = activeSegment?.directionSteps ?? [];
+  const hasEstimatedSegments = segments.some((segment) => segment.isEstimated);
 
   const routeTitle = selectedRoute
     ? getRouteDisplayLabel(selectedRoute)
@@ -284,9 +288,16 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.modeHeader}>
-        <Text style={styles.modeTitle}>Yürüyüş</Text>
+        <Text style={styles.modeTitle}>Navigasyon</Text>
         <Text style={styles.modeMeta}>
-          {[totals.durationLabel, totals.distanceLabel]
+          {[
+            totals.durationLabel,
+            totals.distanceLabel
+              ? hasEstimatedSegments
+                ? `${totals.distanceLabel} (tahmini)`
+                : totals.distanceLabel
+              : null,
+          ]
             .filter(Boolean)
             .join(' · ') || routeTitle}
         </Text>
@@ -319,22 +330,12 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
         dotBorderColor={theme.background}
       />
 
-      {activeSteps.length > 0 ? (
-        <View style={styles.stepsSection}>
-          <Text style={styles.stepsTitle}>Adımlar</Text>
-          {activeSteps.map((step, index) => (
-            <View key={`${activeSegment?.id}-step-${index}`} style={styles.stepRow}>
-              <Icon
-                name="arrow-up-bold"
-                size={14}
-                color={theme.textMuted}
-                style={{ marginTop: 2 }}
-              />
-              <Text style={styles.stepText}>{step}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
+      <RouteDirectionsStepsList
+        steps={activeSteps}
+        segmentId={activeSegment?.id}
+        styles={styles}
+        iconColor={theme.textMuted}
+      />
 
       <View style={styles.actionsRow}>
         <TouchableOpacity
@@ -359,7 +360,10 @@ export const MapRouteDirectionsPanel: React.FC<MapRouteDirectionsPanelProps> = (
       </View>
 
       {onOpenRouteDetail ? (
-        <MapRouteDetailButton onPress={onOpenRouteDetail} />
+        <MapRouteDetailButton
+          onPress={onOpenRouteDetail}
+          onExpandSheet={onExpandSheet}
+        />
       ) : null}
     </ScrollView>
   );

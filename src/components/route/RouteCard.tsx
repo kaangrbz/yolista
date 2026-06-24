@@ -6,8 +6,9 @@ import RouteModel, { RouteWithProfile } from '../../model/routes.model';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Seperator from '../Seperator';
-import { DefaultAvatar, NoImage } from '../../assets';
-import { supabase } from '../../lib/supabase';
+import { DefaultAvatar } from '../../assets';
+import SmartImage from '../common/smart-image/SmartImage';
+import { usePostImageDownload } from '../../hooks/useImageDownload';
 import { showToast } from '../../utils/alert';
 import ImageViewer from '../ImageViewer';
 import KeyboardAwareContainer from '../common/KeyboardAwareContainer';
@@ -67,11 +68,15 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const { openComments } = useCommentsSheet();
   const currentRoute = useRoute();
   const isExploreScreen = currentRoute.name === 'ExploreMain';
-  const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingImage, setLoadingImage] = useState(true);
   const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
+
+  const { imageUri } = usePostImageDownload(
+    route.image_url,
+    route.user_id || '',
+    route.image_preview_url || undefined,
+  );
   const styles = useThemedStyles((t) => ({
     cardContainer: {
       position: 'relative',
@@ -270,51 +275,6 @@ const RouteCard: React.FC<RouteCardProps> = ({
     setIsShareModalVisible(true);
   };
 
-  // Function to download the image
-  const downloadImage = async (image_url: string | undefined) => {
-    setLoadingImage(true);
-
-
-    if (!image_url) {
-      setImageUri(null);
-      setLoadingImage(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // If public URL fails, try to download the file
-      const filepath = `${route.user_id}/${image_url}`;
-
-      const { data, error } = await supabase
-        .storage
-        .from('routes')
-        .download(filepath);
-
-      if (error) {
-        throw error;
-      }
-
-      // Convert Blob to Base64
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageUri(reader.result as string);
-      };
-      reader.readAsDataURL(data);
-    } catch (error) {
-      // showToast('error', 'Resim yüklenirken bir hata oluştu');
-      setImageUri(null);
-    } finally {
-      setLoading(false);
-      setTimeout(() => setLoadingImage(false), 100);
-    }
-  };
-
-  // Trigger the function when the component is mounted or image_url changes
-  useEffect(() => {
-    downloadImage(route.image_url);
-  }, [route.image_url]);
-
   if (isExploreScreen) {
     const exploreCardStyle = exploreCellHeight
       ? { height: exploreCellHeight }
@@ -331,23 +291,13 @@ const RouteCard: React.FC<RouteCardProps> = ({
             navigation.navigate('RouteDetail', { routeId: route.id || '' });
           }}
         >
-          {loadingImage ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#333" />
-            </View>
-          ) : imageUri ? (
-            <Image
-              source={{ uri: imageUri }}
-              style={styles.exploreImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <Image
-              source={NoImage}
-              style={styles.exploreImage}
-              resizeMode="cover"
-            />
-          )}
+          <SmartImage
+            kind="route"
+            userId={route.user_id || ''}
+            imageUrl={route.image_url}
+            imagePreviewUrl={route.image_preview_url}
+            style={styles.exploreImage}
+          />
           <View style={styles.exploreOverlay}>
             <View style={styles.likeContainer}>
               <Icon name={localDidLike ? 'heart' : 'heart-outline'} size={16} color="#fff" />
@@ -390,23 +340,13 @@ const RouteCard: React.FC<RouteCardProps> = ({
           }}
           disabled={!imageUri}
         >
-          {loadingImage ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#333" />
-            </View>
-          ) : imageUri ? (
-            <Image
-              source={{ uri: imageUri }}
-              style={styles.routeImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <Image
-              source={NoImage}
-              style={styles.routeImage}
-              resizeMode="cover"
-            />
-          )}
+          <SmartImage
+            kind="route"
+            userId={route.user_id || ''}
+            imageUrl={route.image_url}
+            imagePreviewUrl={route.image_preview_url}
+            style={styles.routeImage}
+          />
         </TouchableOpacity>
 
         <View style={styles.routeInfo}>
@@ -556,6 +496,11 @@ const RouteCard: React.FC<RouteCardProps> = ({
         postTitle={getRouteShareLabel(route)}
         postImage={imageUri || undefined}
         postUrl={ShareService.generatePostUrl(safeRouteId)}
+        cityName={route.cities?.name}
+        categoryName={route.categories?.name}
+        stopCount={route.title?.trim() ? 1 : 0}
+        stopTitles={route.title?.trim() ? [route.title.trim()] : undefined}
+        authorUsername={route.profiles?.username}
       />
     </View>
   );

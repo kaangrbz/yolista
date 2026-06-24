@@ -14,9 +14,13 @@ import {
 
 interface RouteSummaryBarProps {
   stops: RouteWithProfile[];
+  hasEstimatedDistance?: boolean;
 }
 
-export const RouteSummaryBar: React.FC<RouteSummaryBarProps> = ({ stops }) => {
+export const RouteSummaryBar: React.FC<RouteSummaryBarProps> = ({
+  stops,
+  hasEstimatedDistance = false,
+}) => {
   const theme = useAppTheme();
 
   const coords = extractValidCoordinates(
@@ -73,11 +77,21 @@ export const RouteSummaryBar: React.FC<RouteSummaryBarProps> = ({ stops }) => {
   ];
 
   if (distanceLabel) {
-    chips.push({ icon: 'map-marker-distance', label: distanceLabel });
+    chips.push({
+      icon: 'map-marker-distance',
+      label: hasEstimatedDistance ? `${distanceLabel} (tahmini)` : distanceLabel,
+    });
   }
 
   if (walkingLabel) {
-    chips.push({ icon: 'walk', label: walkingLabel });
+    chips.push({
+      icon: 'walk',
+      label: hasEstimatedDistance ? `${walkingLabel} (tahmini)` : walkingLabel,
+    });
+  }
+
+  if (hasEstimatedDistance) {
+    chips.push({ icon: 'chart-timeline-variant', label: 'Tahmini rota' });
   }
 
   return (

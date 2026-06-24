@@ -1,6 +1,5 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
-  Image,
   Text,
   TouchableOpacity,
   View,
@@ -9,10 +8,10 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteWithProfile } from '../../../model/routes.model';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { useThemedStyles } from '../../../theme/useThemedStyles';
-import { usePostImageDownload } from '../../../hooks/useImageDownload';
-import { ImageService } from '../../../services/ImageService';
+import SmartImage from '../../common/smart-image/SmartImage';
 import { MAP_ACTIVE_ROUTE_BORDER } from '../../../constants/mapDefaults';
 import { getStopPhotoHintLabel } from '../../../utils/getStopPhotoHintLabel';
+import { getStopLetterLabel } from '../../../utils/getStopOrderLabel';
 
 interface MapRouteStopCardProps {
   stop: RouteWithProfile;
@@ -84,6 +83,23 @@ export const MapRouteStopCard: React.FC<MapRouteStopCardProps> = ({
       fontSize: 10,
       fontWeight: '700',
     },
+    noLocationBadge: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.overlayDark,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
+      gap: 4,
+    },
+    noLocationBadgeText: {
+      color: t.id === 'light' ? '#fff' : t.textPrimary,
+      fontSize: 10,
+      fontWeight: '700',
+    },
     content: {
       paddingHorizontal: 10,
       paddingTop: 8,
@@ -110,26 +126,11 @@ export const MapRouteStopCard: React.FC<MapRouteStopCardProps> = ({
 
   const userId = stop.user_id || stop.profiles?.id || '';
 
-  const { imageUri } = usePostImageDownload(
-    stop.image_url || undefined,
-    userId,
-    stop.image_preview_url || undefined,
-  );
-
-  const displayUri = useMemo(() => {
-    if (imageUri) {
-      return imageUri;
-    }
-
-    return ImageService.resolveRouteImageRemoteUri(
-      stop.image_url,
-      userId,
-      stop.image_preview_url,
-    );
-  }, [imageUri, stop.image_preview_url, stop.image_url, userId]);
-
   const description = stop.description?.trim() || '';
   const hasStopLabel = Boolean(stopLabel);
+  const stopBadgeLabel = getStopLetterLabel(stop.order_index ?? 0);
+  const hasCoordinates =
+    typeof stop.latitude === 'number' && typeof stop.longitude === 'number';
 
   return (
     <TouchableOpacity
@@ -139,13 +140,15 @@ export const MapRouteStopCard: React.FC<MapRouteStopCardProps> = ({
       style={[styles.card, selected && styles.cardSelected]}
     >
       <View style={styles.imageWrapper}>
-        {displayUri ? (
-          <Image source={{ uri: displayUri }} style={styles.image} resizeMode="cover" />
-        ) : (
-          <View style={[styles.image, styles.imagePlaceholder]}>
-            <Icon name="image-outline" size={28} color={theme.textMuted} />
-          </View>
-        )}
+        <SmartImage
+          kind="route"
+          userId={userId}
+          imageUrl={stop.image_url}
+          imagePreviewUrl={stop.image_preview_url}
+          width={CARD_WIDTH}
+          height={IMAGE_HEIGHT}
+          style={styles.image}
+        />
 
         <View style={styles.stopBadge}>
           <Icon
@@ -153,12 +156,21 @@ export const MapRouteStopCard: React.FC<MapRouteStopCardProps> = ({
             size={11}
             color={theme.id === 'light' ? '#fff' : theme.textPrimary}
           />
-          {hasStopLabel ? (
-            <Text numberOfLines={1} style={styles.stopBadgeText}>
-              {stopLabel}
-            </Text>
-          ) : null}
+          <Text numberOfLines={1} style={styles.stopBadgeText}>
+            {stopBadgeLabel}
+          </Text>
         </View>
+
+        {!hasCoordinates ? (
+          <View style={styles.noLocationBadge}>
+            <Icon
+              name="map-marker-off-outline"
+              size={11}
+              color={theme.id === 'light' ? '#fff' : theme.textPrimary}
+            />
+            <Text style={styles.noLocationBadgeText}>Konum yok</Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.content}>

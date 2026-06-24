@@ -8,9 +8,10 @@ import { useAuth } from '../context/AuthContext';
 import WelcomeModal from '../components/common/WelcomeModal';
 import { markWelcomeSeen, shouldShowWelcome } from '../utils/welcome';
 import { HomeHeader } from '../components/header/Header';
-import UniversalPost from '../components/UniversalPost';
+import HomeFeedPostItem from '../components/feed/HomeFeedPostItem';
 import { useHomePosts } from '../hooks/usePosts';
 import { useListPostImagesBatch } from '../hooks/useListPostImagesBatch';
+import { useFeedImageWindow } from '../hooks/useFeedImageWindow';
 import { useRoutePublishStore } from '../store/routePublishStore';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { isInitialListLoading } from '../utils/listRefreshUtils';
@@ -88,6 +89,7 @@ export const HomeScreen = () => {
   const isInitialLoading = isInitialListLoading(isLoading, routes.length);
 
   const { rowsByPostId } = useListPostImagesBatch(routes);
+  const { viewabilityConfigCallbackPairs } = useFeedImageWindow(routes);
 
   useEffect(() => {
     shouldShowWelcome().then((shouldShow) => {
@@ -170,15 +172,14 @@ export const HomeScreen = () => {
     }
   }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
-  const renderPost = useCallback(({ item }: { item: RouteWithProfile }) => {
+  const renderPost = useCallback(({ item, index }: { item: RouteWithProfile; index: number }) => {
     const postId = item.id || '';
 
     return (
-      <UniversalPost
-        postId={postId}
+      <HomeFeedPostItem
+        item={item}
         userId={userId}
-        initialRoute={item}
-        batchImages={true}
+        feedIndex={index}
         prefetchedImageRows={rowsByPostId[postId]}
       />
     );
@@ -234,11 +235,17 @@ export const HomeScreen = () => {
         data={routes}
         renderItem={renderPost}
         keyExtractor={(item) => item.id || ''}
+        removeClippedSubviews
+        maxToRenderPerBatch={3}
+        updateCellsBatchingPeriod={50}
+        windowSize={5}
+        initialNumToRender={3}
         refreshControl={
           <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
+        viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         showsVerticalScrollIndicator={false}

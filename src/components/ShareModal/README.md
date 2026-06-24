@@ -5,12 +5,9 @@ Instagram tarzı paylaşım modal'ı. Post'ları farklı platformlarda paylaşma
 ## Özellikler
 
 ### 📱 Paylaşım Seçenekleri
-- **Link Paylaş**: Genel paylaşım (sistem paylaşım menüsü)
-- **Linki Kopyala**: Link'i panoya kopyalar
-- **WhatsApp**: WhatsApp'ta paylaş
-- **Telegram**: Telegram'da paylaş
-- **Twitter**: Twitter'da paylaş
-- **Daha Fazla**: Diğer uygulamalar
+- **WhatsApp**: WhatsApp deep link ile doğrudan paylaşım (yoksa sistem paylaşım menüsü)
+- **Linki Kopyala**: Tam paylaşım metnini panoya kopyalar
+- **Diğer uygulamalar**: Sistem paylaşım menüsü
 
 ### ✏️ Özelleştirilebilir Mesaj
 - İsteğe bağlı mesaj ekleme
@@ -29,7 +26,7 @@ Instagram tarzı paylaşım modal'ı. Post'ları farklı platformlarda paylaşma
 ```
 {Rota başlığı}
 
-https://yolista.roulista.com/post/{postId}
+https://web.youlistaapp.com/post/{postId}
 ```
 
 Özel mesaj varsa: `{mesaj}\n\n{link}`. «Linki kopyala» tam bu metni kopyalar.
@@ -43,7 +40,7 @@ https://yolista.roulista.com/post/{postId}
   postId="123"
   postTitle="Güzel bir gün"
   postImage="https://example.com/image.jpg"
-  postUrl="https://yolista.roulista.com/post/123"
+  postUrl="https://web.youlistaapp.com/post/123"
 />
 ```
 
@@ -56,7 +53,7 @@ https://yolista.roulista.com/post/{postId}
 | `postId` | `string` | ✅ | Post ID'si |
 | `postTitle` | `string` | ✅ | Post başlığı |
 | `postImage` | `string?` | ❌ | Post görseli |
-| `postUrl` | `string?` | ❌ | Özel URL (varsayılan: https://yolista.roulista.com/post/{postId}) |
+| `postUrl` | `string?` | ❌ | Özel URL (varsayılan: https://web.youlistaapp.com/post/{postId}) |
 
 ## Servis Kullanımı
 
@@ -68,14 +65,13 @@ await ShareService.sharePost({
   postId: '123',
   title: 'Güzel bir gün',
   message: 'Bu gönderiyi inceleyin!',
-  url: 'https://yolista.roulista.com/post/123'
+  url: 'https://web.youlistaapp.com/post/123'
 });
 
 // WhatsApp'ta paylaş
-await ShareService.shareToWhatsApp({
-  postId: '123',
-  title: 'Güzel bir gün'
-});
+await ShareService.shareToWhatsApp(
+  ShareService.composeShareMessage('Güzel bir gün', 'https://web.youlistaapp.com/post/123')
+);
 
 // Link kopyala
 await ShareService.copyToClipboard({

@@ -1,8 +1,7 @@
 import React from 'react';
-import { TouchableOpacity, Dimensions, View } from 'react-native';
+import { TouchableOpacity, Dimensions } from 'react-native';
 import { RouteWithProfile } from '../../model/routes.model';
-import CachedImage from '../common/CachedImage';
-import { usePostImageDownload } from '../../hooks/useImageDownload';
+import SmartImage from '../common/smart-image/SmartImage';
 import { useThemedStyles } from '../../theme/useThemedStyles';
 
 const { width } = Dimensions.get('window');
@@ -14,7 +13,7 @@ interface ProfileGridItemProps {
   onRoutePress: (routeId: string) => void;
 }
 
-const ProfileGridItem: React.FC<ProfileGridItemProps> = ({ item, index, onRoutePress }) => {
+const ProfileGridItem: React.FC<ProfileGridItemProps> = ({ item, onRoutePress }) => {
   const styles = useThemedStyles((t) => ({
     gridItem: {
       width: itemSize,
@@ -27,25 +26,7 @@ const ProfileGridItem: React.FC<ProfileGridItemProps> = ({ item, index, onRouteP
       width: '100%',
       height: '100%',
     },
-    loadingOverlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: t.overlayDark,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    loadingIndicator: {
-      width: 20,
-      height: 20,
-      backgroundColor: t.borderStrong,
-      borderRadius: 10,
-    },
   }));
-
-  const { imageUri, loading } = usePostImageDownload(item.image_url, item.user_id || '');
 
   return (
     <TouchableOpacity
@@ -53,19 +34,15 @@ const ProfileGridItem: React.FC<ProfileGridItemProps> = ({ item, index, onRouteP
       onPress={() => onRoutePress(item.id || '')}
       activeOpacity={0.8}
     >
-      <CachedImage
-        source={imageUri ? { uri: imageUri } : { uri: 'https://via.placeholder.com/400x400/f0f0f0/999?text=No+Image' }}
+      <SmartImage
+        kind="route"
+        userId={item.user_id || ''}
+        imageUrl={item.image_url}
+        imagePreviewUrl={item.image_preview_url}
+        width={itemSize}
+        height={itemSize}
         style={styles.gridImage}
-        resizeMode="cover"
-        showRetryButton={false}
-        fallbackSource={{ uri: 'https://via.placeholder.com/400x400/f0f0f0/999?text=No+Image' }}
       />
-
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingIndicator} />
-        </View>
-      )}
     </TouchableOpacity>
   );
 };

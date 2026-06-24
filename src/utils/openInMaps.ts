@@ -6,13 +6,17 @@ import {
   type LatLng,
 } from './routeDistance';
 
-type TravelMode = 'walking' | 'driving';
+export type TravelMode = 'walking' | 'driving';
 
 export type OpenInMapsOptions = {
   /** Mesafe biliniyorsa doğrudan mod seçimi. */
   distanceKm?: number;
   /** Tek hedef açılışında başlangıç noktası (mesafe hesabı için). */
   from?: LatLng;
+  /** Kullanıcı seçimi — varsa mesafe eşiği yerine bu mod kullanılır. */
+  travelMode?: TravelMode;
+  /** Google Maps ara durak sırasını optimize eder. */
+  optimizeWaypoints?: boolean;
 };
 
 const formatCoord = ({ latitude, longitude }: LatLng): string =>
@@ -35,6 +39,10 @@ const resolveTravelModeForOpenStop = (
   coordinate: LatLng,
   options: OpenInMapsOptions = {},
 ): TravelMode => {
+  if (options.travelMode) {
+    return options.travelMode;
+  }
+
   if (typeof options.distanceKm === 'number') {
     return resolveTravelModeForDistanceKm(options.distanceKm);
   }
@@ -48,6 +56,17 @@ const resolveTravelModeForOpenStop = (
   return 'walking';
 };
 
+const resolveTravelModeForRoute = (
+  stops: LatLng[],
+  options: OpenInMapsOptions = {},
+): TravelMode => {
+  if (options.travelMode) {
+    return options.travelMode;
+  }
+
+  return resolveTravelModeForStops(stops);
+};
+
 /**
  * Google Maps universal URL (opens native app when installed).
  * @see https://developers.google.com/maps/documentation/urls/get-started#directions-action
@@ -55,6 +74,7 @@ const resolveTravelModeForOpenStop = (
 export const buildGoogleMapsDirectionsUrl = (
   stops: LatLng[],
   travelMode: TravelMode = 'walking',
+  optimizeWaypoints = false,
 ): string | null => {
   if (stops.length === 0) {
     return null;
@@ -73,10 +93,10 @@ export const buildGoogleMapsDirectionsUrl = (
 
   const origin = stops[0];
   const destination = stops[stops.length - 1];
-  const waypoints = stops
-    .slice(1, -1)
-    .map((stop) => formatCoord(stop))
-    .join('|');
+  const middleStops = stops.slice(1, -1).map((stop) => formatCoord(stop));
+  const waypoints = optimizeWaypoints && middleStops.length > 0
+    ? `optimize:true|${middleStops.join('|')}`
+    : middleStops.join('|');
 
   const params = new URLSearchParams({
     api: '1',
@@ -204,19 +224,26 @@ export async function openStopInMaps(
     }
   }
 
-  const googleUrl = buildGoogleMapsDirectionsUrl(stops, travelMode);
+  const googleUrl = buildGoogleMapsDirectionsUrl(
+    stops,
+    travelMode,
+    options.optimizeWaypoints,
+  );
 
   if (googleUrl) {
     await tryOpenUrl(googleUrl);
   }
 }
 
-export async function openRouteInMaps(stops: LatLng[]): Promise<void> {
+export async function openRouteInMaps(
+  stops: LatLng[],
+  options: OpenInMapsOptions = {},
+): Promise<void> {
   if (stops.length === 0) {
     return;
   }
 
-  const travelMode = resolveTravelModeForStops(stops);
+  const travelMode = resolveTravelModeForRoute(stops, options);
   const appleLegacyFlag = appleLegacyDirFlag(travelMode);
 
   if (Platform.OS === 'ios') {
@@ -233,7 +260,11 @@ export async function openRouteInMaps(stops: LatLng[]): Promise<void> {
     }
   }
 
-  const googleUrl = buildGoogleMapsDirectionsUrl(stops, travelMode);
+  const googleUrl = buildGoogleMapsDirectionsUrl(
+    stops,
+    travelMode,
+    options.optimizeWaypoints,
+  );
 
   if (googleUrl) {
     await tryOpenUrl(googleUrl);

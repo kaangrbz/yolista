@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Text,
@@ -17,29 +17,57 @@ import {
 } from '../../utils/routeSegmentColors';
 import RouteSegmentMap from './RouteSegmentMap';
 import RouteDirectionsTimeline from './RouteDirectionsTimeline';
-import { openRouteInMaps, openStopInMaps } from '../../utils/openInMaps';
-import { extractValidCoordinates } from '../../utils/routeDistance';
+import RouteDirectionsStepsList from './RouteDirectionsStepsList';
+import { trackRouteDetailEvent } from '../../analytics/routeDetailAnalytics';
+import {
+  openRouteInMaps,
+  openStopInMaps,
+  resolveTravelModeForDistanceKm,
+  type TravelMode,
+} from '../../utils/openInMaps';
+import {
+  extractValidCoordinates,
+  totalRouteDistanceKmFromPoints,
+} from '../../utils/routeDistance';
+import { ROUTE_EXTERNAL_NAV_DISCLAIMER } from '../../constants/routeDetailCopy';
+import { getNavigationStopCoordinates } from '../../utils/routeOrderOptimization';
 
 interface RouteDirectionsTabPanelProps {
+  routeId?: string;
   stops: RouteWithProfile[];
   segments: RouteSegment[];
   activeSegmentIndex: number;
+  activeStopIndex?: number;
   loading: boolean;
   startFromUserLocation: boolean;
   canStartFromUserLocation: boolean;
   onSegmentPress: (index: number) => void;
   onStartFromUserLocationChange: (enabled: boolean) => void;
+  onNestedScrollLockChange?: (isActive: boolean) => void;
+  useFloatingPrimaryCta?: boolean;
+  surface?: 'detail' | 'map_sheet';
+  optimizeRouteOrder?: boolean;
+  onOptimizeRouteOrderChange?: (enabled: boolean) => void;
+  optimizeSavingsPercent?: number | null;
 }
 
 export const RouteDirectionsTabPanel: React.FC<RouteDirectionsTabPanelProps> = ({
   stops,
   segments,
   activeSegmentIndex,
+  activeStopIndex = 0,
   loading,
   startFromUserLocation,
   canStartFromUserLocation,
   onSegmentPress,
   onStartFromUserLocationChange,
+  onNestedScrollLockChange,
+  useFloatingPrimaryCta = false,
+  routeId,
+  surface = 'detail',
+  optimizeRouteOrder = false,
+  onOptimizeRouteOrderChange,
+  optimizeSavingsPercent = null,
 }) => {
   const theme = useAppTheme();
 
@@ -112,6 +140,9 @@ export const RouteDirectionsTabPanel: React.FC<RouteDirectionsTabPanelProps> = (
     },
     timelineContentActive: {
       backgroundColor: t.surfaceMuted,
+      borderLeftWidth: 3,
+      borderLeftColor: MAP_ACTIVE_ROUTE_BORDER,
+      paddingLeft: 10,
     },
     timelineLabel: {
       fontSize: 14,
@@ -212,6 +243,19 @@ export const RouteDirectionsTabPanel: React.FC<RouteDirectionsTabPanelProps> = (
       textAlign: 'center',
       paddingHorizontal: 24,
     },
+    mapsDisclaimer: {
+      fontSize: 11,
+      lineHeight: 15,
+      color: t.textMuted,
+      textAlign: 'center',
+    },
+    optimizeHint: {
+      paddingHorizontal: 16,
+      paddingBottom: 10,
+      fontSize: 11,
+      lineHeight: 15,
+      color: t.textMuted,
+    },
   }));
 
   const totals = useMemo(() => {
@@ -243,20 +287,61 @@ export const RouteDirectionsTabPanel: React.FC<RouteDirectionsTabPanelProps> = (
   }, [segments]);
 
   const activeSegment = segments[activeSegmentIndex];
-  const activeSteps = activeSegment?.stepInstructions ?? [];
+  const activeSteps = activeSegment?.directionSteps ?? [];
   const coordStops = extractValidCoordinates(
     stops.map((stop) => ({
       latitude: stop.latitude,
       longitude: stop.longitude,
     })),
   );
+  const navigationCoords = useMemo(
+    () => getNavigationStopCoordinates(stops, optimizeRouteOrder),
+    [optimizeRouteOrder, stops],
+  );
+  const canOptimizeOrder = coordStops.length >= 3;
 
-  const handleOpenRouteInMaps = () => {
-    if (coordStops.length === 0) {
+  const totalKm = useMemo(
+    () => totalRouteDistanceKmFromPoints(coordStops),
+    [coordStops],
+  );
+
+  const suggestedTravelMode = useMemo(
+    () => resolveTravelModeForDistanceKm(totalKm),
+    [totalKm],
+  );
+
+  const [travelMode, setTravelMode] = useState<TravelMode>(suggestedTravelMode);
+
+  useEffect(() => {
+    setTravelMode(suggestedTravelMode);
+  }, [suggestedTravelMode]);
+
+  const hasEstimatedSegments = segments.some((segment) => segment.isEstimated);
+
+  const trackMapsCta = (scope: 'full_route' | 'segment' | 'stop') => {
+    if (!routeId) {
       return;
     }
 
-    void openRouteInMaps(coordStops);
+    trackRouteDetailEvent({
+      name: 'route_detail_maps_cta',
+      routeId,
+      scope,
+      travelMode,
+      surface,
+    });
+  };
+
+  const handleOpenRouteInMaps = () => {
+    if (navigationCoords.length === 0) {
+      return;
+    }
+
+    trackMapsCta('full_route');
+    void openRouteInMaps(navigationCoords, {
+      travelMode,
+      optimizeWaypoints: optimizeRouteOrder,
+    });
   };
 
   const handleOpenActiveSegmentInMaps = () => {
@@ -264,7 +349,8 @@ export const RouteDirectionsTabPanel: React.FC<RouteDirectionsTabPanelProps> = (
       return;
     }
 
-    void openRouteInMaps([activeSegment.from, activeSegment.to]);
+    trackMapsCta('segment');
+    void openRouteInMaps([activeSegment.from, activeSegment.to], { travelMode });
   };
 
   if (loading) {
@@ -293,10 +379,13 @@ export const RouteDirectionsTabPanel: React.FC<RouteDirectionsTabPanelProps> = (
             <TouchableOpacity
               style={styles.primaryButton}
               activeOpacity={0.88}
-              onPress={() => void openStopInMaps(coordStops[0])}
+              onPress={() => {
+                trackMapsCta('stop');
+                void openStopInMaps(coordStops[0], { travelMode });
+              }}
             >
               <Icon name="google-maps" size={18} color="#fff" />
-              <Text style={styles.primaryButtonText}>Haritada aç</Text>
+              <Text style={styles.primaryButtonText}>Google Maps'te aç</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -309,15 +398,36 @@ export const RouteDirectionsTabPanel: React.FC<RouteDirectionsTabPanelProps> = (
   ];
 
   if (totals.distanceLabel) {
-    summaryChips.push({ icon: 'map-marker-distance', label: totals.distanceLabel });
+    summaryChips.push({
+      icon: 'map-marker-distance',
+      label: hasEstimatedSegments ? `${totals.distanceLabel} (tahmini)` : totals.distanceLabel,
+    });
   }
 
   if (totals.durationLabel) {
-    summaryChips.push({ icon: 'walk', label: totals.durationLabel });
+    summaryChips.push({
+      icon: travelMode === 'driving' ? 'car' : 'walk',
+      label: hasEstimatedSegments
+        ? `${totals.durationLabel} (tahmini)`
+        : totals.durationLabel,
+    });
   }
+
+  const travelModeChips: { id: TravelMode; label: string; icon: string }[] = [
+    { id: 'walking', label: 'Yürüyüş', icon: 'walk' },
+    { id: 'driving', label: 'Sürüş', icon: 'car' },
+  ];
 
   return (
     <View style={styles.wrapper}>
+      <RouteSegmentMap
+        segments={segments}
+        activeSegmentIndex={activeSegmentIndex}
+        activeStopIndex={activeStopIndex}
+        stops={stops}
+        onMapInteractionChange={onNestedScrollLockChange}
+      />
+
       <View style={styles.chipRow}>
         {summaryChips.map((chip) => (
           <View key={chip.label} style={styles.chip}>
@@ -325,6 +435,46 @@ export const RouteDirectionsTabPanel: React.FC<RouteDirectionsTabPanelProps> = (
             <Text style={styles.chipText}>{chip.label}</Text>
           </View>
         ))}
+
+        {travelModeChips.map((chip) => {
+          const isActive = travelMode === chip.id;
+
+          return (
+            <TouchableOpacity
+              key={chip.id}
+              style={[styles.chip, isActive && styles.chipActive]}
+              activeOpacity={0.85}
+              onPress={() => setTravelMode(chip.id)}
+            >
+              <Icon
+                name={chip.icon}
+                size={14}
+                color={isActive ? theme.accent : theme.textSecondary}
+              />
+              <Text style={styles.chipText}>{chip.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+
+        {canOptimizeOrder && onOptimizeRouteOrderChange ? (
+          <TouchableOpacity
+            style={[styles.chip, optimizeRouteOrder && styles.chipActive]}
+            activeOpacity={0.85}
+            onPress={() => onOptimizeRouteOrderChange(!optimizeRouteOrder)}
+          >
+            <Icon
+              name="map-marker-path"
+              size={14}
+              color={optimizeRouteOrder ? theme.accent : theme.textSecondary}
+            />
+            <Text style={styles.chipText}>
+              En kısa sıra
+              {optimizeSavingsPercent
+                ? ` · ~%${optimizeSavingsPercent}`
+                : ''}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
 
         {canStartFromUserLocation ? (
           <TouchableOpacity
@@ -344,11 +494,12 @@ export const RouteDirectionsTabPanel: React.FC<RouteDirectionsTabPanelProps> = (
         ) : null}
       </View>
 
-      <RouteSegmentMap
-        segment={activeSegment ?? null}
-        segmentIndex={activeSegmentIndex}
-        activeSegmentIndex={activeSegmentIndex}
-      />
+      {optimizeRouteOrder ? (
+        <Text style={styles.optimizeHint}>
+          Navigasyon sırası mesafeye göre optimize edildi. Fotoğraf ve durak
+          sırası aynı kaldı.
+        </Text>
+      ) : null}
 
       <RouteDirectionsTimeline
         segments={segments}
@@ -358,55 +509,42 @@ export const RouteDirectionsTabPanel: React.FC<RouteDirectionsTabPanelProps> = (
         dotBorderColor={theme.background}
       />
 
-      {activeSteps.length > 0 ? (
-        <View style={styles.stepsSection}>
-          <Text style={styles.stepsTitle}>Adımlar</Text>
-          {activeSteps.map((step, index) => (
-            <View key={`${activeSegment?.id}-step-${index}`} style={styles.stepRow}>
-              <Icon
-                name="arrow-up-bold"
-                size={14}
-                color={theme.textMuted}
-                style={{ marginTop: 2 }}
-              />
-              <Text style={styles.stepText}>{step}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
+      <RouteDirectionsStepsList
+        steps={activeSteps}
+        segmentId={activeSegment?.id}
+        styles={styles}
+        iconColor={theme.textMuted}
+      />
 
-      <View style={styles.actionsRow}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          activeOpacity={0.88}
-          onPress={handleOpenRouteInMaps}
-        >
-          <Icon name="navigation" size={18} color="#fff" />
-          <Text style={styles.primaryButtonText}>Başlat</Text>
-        </TouchableOpacity>
-
-        <View style={styles.secondaryRow}>
-          {activeSegment ? (
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              activeOpacity={0.85}
-              onPress={handleOpenActiveSegmentInMaps}
-            >
-              <Icon name="map-marker-path" size={16} color={theme.accent} />
-              <Text style={styles.secondaryButtonText}>Bu bacak</Text>
-            </TouchableOpacity>
+      {activeSegment ? (
+        <View style={styles.actionsRow}>
+          {!useFloatingPrimaryCta ? (
+            <>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                activeOpacity={0.88}
+                onPress={handleOpenRouteInMaps}
+              >
+                <Icon name="navigation" size={18} color="#fff" />
+                <Text style={styles.primaryButtonText}>Google Maps'te başlat</Text>
+              </TouchableOpacity>
+              <Text style={styles.mapsDisclaimer}>{ROUTE_EXTERNAL_NAV_DISCLAIMER}</Text>
+            </>
           ) : null}
 
           <TouchableOpacity
-            style={styles.secondaryButton}
+            style={[
+              styles.secondaryButton,
+              useFloatingPrimaryCta && { alignSelf: 'stretch', minWidth: '100%' },
+            ]}
             activeOpacity={0.85}
-            onPress={handleOpenRouteInMaps}
+            onPress={handleOpenActiveSegmentInMaps}
           >
-            <Icon name="google-maps" size={16} color={theme.accent} />
-            <Text style={styles.secondaryButtonText}>Tüm rota</Text>
+            <Icon name="map-marker-path" size={16} color={theme.accent} />
+            <Text style={styles.secondaryButtonText}>Bu bacak (harici)</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      ) : null}
     </View>
   );
 };

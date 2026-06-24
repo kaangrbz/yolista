@@ -14,3 +14,5 @@ export { default as SavedCollectionsSheet } from './SavedCollectionsSheet';
 export { default as SavedCollectionRow } from './SavedCollectionRow';
 export { default as SimpleSkeletonLoader } from './SimpleSkeletonLoader';
 export { default as SkeletonLoader } from './SkeletonLoader';
+export { default as SmartImage } from './smart-image/SmartImage';
+export { UserImageSkeleton, RouteImageSkeleton } from './smart-image/SmartImage';

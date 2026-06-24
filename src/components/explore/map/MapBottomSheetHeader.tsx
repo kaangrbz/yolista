@@ -14,6 +14,7 @@ interface MapBottomSheetHeaderProps {
   weatherLatitude?: number | null;
   weatherLongitude?: number | null;
   selectedRouteId?: string | null;
+  hideRouteActions?: boolean;
   isRouteSaved?: boolean;
   onClearSelectedRoute?: () => void;
   onShareRoute?: () => void;
@@ -29,6 +30,7 @@ export const MapBottomSheetHeader: React.FC<MapBottomSheetHeaderProps> = ({
   weatherLatitude,
   weatherLongitude,
   selectedRouteId = null,
+  hideRouteActions = false,
   isRouteSaved = false,
   onClearSelectedRoute,
   onShareRoute,
@@ -37,7 +39,7 @@ export const MapBottomSheetHeader: React.FC<MapBottomSheetHeaderProps> = ({
   onLayout,
 }) => {
   const theme = useAppTheme();
-  const isRouteSelected = Boolean(selectedRouteId);
+  const isRouteSelected = Boolean(selectedRouteId) && !hideRouteActions;
   const styles = useThemedStyles((t) => ({
     header: {
       paddingHorizontal: 18,
@@ -122,7 +124,7 @@ export const MapBottomSheetHeader: React.FC<MapBottomSheetHeaderProps> = ({
         {isRouteSelected ? (
           <View style={styles.headerActions}>
             <MapHeaderIconButton
-              iconName="export-variant"
+              iconName="share-variant"
               onPress={handleShareRoute}
               accessibilityLabel="Rotayı paylaş"
             />

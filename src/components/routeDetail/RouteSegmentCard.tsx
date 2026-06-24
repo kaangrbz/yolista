@@ -1,11 +1,9 @@
 import React from 'react';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { RouteWithProfile } from '../../model/routes.model';
 import { MAP_ACTIVE_ROUTE_BORDER } from '../../constants/mapDefaults';
-import { useAppTheme } from '../../context/AppThemeContext';
 import { useThemedStyles } from '../../theme/useThemedStyles';
-import { useMapPreviewImageDownload } from '../../hooks/useImageDownload';
+import SmartImage from '../common/smart-image/SmartImage';
 import { getStopPhotoHintLabel } from '../../utils/getStopPhotoHintLabel';
 
 interface RouteSegmentCardProps {
@@ -21,16 +19,8 @@ export const RouteSegmentCard: React.FC<RouteSegmentCardProps> = ({
   selected = false,
   onPress,
 }) => {
-  const theme = useAppTheme();
   const label = getStopPhotoHintLabel(stop);
   const description = stop.description?.trim() || '';
-
-  const { imageUri } = useMapPreviewImageDownload(
-    stop.image_url,
-    stop.user_id || '',
-    stop.image_preview_url || undefined,
-    { cacheOnly: true, previewOnly: true },
-  );
 
   const styles = useThemedStyles((t) => ({
     card: {
@@ -49,10 +39,6 @@ export const RouteSegmentCard: React.FC<RouteSegmentCardProps> = ({
       width: 72,
       height: 72,
       backgroundColor: t.surfaceMuted,
-    },
-    thumbPlaceholder: {
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     content: {
       flex: 1,
@@ -100,13 +86,17 @@ export const RouteSegmentCard: React.FC<RouteSegmentCardProps> = ({
       disabled={!onPress}
     >
       <View style={styles.row}>
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.thumb} resizeMode="cover" />
-        ) : (
-          <View style={[styles.thumb, styles.thumbPlaceholder]}>
-            <Icon name="image-outline" size={22} color={theme.textMuted} />
-          </View>
-        )}
+        <SmartImage
+          kind="routePreview"
+          userId={stop.user_id || ''}
+          imageUrl={stop.image_url}
+          imagePreviewUrl={stop.image_preview_url}
+          cacheOnly
+          previewOnly
+          width={72}
+          height={72}
+          style={styles.thumb}
+        />
 
         <View style={styles.content}>
           <View style={styles.titleRow}>

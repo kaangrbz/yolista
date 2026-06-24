@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Image,
   StyleSheet,
   Text,
   View,
@@ -23,7 +22,7 @@ import {
   getMapMarkerStackSlots,
   getMapMarkerVisibleCount,
 } from '../../../constants/mapMarkerLayout';
-import { useMapPreviewImageDownload } from '../../../hooks/useImageDownload';
+import SmartImage from '../../common/smart-image/SmartImage';
 
 export interface MapCardStackItem {
   imageUrl?: string | null;
@@ -68,11 +67,6 @@ const MapCardStackCard: React.FC<MapCardStackCardProps> = ({
 }) => {
   const theme = useAppTheme();
   const storageKey = item.imagePreviewUrl || item.imageUrl;
-  const { imageUri, loading } = useMapPreviewImageDownload(
-    item.imageUrl || undefined,
-    item.userId || '',
-    item.imagePreviewUrl || undefined,
-  );
 
   useEffect(() => {
     if (variant === 'cluster') {
@@ -82,22 +76,10 @@ const MapCardStackCard: React.FC<MapCardStackCardProps> = ({
 
     if (!storageKey || !item.userId) {
       onLoad?.();
-      return;
     }
+  }, [item.userId, onLoad, storageKey, variant]);
 
-    if (!loading && !imageUri) {
-      onLoad?.();
-    }
-  }, [imageUri, item.userId, loading, onLoad, storageKey, variant]);
-
-  const showImage = variant === 'route' && Boolean(imageUri);
   const iconName = item.iconName || 'map-marker';
-  const borderColor =
-    selected && isFront
-      ? accentColor
-      : item.estimatedLocation && isFront
-        ? theme.textMuted
-        : accentColor;
 
   return (
     <View
@@ -108,19 +90,23 @@ const MapCardStackCard: React.FC<MapCardStackCardProps> = ({
           bottom: MAP_MARKER_CARD_BASE_BOTTOM,
           zIndex: slot.zIndex,
           opacity: slot.opacity,
-          borderColor,
-          borderWidth: selected && isFront ? 2 : 2,
+          borderColor: '#000',
+          borderWidth: 1,
           borderStyle: item.estimatedLocation && isFront ? 'dashed' : 'solid',
           transform: [{ translateX: slot.translateX }, { rotate: slot.rotate }],
         },
       ]}
     >
-      {showImage ? (
-        <Image
-          source={{ uri: imageUri as string }}
+      {variant === 'route' && storageKey && item.userId ? (
+        <SmartImage
+          kind="routePreview"
+          userId={item.userId}
+          imageUrl={item.imageUrl || undefined}
+          imagePreviewUrl={item.imagePreviewUrl || undefined}
+          previewOnly
+          width={MAP_MARKER_CARD_SIZE}
+          height={MAP_MARKER_CARD_SIZE}
           style={styles.cardImage}
-          resizeMode="cover"
-          fadeDuration={0}
           onLoad={onLoad}
           onError={onLoad}
         />

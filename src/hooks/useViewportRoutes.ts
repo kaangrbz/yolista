@@ -11,6 +11,7 @@ import {
   regionToBbox,
   shouldSkipViewportFetch,
 } from '../utils/viewportFetch';
+import { isAbortError } from '../utils/abortError';
 import { useAuth } from '../context/AuthContext';
 
 interface UseViewportRoutesParams {
@@ -43,12 +44,23 @@ export const useViewportRoutes = ({
   const lastFetchedBboxRef = useRef<BoundingBox | null>(null);
   const lastFiltersKeyRef = useRef<string>('');
   const requestIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const hasFetchedRef = useRef(false);
 
   const filtersKey = useMemo(() => JSON.stringify(filters || {}), [filters]);
 
+  const cancelInFlightFetch = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    requestIdRef.current += 1;
+  }, []);
+
   const runFetch = useCallback(
     async (targetRegion: Region) => {
+      abortControllerRef.current?.abort();
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
       const requestId = ++requestIdRef.current;
 
       setLoading(true);
@@ -59,6 +71,7 @@ export const useViewportRoutes = ({
           {
             bbox: regionToBbox(targetRegion),
             filters,
+            signal: controller.signal,
           },
           loggedUserId,
         );
@@ -74,7 +87,7 @@ export const useViewportRoutes = ({
           targetRegion.latitude,
         );
       } catch (err) {
-        if (requestId !== requestIdRef.current) {
+        if (isAbortError(err) || requestId !== requestIdRef.current) {
           return;
         }
 
@@ -113,6 +126,7 @@ export const useViewportRoutes = ({
       return;
     }
 
+    cancelInFlightFetch();
     lastRegionRef.current = region;
 
     if (timerRef.current) {
@@ -124,9 +138,14 @@ export const useViewportRoutes = ({
       void runFetch(region);
     };
 
-    if (!hasFetchedRef.current) {
+    if (!hasFetchedRef.current || filtersChanged) {
       scheduleFetch();
-      return;
+      return () => {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+        }
+        cancelInFlightFetch();
+      };
     }
 
     timerRef.current = setTimeout(scheduleFetch, VIEWPORT_DEBOUNCE_MS);
@@ -135,8 +154,9 @@ export const useViewportRoutes = ({
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
+      cancelInFlightFetch();
     };
-  }, [region, enabled, filtersKey, runFetch]);
+  }, [region, enabled, filtersKey, runFetch, cancelInFlightFetch]);
 
   const refetch = useCallback(() => {
     if (lastRegionRef.current) {

@@ -7,6 +7,10 @@ export interface PostImageSlide {
   width: number | null;
   height: number | null;
   imageAlignment: RouteImageAlignment | null;
+  /** SmartImage / indirme kaynağı */
+  imageUrl?: string | null;
+  imagePreviewUrl?: string | null;
+  userId?: string | null;
 }
 
 export type PostImageSlideMeta = Pick<
