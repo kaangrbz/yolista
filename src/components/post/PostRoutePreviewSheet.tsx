@@ -6,9 +6,12 @@ import React, {
   useState,
   type ComponentRef,
 } from 'react';
+import { Modal, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
+  BottomSheetModalProvider,
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
@@ -29,6 +32,12 @@ import { useThemedStyles } from '../../theme/useThemedStyles';
 const DEFAULT_SHEET_OPEN_SNAP_INDEX = 1;
 const SHEET_SNAP_POINTS = ['30%', '58%', '100%'] as const;
 
+const modalStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});
+
 interface PostRoutePreviewSheetProps {
   visible: boolean;
   routeId: string;
@@ -40,6 +49,7 @@ interface PostRoutePreviewSheetProps {
   onShare?: () => void;
   onSave?: () => void;
   onLoadingChange?: (loading: boolean) => void;
+  onStopImagePress?: (stop: RouteWithProfile, previewStops: RouteWithProfile[]) => void;
 }
 
 const mergeRouteMeta = (
@@ -73,6 +83,7 @@ export const PostRoutePreviewSheet: React.FC<PostRoutePreviewSheetProps> = ({
   onShare,
   onSave,
   onLoadingChange,
+  onStopImagePress,
 }) => {
   const insets = useSafeAreaInsets();
   const sheetRef = useRef<ComponentRef<typeof BottomSheetModal>>(null);
@@ -152,14 +163,22 @@ export const PostRoutePreviewSheet: React.FC<PostRoutePreviewSheetProps> = ({
   );
 
   useEffect(() => {
-    if (visible) {
-      sheetRef.current?.present();
-
+    if (!visible) {
       return;
     }
 
-    sheetRef.current?.dismiss();
-  }, [visible]);
+    const frameId = requestAnimationFrame(() => {
+      sheetRef.current?.present();
+    });
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [visible, routeId]);
+
+  const handleModalShow = useCallback(() => {
+    sheetRef.current?.present();
+  }, []);
 
   useEffect(() => {
     if (!visible) {
@@ -208,6 +227,13 @@ export const PostRoutePreviewSheet: React.FC<PostRoutePreviewSheetProps> = ({
       }
     },
     [segments, stops],
+  );
+
+  const handleStopImagePress = useCallback(
+    (stop: RouteWithProfile) => {
+      onStopImagePress?.(stop, stops);
+    },
+    [onStopImagePress, stops],
   );
 
   const handleStopPress = useCallback((stop: RouteWithProfile) => {
@@ -288,43 +314,62 @@ export const PostRoutePreviewSheet: React.FC<PostRoutePreviewSheetProps> = ({
     userCoordinate,
   ]);
 
+  if (!visible) {
+    return null;
+  }
+
   return (
-    <BottomSheetModal
-      ref={sheetRef}
-      snapPoints={snapPoints}
-      index={DEFAULT_SHEET_OPEN_SNAP_INDEX}
-      enablePanDownToClose
-      onDismiss={handleDismiss}
-      backdropComponent={renderBackdrop}
-      backgroundStyle={styles.background}
-      handleIndicatorStyle={styles.indicator}
-      topInset={insets.top}
-      bottomInset={insets.bottom}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={handleDismiss}
+      onShow={handleModalShow}
     >
-      <BottomSheetView style={styles.sheetContent}>
-        <MapRouteTimelinePanel
-        stops={stops}
-        stopsLoading={stopsLoading}
-        selectedRoute={selectedRoute}
-        activeStopId={activeStopId}
-        segments={segments}
-        activeSegmentIndex={activeSegmentIndex}
-        segmentsLoading={segmentsLoading}
-        startFromUserLocation={startFromUserLocation}
-        isRouteSaved={isRouteSaved}
-        saveLoading={saveLoading}
-        onStopPress={handleStopPress}
-        onSegmentPress={handleSegmentPress}
-        onOpenRouteInMaps={handleOpenRouteInMaps}
-        onOpenActiveStopInMaps={handleOpenActiveStopInMaps}
-        onClearSelectedRoute={handleDismiss}
-        onShareRoute={onShare}
-        onSaveRoute={onSave}
-        showDragHandle={false}
-        fillAvailableHeight
-        />
-      </BottomSheetView>
-    </BottomSheetModal>
+      <GestureHandlerRootView style={modalStyles.root}>
+        <BottomSheetModalProvider>
+          <BottomSheetModal
+            ref={sheetRef}
+            snapPoints={snapPoints}
+            index={DEFAULT_SHEET_OPEN_SNAP_INDEX}
+            stackBehavior="push"
+            enablePanDownToClose
+            onDismiss={handleDismiss}
+            backdropComponent={renderBackdrop}
+            backgroundStyle={styles.background}
+            handleIndicatorStyle={styles.indicator}
+            topInset={insets.top}
+            bottomInset={insets.bottom}
+          >
+            <BottomSheetView style={styles.sheetContent}>
+              <MapRouteTimelinePanel
+                stops={stops}
+                stopsLoading={stopsLoading}
+                selectedRoute={selectedRoute}
+                activeStopId={activeStopId}
+                segments={segments}
+                activeSegmentIndex={activeSegmentIndex}
+                segmentsLoading={segmentsLoading}
+                startFromUserLocation={startFromUserLocation}
+                isRouteSaved={isRouteSaved}
+                saveLoading={saveLoading}
+                onStopPress={handleStopPress}
+                onSegmentPress={handleSegmentPress}
+                onOpenRouteInMaps={handleOpenRouteInMaps}
+                onOpenActiveStopInMaps={handleOpenActiveStopInMaps}
+                onClearSelectedRoute={handleDismiss}
+                onShareRoute={onShare}
+                onSaveRoute={onSave}
+                onStopImagePress={handleStopImagePress}
+                showDragHandle={false}
+                fillAvailableHeight
+              />
+            </BottomSheetView>
+          </BottomSheetModal>
+        </BottomSheetModalProvider>
+      </GestureHandlerRootView>
+    </Modal>
   );
 };
 

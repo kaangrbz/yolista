@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleProp,
@@ -43,6 +43,7 @@ import {
   composeRouteShareText,
   extractShareMetaFromStops,
 } from '../../utils/composeRouteShareText';
+import { resolveCarouselIndexForRouteStop } from '../../utils/resolveCarouselIndexForRouteStop';
 import RouteModel from '../../model/routes.model';
 import type { RouteWithProfile } from '../../model/routes.model';
 import type { RouteSegment, RouteSheetTab } from '../../types/routeSegment.types';
@@ -261,6 +262,31 @@ export const RouteDetailLayout: React.FC<RouteDetailLayoutProps> = ({
   });
 
   previewIndexRef.current = previewIndex;
+
+  const handleTimelineStopImagePress = useCallback(
+    (stop: RouteWithProfile) => {
+      const index = resolveCarouselIndexForRouteStop(stop, carouselSlides, stops);
+
+      previewIndexRef.current = index;
+      setPreviewIndex(index);
+      setIsImagePreviewVisible(true);
+    },
+    [carouselSlides, stops],
+  );
+
+  const closeImagePreview = useCallback(() => {
+    const index = previewIndexRef.current;
+
+    setIsImagePreviewVisible(false);
+
+    if (index !== currentIndex) {
+      goToImage(index);
+    }
+
+    if (index !== activeStopIndex) {
+      onActiveStopIndexChange(index);
+    }
+  }, [activeStopIndex, currentIndex, goToImage, onActiveStopIndexChange]);
 
   useEffect(() => {
     if (post) {
@@ -675,6 +701,7 @@ export const RouteDetailLayout: React.FC<RouteDetailLayoutProps> = ({
             segmentsLoading={segmentsLoading}
             startFromUserLocation={startFromUserLocation}
             onStopPress={handleTimelineStopPress}
+            onStopImagePress={handleTimelineStopImagePress}
             onSegmentPress={onSegmentPress}
             onOpenRouteInMaps={onOpenRouteInMaps}
             onOpenActiveStopInMaps={onOpenActiveStopInMaps}
@@ -747,11 +774,9 @@ export const RouteDetailLayout: React.FC<RouteDetailLayoutProps> = ({
           initialIndex={previewIndex}
           description={post.description}
           menuOptions={previewMenuOptions}
-          onRequestClose={() => setIsImagePreviewVisible(false)}
+          onRequestClose={closeImagePreview}
           onIndexChange={(index) => {
             previewIndexRef.current = index;
-            goToImage(index);
-            onActiveStopIndexChange(index);
           }}
         />
       </>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -276,9 +276,12 @@ const PostImagePreview: React.FC<PostImagePreviewProps> = ({
   const insets = useSafeAreaInsets();
   const [chromeVisible, setChromeVisible] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [activeViewerIndex, setActiveViewerIndex] = useState(0);
-  const [mountKey, setMountKey] = useState(0);
+  /** ImageView `imageIndex` — only set on open; must stay stable while swiping (library uses it as React key). */
+  const [sessionImageIndex, setSessionImageIndex] = useState(0);
+  /** Chrome UI (dots, caption) — updates while swiping. */
+  const [displayIndex, setDisplayIndex] = useState(0);
   const wasVisibleRef = useRef(false);
+  const skipIndexPropagationRef = useRef(false);
   const onIndexChangeRef = useRef(onIndexChange);
 
   onIndexChangeRef.current = onIndexChange;
@@ -289,13 +292,14 @@ const PostImagePreview: React.FC<PostImagePreviewProps> = ({
     [viewerEntries],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (visible && !wasVisibleRef.current) {
       const nextViewerIndex = resolveViewerIndex(viewerEntries, initialIndex);
+      skipIndexPropagationRef.current = true;
+      setSessionImageIndex(nextViewerIndex);
+      setDisplayIndex(nextViewerIndex);
       setChromeVisible(true);
       setMenuVisible(false);
-      setActiveViewerIndex(nextViewerIndex);
-      setMountKey((value) => value + 1);
     }
 
     if (!visible) {
@@ -305,7 +309,7 @@ const PostImagePreview: React.FC<PostImagePreviewProps> = ({
     wasVisibleRef.current = visible;
   }, [visible, initialIndex, viewerEntries]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!visible) {
       return;
     }
@@ -320,16 +324,24 @@ const PostImagePreview: React.FC<PostImagePreviewProps> = ({
     };
   }, [visible]);
 
-  const handleImageIndexChange = (nextIndex: number) => {
-    setActiveViewerIndex(nextIndex);
-    setChromeVisible(true);
+  const handleImageIndexChange = useCallback(
+    (nextIndex: number) => {
+      setDisplayIndex(nextIndex);
+      setChromeVisible(true);
 
-    const slideIndex = viewerEntries[nextIndex]?.slideIndex;
+      if (skipIndexPropagationRef.current) {
+        skipIndexPropagationRef.current = false;
+        return;
+      }
 
-    if (slideIndex !== undefined) {
-      onIndexChangeRef.current?.(slideIndex);
-    }
-  };
+      const slideIndex = viewerEntries[nextIndex]?.slideIndex;
+
+      if (slideIndex !== undefined) {
+        onIndexChangeRef.current?.(slideIndex);
+      }
+    },
+    [viewerEntries],
+  );
 
   const handleToggleChrome = () => {
     if (menuVisible) {
@@ -340,7 +352,7 @@ const PostImagePreview: React.FC<PostImagePreviewProps> = ({
   };
 
   const currentSlideIndex =
-    viewerEntries[activeViewerIndex]?.slideIndex ?? initialIndex;
+    viewerEntries[displayIndex]?.slideIndex ?? initialIndex;
   const currentSlide = slides[currentSlideIndex];
   const slideTitle = currentSlide?.hint?.trim() ?? '';
   const trimmedDescription = description?.trim() ?? '';
@@ -495,13 +507,10 @@ const PostImagePreview: React.FC<PostImagePreviewProps> = ({
     return null;
   }
 
-  const openImageIndex = resolveViewerIndex(viewerEntries, initialIndex);
-
   return (
     <ImageView
-      key={`post-image-preview-${mountKey}`}
       images={viewerImages}
-      imageIndex={openImageIndex}
+      imageIndex={sessionImageIndex}
       visible={visible}
       onRequestClose={onRequestClose}
       onImageIndexChange={handleImageIndexChange}

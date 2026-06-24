@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ import { getRouteShareLabel } from '../utils/getRouteDisplayLabel';
 import {
   composeRouteShareText,
 } from '../utils/composeRouteShareText';
+import { resolveCarouselIndexForRouteStop } from '../utils/resolveCarouselIndexForRouteStop';
 import { PostProps } from '../types/post.types';
 import RouteModel from '../model/routes.model';
 import { useGlobalAlert } from '../hooks/useGlobalAlert';
@@ -38,6 +39,7 @@ import PostImagePreview, {
   savePreviewSlide,
   type PreviewMenuOption,
 } from './post/PostImagePreview';
+import type { RouteWithProfile } from '../model/routes.model';
 
 const { height: windowHeight } = Dimensions.get('window');
 const FULL_SCREEN_MIN_HEIGHT = Math.max(windowHeight - 160, 480);
@@ -162,6 +164,7 @@ const UniversalPost: React.FC<PostProps> = ({
     currentIndex,
     handleImageScroll,
     goToImage,
+    downloadAllSlides,
     refreshImages,
   } = useImages(postId, postOwnerId, {
     leadSlide,
@@ -319,9 +322,42 @@ const UniversalPost: React.FC<PostProps> = ({
     }
   };
 
+  const closeImagePreview = useCallback(() => {
+    const index = previewIndexRef.current;
+
+    setIsImagePreviewVisible(false);
+
+    if (index !== currentIndex) {
+      goToImage(index);
+    }
+  }, [currentIndex, goToImage]);
+
+  const openImagePreview = useCallback(
+    (index: number) => {
+      previewIndexRef.current = index;
+      setPreviewIndex(index);
+      setIsImagePreviewVisible(true);
+      downloadAllSlides();
+    },
+    [downloadAllSlides],
+  );
+
   const handleToggleExpanded = () => {
     setIsExpanded(!isExpanded);
   };
+
+  const handleRoutePreviewStopImagePress = useCallback(
+    (stop: RouteWithProfile, previewStops: RouteWithProfile[]) => {
+      const index = resolveCarouselIndexForRouteStop(
+        stop,
+        carouselSlides,
+        previewStops,
+      );
+
+      openImagePreview(index);
+    },
+    [carouselSlides, openImagePreview],
+  );
 
   const handleEditPost = () => {
     showConfirm({
@@ -613,11 +649,7 @@ const UniversalPost: React.FC<PostProps> = ({
           secondaryImageResizeMode={secondaryImageResizeMode}
           isLiked={isLiked}
           onDoubleTap={handleDoubleTapLike}
-          onImagePress={(index) => {
-            previewIndexRef.current = index;
-            setPreviewIndex(index);
-            setIsImagePreviewVisible(true);
-          }}
+          onImagePress={openImagePreview}
           downloadEnabled={imageDownloadEnabled}
         />
       )}
@@ -734,6 +766,7 @@ const UniversalPost: React.FC<PostProps> = ({
           onShare={() => setIsShareModalVisible(true)}
           onSave={handleSavePress}
           onLoadingChange={setIsRoutePreviewLoading}
+          onStopImagePress={handleRoutePreviewStopImagePress}
         />
       ) : null}
 
@@ -743,10 +776,9 @@ const UniversalPost: React.FC<PostProps> = ({
         initialIndex={previewIndex}
         description={post.description}
         menuOptions={previewMenuOptions}
-        onRequestClose={() => setIsImagePreviewVisible(false)}
+        onRequestClose={closeImagePreview}
         onIndexChange={(index) => {
           previewIndexRef.current = index;
-          goToImage(index);
         }}
       />
     </View>

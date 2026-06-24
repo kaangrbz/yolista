@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -20,7 +20,6 @@ import { buildMapRouteTimeline } from '../../../utils/buildMapRouteTimeline';
 import MapHeaderIconButton from './MapHeaderIconButton';
 import MapRouteTimelineStopRow from './MapRouteTimelineStopRow';
 import MapRouteTimelineLeg from './MapRouteTimelineLeg';
-import MapRouteStopImagePreviewModal from './MapRouteStopImagePreviewModal';
 import { getMapStopKey } from './MapRouteStopCard';
 
 interface MapRouteTimelinePanelProps {
@@ -41,6 +40,7 @@ interface MapRouteTimelinePanelProps {
   onClearSelectedRoute?: () => void;
   onShareRoute?: () => void;
   onSaveRoute?: () => void;
+  onStopImagePress?: (stop: RouteWithProfile) => void;
   showDragHandle?: boolean;
   scrollMode?: 'bottomSheet' | 'scroll' | 'embedded';
   /** Bottom sheet tam yükseklikte içeriğin kırpılmaması için. */
@@ -112,6 +112,7 @@ export const MapRouteTimelinePanel: React.FC<MapRouteTimelinePanelProps> = ({
   onClearSelectedRoute,
   onShareRoute,
   onSaveRoute,
+  onStopImagePress,
   showDragHandle = true,
   scrollMode = 'bottomSheet',
   fillAvailableHeight = false,
@@ -120,7 +121,6 @@ export const MapRouteTimelinePanel: React.FC<MapRouteTimelinePanelProps> = ({
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<any>(null);
   const stopOffsetsRef = useRef<Record<string, number>>({});
-  const [previewStop, setPreviewStop] = useState<RouteWithProfile | null>(null);
 
   const timelineItems = useMemo(
     () =>
@@ -311,7 +311,11 @@ export const MapRouteTimelinePanel: React.FC<MapRouteTimelinePanelProps> = ({
               selected={activeStopId === stopKey}
               showConnectorBelow={!isLastStop}
               onPress={onStopPress ? () => onStopPress(item.stop) : undefined}
-              onImagePress={() => setPreviewStop(item.stop)}
+              onImagePress={
+                onStopImagePress
+                  ? () => onStopImagePress(item.stop)
+                  : undefined
+              }
             />
           </View>
         );
@@ -399,12 +403,6 @@ export const MapRouteTimelinePanel: React.FC<MapRouteTimelinePanelProps> = ({
       >
         {timelineContent}
       </ScrollContainer>
-
-      <MapRouteStopImagePreviewModal
-        stop={previewStop}
-        visible={previewStop !== null}
-        onClose={() => setPreviewStop(null)}
-      />
     </View>
   );
 };

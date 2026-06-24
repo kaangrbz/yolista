@@ -90,11 +90,16 @@ export const useImages = (
   slidesRef.current = slides;
 
   const downloadWindow = useCallback(
-    async (currentSlideIndex: number, routes: RouteImageRow[]) => {
+    async (
+      currentSlideIndex: number,
+      routes: RouteImageRow[],
+      downloadOptions?: { eager?: boolean },
+    ) => {
       const session = loadSessionRef.current + 1;
       loadSessionRef.current = session;
       const startGeneration = downloadGeneration;
       const hasVisibleSlide = countSlidesWithUri(slidesRef.current) > 0;
+      const shouldEager = downloadOptions?.eager === true || eagerSlides;
 
       if (!hasVisibleSlide) {
         setLoading(true);
@@ -108,13 +113,14 @@ export const useImages = (
         currentSlideIndex,
         generation: startGeneration,
         enabled,
+        eager: shouldEager,
       });
 
       try {
         const downloadedSlides = await downloadSlidesWithWindow(routes, {
           currentIndex: currentSlideIndex,
           prefetchAhead: slidePrefetchAhead,
-          eagerSlides,
+          eagerSlides: shouldEager,
           allowNetwork: enabled,
           existingSlides: slidesRef.current,
           postId,
@@ -312,6 +318,14 @@ export const useImages = (
     }
   };
 
+  const downloadAllSlides = useCallback(() => {
+    if (!routesReady || routesRef.current.length === 0) {
+      return;
+    }
+
+    void downloadWindow(currentIndex, routesRef.current, { eager: true });
+  }, [currentIndex, downloadWindow, routesReady]);
+
   const refreshImages = async () => {
     if (postId) {
       ImageService.clearCache();
@@ -333,6 +347,7 @@ export const useImages = (
     currentIndex,
     handleImageScroll,
     goToImage,
+    downloadAllSlides,
     refreshImages,
   };
 };
