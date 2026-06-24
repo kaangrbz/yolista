@@ -122,4 +122,8 @@ if (!updateArgs) {
     const { newVersionName, newBuildNumber } = updateArgs;
     updateAndroidVersion(newVersionName, newBuildNumber);
     updateIOSVersion(newVersionName, newBuildNumber);
+    console.info('');
+    console.info('Reminder: Admin panelde sürüm politikasını güncelleyin:');
+    console.info('  /admin/app-versions → latest_version =', newVersionName);
+    console.info('  (min_supported_version gerekirse ayrıca ayarlayın)');
 }

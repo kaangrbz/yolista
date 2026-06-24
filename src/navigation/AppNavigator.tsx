@@ -7,14 +7,19 @@ import { RegisterScreen } from '../screens/RegisterScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
 import { VerifyEmailScreen } from '../screens/VerifyEmailScreen';
-import { StyleSheet, Text, View, ActivityIndicator, Button, Linking, TouchableOpacity, Alert, BackHandler, Platform } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator, Linking, TouchableOpacity, BackHandler, Platform } from 'react-native';
 import { Logo } from '../components/Logo';
 import MainTabNavigator from './MainTabNavigator';
-import { supabase } from '../lib/supabase';
 import DeviceInfo from 'react-native-device-info';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DeepLinkingService from '../services/DeepLinkingService';
 import AuthLinkingService from '../services/AuthLinkingService';
+import {
+  fetchVersionCheckResult,
+  resolveFetchErrorStatus,
+  resolveStoreUrl,
+  type AppVersionPolicy,
+} from '../services/versionPolicy';
 import { useAppTheme } from '../context/AppThemeContext';
 import { CommentsSheetProvider } from '../context/CommentsSheetContext';
 
@@ -37,36 +42,43 @@ export const AppNavigator = () => {
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
   const [versionStatus, setVersionStatus] = useState<'loading' | 'valid' | 'optional_update' | 'forced_update'>('loading');
+  const [versionPolicy, setVersionPolicy] = useState<AppVersionPolicy | null>(null);
   const [showTimeoutAlert, setShowTimeoutAlert] = useState(false);
   const [showAggressiveAlert, setShowAggressiveAlert] = useState(false);
   const [loadingStartTime, setLoadingStartTime] = useState<number | null>(null);
-  const CURRENT_APP_VERSION = DeviceInfo.getVersion(); // Replace with your current app version
+  const CURRENT_APP_VERSION = DeviceInfo.getVersion();
 
-  const LOADING_TIMEOUT = 10000; // 10 seconds
-  const AGGRESSIVE_TIMEOUT = 20000; // 20 seconds
+  const LOADING_TIMEOUT = 10000;
+  const AGGRESSIVE_TIMEOUT = 20000;
+
+  const openStore = async () => {
+    const storeUrl = resolveStoreUrl(versionPolicy);
+    if (!storeUrl) {
+      return;
+    }
+    try {
+      await Linking.openURL(storeUrl);
+    } catch (err) {
+      console.error('Store link open failed:', err);
+    }
+  };
 
   const checkAppVersion = async () => {
     try {
-      const { data, error } = await supabase
-        .from('app_versions')
-        .select('is_active, force_update')
-        .eq('version_number', CURRENT_APP_VERSION)
-        .single();
+      const result = await fetchVersionCheckResult(CURRENT_APP_VERSION);
 
-      if (error || !data) {
-        console.error('Error fetching version info:', error);
-        setVersionStatus('optional_update'); // Assume forced update if there's an error
+      if (result.status === 'fetch_error') {
+        const fallback = resolveFetchErrorStatus(result.policy);
+        setVersionPolicy(result.policy);
+        setVersionStatus(fallback);
         return;
       }
 
-      if (!data.is_active) {
-        setVersionStatus(data.force_update ? 'forced_update' : 'optional_update');
-      } else {
-        setVersionStatus('valid');
-      }
+      setVersionPolicy(result.policy);
+      setVersionStatus(result.status);
     } catch (err) {
       console.error('Error checking app version:', err);
-      setVersionStatus('forced_update');
+      setVersionStatus('valid');
     }
   };
 
@@ -156,74 +168,83 @@ export const AppNavigator = () => {
     }
   }, [loadingStartTime, versionStatus]);
 
-  // AuthContext loading'i devre dışı - sadece version kontrolü
-  // if (versionStatus === 'loading') {
-  //   return (
-  //     <View style={styles.loadingContainer}>
-  //       <Logo size="large" color="#1DA1F2" />
-  //       <ActivityIndicator size="large" color="#1DA1F2" />
+  if (versionStatus === 'loading') {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <Logo size="large" color={theme.accent} />
+        <ActivityIndicator size="large" color={theme.accent} />
 
-  //       {showTimeoutAlert && !showAggressiveAlert && (
-  //         <View style={styles.timeoutContainer}>
-  //           <Text style={styles.timeoutText}>
-  //             Uygulama yüklenmesi uzun sürüyor...
-  //           </Text>
-  //           <TouchableOpacity
-  //             style={styles.reloadButton}
-  //             onPress={reloadApp}
-  //           >
-  //             <Text style={styles.reloadButtonText}>Uygulamayı Yeniden Yükle</Text>
-  //           </TouchableOpacity>
-  //         </View>
-  //       )}
+        {showTimeoutAlert && !showAggressiveAlert ? (
+          <View style={styles.timeoutContainer}>
+            <Text style={styles.timeoutText}>
+              Sürüm kontrolü uzun sürüyor...
+            </Text>
+            <TouchableOpacity style={styles.reloadButton} onPress={reloadApp}>
+              <Text style={styles.reloadButtonText}>Yeniden dene</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
-  //       {showAggressiveAlert && (
-  //         <View style={styles.aggressiveTimeoutContainer}>
-  //           <Text style={styles.aggressiveTimeoutText}>
-  //             Uygulama yüklenmesi çok uzun sürüyor. Lütfen uygulamayı tamamen yeniden başlatın.
-  //           </Text>
-  //           <TouchableOpacity
-  //             style={styles.forceReloadButton}
-  //             onPress={forceReloadApp}
-  //           >
-  //             <Text style={styles.forceReloadButtonText}>Zorla Yeniden Yükle</Text>
-  //           </TouchableOpacity>
-  //         </View>
-  //       )}
-  //     </View>
-  //   );
-  // }
+        {showAggressiveAlert ? (
+          <View style={styles.aggressiveTimeoutContainer}>
+            <Text style={styles.aggressiveTimeoutText}>
+              Bağlantı kurulamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.
+            </Text>
+            <TouchableOpacity style={styles.forceReloadButton} onPress={forceReloadApp}>
+              <Text style={styles.forceReloadButtonText}>Zorla yeniden dene</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      </View>
+    );
+  }
 
-  // if (versionStatus === 'forced_update') {
-  //   return (
-  //     <View style={styles.loadingContainer}>
-  //       <Logo size="large" color="#1DA1F2" />
-  //       <Text style={styles.loadingText}>Uygulama sürümünüz artık desteklenmiyor. Yolista'yı kullanmaya devam etmek için uygulama geliştiricisinden en yeni sürümü indirip güncelleyin.</Text>
-  //       <Text style={styles.loadingText}>Mevcut sürüm: v{CURRENT_APP_VERSION}</Text>
-  //       {/* <TouchableOpacity
-  //         onPress={() => setVersionStatus('valid')} // Replace with actual app store link
-  //       >
-  //         <Text style={styles.buttonText}>Devam et</Text>
-  //       </TouchableOpacity> */}
-  //     </View>
-  //   );
-  // }
+  if (versionStatus === 'forced_update') {
+    const message =
+      versionPolicy?.update_message ??
+      'Uygulama sürümünüz artık desteklenmiyor. Yolista\'yı kullanmaya devam etmek için lütfen güncelleyin.';
 
-  // if (versionStatus === 'optional_update') {
-  //   return (
-  //     <View style={styles.loadingContainer}>
-  //       <Logo size="large" color="#1DA1F2" />
-  //       <Text style={styles.loadingText}>Yolista'nın yeni bir sürümü mevcut. En iyi deneyim için lütfen güncelleyin. </Text>
-  //       <Text style={styles.loadingText}>Mevcut sürüm: v{CURRENT_APP_VERSION}</Text>
-  //       <TouchableOpacity
-  //         onPress={() => setVersionStatus('valid')} // Replace with actual app store link
-  //       >
-  //         <Text style={styles.buttonText}>Devam et</Text>
-  //       </TouchableOpacity>
-  //     </View>
-  //   );
-  // }
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <Logo size="large" color={theme.accent} />
+        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>{message}</Text>
+        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+          Mevcut sürüm: v{CURRENT_APP_VERSION}
+          {versionPolicy?.latest_version ? ` · Güncel: v${versionPolicy.latest_version}` : ''}
+        </Text>
+        {resolveStoreUrl(versionPolicy) ? (
+          <TouchableOpacity style={styles.reloadButton} onPress={openStore}>
+            <Text style={styles.reloadButtonText}>Mağazada güncelle</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    );
+  }
 
+  if (versionStatus === 'optional_update') {
+    const message =
+      versionPolicy?.update_message ??
+      'Yolista\'nın yeni bir sürümü mevcut. En iyi deneyim için lütfen güncelleyin.';
+
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <Logo size="large" color={theme.accent} />
+        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>{message}</Text>
+        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+          Mevcut sürüm: v{CURRENT_APP_VERSION}
+          {versionPolicy?.latest_version ? ` · Güncel: v${versionPolicy.latest_version}` : ''}
+        </Text>
+        {resolveStoreUrl(versionPolicy) ? (
+          <TouchableOpacity style={styles.reloadButton} onPress={openStore}>
+            <Text style={styles.reloadButtonText}>Mağazada güncelle</Text>
+          </TouchableOpacity>
+        ) : null}
+        <TouchableOpacity onPress={() => setVersionStatus('valid')}>
+          <Text style={[styles.buttonText, { color: theme.accent }]}>Devam et</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   // Navigation ref'i DeepLinkingService'e register et
   useEffect(() => {
