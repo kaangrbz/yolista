@@ -1,17 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, FlatList, ActivityIndicator, Animated } from 'react-native';
+import { Animated, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { FlatList } from 'react-native';
 import { useThemedStyles } from '../theme/useThemedStyles';
-import ThemedRefreshControl from '../components/common/ThemedRefreshControl';
 import { RouteWithProfile } from '../model/routes.model';
 import { useAuth } from '../context/AuthContext';
 import WelcomeModal from '../components/common/WelcomeModal';
 import { markWelcomeSeen, shouldShowWelcome } from '../utils/welcome';
 import { HomeHeader } from '../components/header/Header';
-import HomeFeedPostItem from '../components/feed/HomeFeedPostItem';
+import RouteFeedList from '../components/feed/RouteFeedList';
 import { useHomePosts } from '../hooks/usePosts';
-import { useListPostImagesBatch } from '../hooks/useListPostImagesBatch';
-import { useFeedImageWindow } from '../hooks/useFeedImageWindow';
 import { useRoutePublishStore } from '../store/routePublishStore';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { isInitialListLoading } from '../utils/listRefreshUtils';
@@ -21,32 +19,6 @@ export const HomeScreen = () => {
     container: {
       flex: 1,
       backgroundColor: t.background,
-    },
-    flatList: {
-      flex: 1,
-      backgroundColor: t.background,
-    },
-    loadingContainer: {
-      height: 100,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    endContainer: {
-      paddingVertical: 30,
-      paddingHorizontal: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    endText: {
-      fontSize: 16,
-      color: t.textPrimary,
-      fontWeight: '600',
-      marginBottom: 5,
-    },
-    endSubText: {
-      fontSize: 14,
-      color: t.textSecondary,
-      textAlign: 'center',
     },
     successMessage: {
       position: 'absolute',
@@ -87,9 +59,6 @@ export const HomeScreen = () => {
 
   const { posts: routes, isLoading, refresh: refreshPosts, loadMore, hasMore } = useHomePosts(userId, 10);
   const isInitialLoading = isInitialListLoading(isLoading, routes.length);
-
-  const { rowsByPostId } = useListPostImagesBatch(routes);
-  const { viewabilityConfigCallbackPairs } = useFeedImageWindow(routes);
 
   useEffect(() => {
     shouldShowWelcome().then((shouldShow) => {
@@ -172,52 +141,6 @@ export const HomeScreen = () => {
     }
   }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
-  const renderPost = useCallback(({ item, index }: { item: RouteWithProfile; index: number }) => {
-    const postId = item.id || '';
-
-    return (
-      <HomeFeedPostItem
-        item={item}
-        userId={userId}
-        feedIndex={index}
-        prefetchedImageRows={rowsByPostId[postId]}
-      />
-    );
-  }, [userId, rowsByPostId]);
-
-  const renderEmpty = () => {
-    if (!isInitialLoading) {
-      return null;
-    }
-
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="small" color="#1DA1F2" />
-      </View>
-    );
-  };
-
-  const renderFooter = () => {
-    if (isLoadingMore) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#1DA1F2" />
-        </View>
-      );
-    }
-
-    if (!hasMore && !isLoading) {
-      return (
-        <View style={styles.endContainer}>
-          <Text style={styles.endText}>✨ Tüm içerikleri gördün!</Text>
-          <Text style={styles.endSubText}>Yeni paylaşımlar için tekrar kontrol et</Text>
-        </View>
-      );
-    }
-
-    return null;
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <HomeHeader />
@@ -230,26 +153,18 @@ export const HomeScreen = () => {
 
       <WelcomeModal visible={showWelcomeModal} onDismiss={handleWelcomeDismiss} />
 
-      <FlatList
-        ref={flatListRef}
-        data={routes}
-        renderItem={renderPost}
-        keyExtractor={(item) => item.id || ''}
-        removeClippedSubviews
-        maxToRenderPerBatch={3}
-        updateCellsBatchingPeriod={50}
-        windowSize={5}
-        initialNumToRender={3}
-        refreshControl={
-          <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+      <RouteFeedList
+        mode="home"
+        routes={routes}
+        userId={userId}
+        listRef={flatListRef}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs}
-        ListEmptyComponent={renderEmpty}
-        ListFooterComponent={renderFooter}
-        showsVerticalScrollIndicator={false}
-        style={styles.flatList}
+        isLoadingMore={isLoadingMore}
+        isInitialLoading={isInitialLoading}
+        isListLoading={isLoading}
+        hasMore={hasMore}
       />
     </SafeAreaView>
   );

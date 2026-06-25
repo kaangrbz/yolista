@@ -3,8 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ThemedRefreshControl from '../components/common/ThemedRefreshControl';
@@ -49,11 +47,9 @@ import {
   ProfileStats,
   ProfileTabs,
   ProfilePostsGrid,
-  ProfilePostsList,
-  ProfileSavedPosts,
-  ProfileLikedPosts,
   ProfileSettingsModal,
 } from '../components/profile';
+import RouteFeedList, { type RouteFeedListMode } from '../components/feed/RouteFeedList';
 import { useThemedStyles } from '../theme/useThemedStyles';
 
 interface ProfileScreenProps {
@@ -486,19 +482,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     }
   }, [currentUserId, likedHasMore, likedLoadingMore]);
 
-  const handleProfileScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (!currentUserId) {
-      return;
-    }
-
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    const threshold = 280;
-    const nearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - threshold;
-
-    if (!nearBottom) {
-      return;
-    }
-
+  const handleFeedEndReached = useCallback(() => {
     if (activeTabKey === 'saved') {
       void loadMoreSavedPosts();
       return;
@@ -507,7 +491,37 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     if (activeTabKey === 'liked') {
       void loadMoreLikedPosts();
     }
-  };
+  }, [activeTabKey, loadMoreLikedPosts, loadMoreSavedPosts]);
+
+  const isFeedTab =
+    activeTabKey === 'list'
+    || (isCurrentUserProfile && (activeTabKey === 'saved' || activeTabKey === 'liked'));
+
+  const feedMode: RouteFeedListMode | null = activeTabKey === 'list'
+    ? 'profile'
+    : activeTabKey === 'saved'
+      ? 'saved'
+      : activeTabKey === 'liked'
+        ? 'liked'
+        : null;
+
+  const feedRoutes = activeTabKey === 'list'
+    ? routes
+    : activeTabKey === 'saved'
+      ? savedPosts
+      : likedPosts;
+
+  const feedInitialLoading = activeTabKey === 'list'
+    ? isInitialPostsLoading
+    : activeTabKey === 'saved'
+      ? savedTabLoading
+      : likedTabLoading;
+
+  const feedLoadingMore = activeTabKey === 'saved'
+    ? savedLoadingMore
+    : activeTabKey === 'liked'
+      ? likedLoadingMore
+      : false;
 
   // Check follow status
   const checkFollowStatus = async (followerId: string, followingId: string) => {
@@ -829,102 +843,99 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     );
   }
 
+  const profileListHeader = (
+    <>
+      <ProfileHeader
+        headerImageUri={displayHeaderUri}
+        headerImageUrl={user?.header_image_url}
+        headerImagePreviewUrl={user?.header_image_preview_url}
+        isCurrentUserProfile={!!isCurrentUserProfile}
+        onHeaderImagePress={handleHeaderImageOpen}
+        onSettingsPress={() => setIsSettingsModalVisible(true)}
+        onSharePress={
+          profileUserId
+            ? () => setIsProfileShareModalVisible(true)
+            : undefined
+        }
+        userId={profileUserId || undefined}
+        loading={isInitialProfileLoading}
+      />
+
+      <ProfileInfo
+        user={user || {} as any}
+        imageUri={displayProfileUri}
+        onProfileImagePress={handleProfileImageOpen}
+        userId={profileUserId || undefined}
+        loading={isInitialProfileLoading}
+        isCurrentUserProfile={!!isCurrentUserProfile}
+        isFollowing={isFollowing}
+        isFollowLoading={isFollowLoading}
+        onEditPress={() => setIsEditModalVisible(true)}
+        onFollowToggle={handleFollowToggle}
+        badges={badges}
+      />
+
+      <ProfileStats
+        postsCount={routes.length}
+        followersCount={followersCount}
+        followingCount={followingCount}
+        onFollowersPress={handleFollowersPress}
+        onFollowingPress={handleFollowingPress}
+        loading={isInitialStatsLoading}
+      />
+
+      <ProfileTabs
+        activeTabKey={activeTabKey}
+        isCurrentUserProfile={!!isCurrentUserProfile}
+        onTabChange={setActiveTabKey}
+      />
+    </>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <ScrollView
-        style={scrollSurface.style}
-        contentContainerStyle={scrollSurface.contentContainerStyle}
-        onScroll={handleProfileScroll}
-        scrollEventThrottle={400}
-        refreshControl={
-          <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        <ProfileHeader
-          headerImageUri={displayHeaderUri}
-          headerImageUrl={user?.header_image_url}
-          headerImagePreviewUrl={user?.header_image_preview_url}
-          isCurrentUserProfile={!!isCurrentUserProfile}
-          onHeaderImagePress={handleHeaderImageOpen}
-          onSettingsPress={() => setIsSettingsModalVisible(true)}
-          onSharePress={
-            profileUserId
-              ? () => setIsProfileShareModalVisible(true)
-              : undefined
+      {isFeedTab && feedMode ? (
+        <RouteFeedList
+          key={activeTabKey}
+          mode={feedMode}
+          routes={feedRoutes}
+          userId={currentUserId}
+          ListHeaderComponent={profileListHeader}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          onEndReached={activeTabKey === 'list' ? undefined : handleFeedEndReached}
+          isLoadingMore={feedLoadingMore}
+          isInitialLoading={feedInitialLoading}
+        />
+      ) : (
+        <ScrollView
+          style={scrollSurface.style}
+          contentContainerStyle={scrollSurface.contentContainerStyle}
+          refreshControl={
+            <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
-          userId={profileUserId || undefined}
-          loading={isInitialProfileLoading}
-        />
+        >
+          {profileListHeader}
 
-        <ProfileInfo
-          user={user || {} as any}
-          imageUri={displayProfileUri}
-          onProfileImagePress={handleProfileImageOpen}
-          userId={profileUserId || undefined}
-          loading={isInitialProfileLoading}
-          isCurrentUserProfile={!!isCurrentUserProfile}
-          isFollowing={isFollowing}
-          isFollowLoading={isFollowLoading}
-          onEditPress={() => setIsEditModalVisible(true)}
-          onFollowToggle={handleFollowToggle}
-          badges={badges}
-        />
-
-        <ProfileStats
-          postsCount={routes.length}
-          followersCount={followersCount}
-          followingCount={followingCount}
-          onFollowersPress={handleFollowersPress}
-          onFollowingPress={handleFollowingPress}
-          loading={isInitialStatsLoading}
-        />
-
-        <ProfileTabs
-          activeTabKey={activeTabKey}
-          isCurrentUserProfile={!!isCurrentUserProfile}
-          onTabChange={setActiveTabKey}
-        />
-
-        <View style={styles.tabContent}>
-          {activeTabKey === 'grid' && (
-            <ProfilePostsGrid
-              routes={routes}
-              onRoutePress={handleRoutePress}
-              loading={isInitialPostsLoading}
-            />
-          )}
-          {activeTabKey === 'list' && (
-            <ProfilePostsList
-              routes={routes}
-              currentUserId={currentUserId}
-            />
-          )}
-          {isCurrentUserProfile && activeTabKey === 'saved' && (
-            <ProfileSavedPosts
-              savedPosts={savedPosts}
-              currentUserId={currentUserId}
-              loadingMore={savedLoadingMore}
-              initialLoading={savedTabLoading}
-            />
-          )}
-          {isCurrentUserProfile && activeTabKey === 'liked' && (
-            <ProfileLikedPosts
-              likedPosts={likedPosts}
-              currentUserId={currentUserId}
-              loadingMore={likedLoadingMore}
-              initialLoading={likedTabLoading}
-            />
-          )}
-          {activeTabKey === 'achievements' && (
-            <ProfileAchievementsTab
-              earned={earnedAchievements}
-              catalog={achievementCatalog}
-              showFullCatalog={!!isCurrentUserProfile}
-              loading={achievementsTabLoading}
-            />
-          )}
-        </View>
-      </ScrollView>
+          <View style={styles.tabContent}>
+            {activeTabKey === 'grid' && (
+              <ProfilePostsGrid
+                routes={routes}
+                onRoutePress={handleRoutePress}
+                loading={isInitialPostsLoading}
+              />
+            )}
+            {activeTabKey === 'achievements' && (
+              <ProfileAchievementsTab
+                earned={earnedAchievements}
+                catalog={achievementCatalog}
+                showFullCatalog={!!isCurrentUserProfile}
+                loading={achievementsTabLoading}
+              />
+            )}
+          </View>
+        </ScrollView>
+      )}
 
 
       {/* Modals */}

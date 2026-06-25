@@ -4,19 +4,21 @@ import type { RouteImageRow } from '../../services/PostImageSlidesService';
 import { useFeedPostImageControl } from '../../hooks/useFeedPostImageControl';
 import UniversalPost from '../UniversalPost';
 
-type HomeFeedPostItemProps = {
+export type FeedPostItemProps = {
   item: RouteWithProfile;
-  userId: string;
+  userId: string | null;
   feedIndex: number;
   prefetchedImageRows?: RouteImageRow[];
+  stopCountHint?: number | null;
 };
 
-function HomeFeedPostItem({
+function FeedPostItem({
   item,
   userId,
   feedIndex,
   prefetchedImageRows,
-}: HomeFeedPostItemProps) {
+  stopCountHint = null,
+}: FeedPostItemProps) {
   const postId = item.id || '';
   const { enabled, generation } = useFeedPostImageControl(postId, feedIndex);
 
@@ -27,6 +29,7 @@ function HomeFeedPostItem({
       initialRoute={item}
       batchImages={true}
       prefetchedImageRows={prefetchedImageRows}
+      stopCountHint={stopCountHint}
       imageDownloadEnabled={enabled}
       downloadGeneration={generation}
       feedIndex={feedIndex}
@@ -34,11 +37,12 @@ function HomeFeedPostItem({
   );
 }
 
-export default memo(HomeFeedPostItem, (previous, next) => {
+export default memo(FeedPostItem, (previous, next) => {
   return (
     previous.item === next.item
     && previous.userId === next.userId
     && previous.feedIndex === next.feedIndex
     && previous.prefetchedImageRows === next.prefetchedImageRows
+    && previous.stopCountHint === next.stopCountHint
   );
 });

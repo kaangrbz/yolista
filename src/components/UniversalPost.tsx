@@ -194,15 +194,32 @@ const UniversalPost: React.FC<PostProps> = ({
     const slideTitles = imageSlides
       .map((slide) => slide.hint?.trim() ?? '')
       .filter((title) => title.length > 0);
-    const stopCount =
-      stopCountHint ??
-      (carouselImages.length > 0 ? carouselImages.length : slideTitles.length);
+    const imageBatchPending = batchImages && prefetchedImageRows === undefined;
+    const resolvedStopCount = stopCountHint != null && stopCountHint > 0
+      ? stopCountHint
+      : imageBatchPending
+        ? 0
+        : carouselImages.length > 0
+          ? carouselImages.length
+          : slideTitles.length;
 
     return {
-      stopCount,
+      stopCount: resolvedStopCount,
       stopTitles: slideTitles,
     };
-  }, [carouselImages.length, imageSlides, stopCountHint]);
+  }, [batchImages, carouselImages.length, imageSlides, prefetchedImageRows, stopCountHint]);
+
+  const feedCtaStopCountHint = useMemo(() => {
+    if (stopCountHint != null && stopCountHint > 0) {
+      return stopCountHint;
+    }
+
+    if (batchImages && prefetchedImageRows === undefined) {
+      return null;
+    }
+
+    return carouselImages.length > 0 ? carouselImages.length : null;
+  }, [batchImages, carouselImages.length, prefetchedImageRows, stopCountHint]);
 
   previewIndexRef.current = previewIndex;
 
@@ -677,10 +694,7 @@ const UniversalPost: React.FC<PostProps> = ({
     !detailExperienceSlot && !showFullScreen ? (
       <RouteDetailCTA
         routeId={postId}
-        stopCountHint={
-          stopCountHint ??
-          (carouselImages.length > 0 ? carouselImages.length : null)
-        }
+        stopCountHint={feedCtaStopCountHint}
         loading={isRoutePreviewLoading}
         onPress={() => {
           setIsRoutePreviewLoading(true);

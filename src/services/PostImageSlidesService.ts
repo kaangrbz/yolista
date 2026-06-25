@@ -29,6 +29,15 @@ export interface RouteImageRow {
 export type SlidesByPostId = Record<string, PostImageSlide[]>;
 export type RouteRowsByPostId = Record<string, RouteImageRow[]>;
 
+export interface StopMeta {
+  count: number;
+  titles: string[];
+}
+
+export type StopMetaByPostId = Record<string, StopMeta>;
+
+const STOP_META_SELECT = 'id, parent_id, order_index, title';
+
 function mapRouteRowToSlideMeta(route: RouteImageRow) {
   const hint = route.title?.trim() || null;
 
@@ -100,6 +109,69 @@ export async function fetchRouteImageRowsForPosts(postIds: string[]) {
     .eq('is_hidden', false)
     .not('image_url', 'is', null)
     .order('order_index', { ascending: true });
+}
+
+export function groupStopMetaByPostId(
+  rows: Pick<RouteImageRow, 'id' | 'parent_id' | 'order_index' | 'title'>[],
+): StopMetaByPostId {
+  const grouped: Record<string, Pick<RouteImageRow, 'id' | 'parent_id' | 'order_index' | 'title'>[]> = {};
+
+  for (const row of rows) {
+    const postId = resolvePostIdForImageRow(row as RouteImageRow);
+
+    if (!grouped[postId]) {
+      grouped[postId] = [];
+    }
+
+    grouped[postId].push(row);
+  }
+
+  const result: StopMetaByPostId = {};
+
+  for (const postId of Object.keys(grouped)) {
+    const sorted = [...grouped[postId]].sort(
+      (left, right) => left.order_index - right.order_index,
+    );
+    const titles = sorted
+      .map((row) => row.title?.trim() ?? '')
+      .filter((title) => title.length > 0);
+
+    result[postId] = {
+      count: sorted.length,
+      titles,
+    };
+  }
+
+  return result;
+}
+
+export async function fetchStopMetaForPosts(postIds: string[]) {
+  const uniqueIds = [...new Set(postIds.filter(Boolean))];
+
+  if (uniqueIds.length === 0) {
+    return { data: {} as StopMetaByPostId, error: null };
+  }
+
+  const result = await supabase
+    .from('routes')
+    .select(STOP_META_SELECT)
+    .or(buildPostIdsFilter(uniqueIds))
+    .eq('is_deleted', false)
+    .eq('is_hidden', false)
+    .order('order_index', { ascending: true });
+
+  if (result.error) {
+    return { data: {} as StopMetaByPostId, error: result.error };
+  }
+
+  const grouped = groupStopMetaByPostId(result.data ?? []);
+  const completeMeta: StopMetaByPostId = {};
+
+  for (const postId of uniqueIds) {
+    completeMeta[postId] = grouped[postId] ?? { count: 0, titles: [] };
+  }
+
+  return { data: completeMeta, error: null };
 }
 
 export async function fetchRouteImageRowsForPost(postId: string) {
