@@ -168,6 +168,38 @@ export const AppNavigator = () => {
     }
   }, [loadingStartTime, versionStatus]);
 
+  // Navigation ref'i DeepLinkingService'e register et
+  useEffect(() => {
+    if (navigationRef.current) {
+      DeepLinkingService.setNavigationRef(navigationRef.current);
+      AuthLinkingService.setNavigationRef(navigationRef.current);
+      console.log('🔗 Navigation ref registered to DeepLinkingService');
+    }
+  }, [isLoading, isAuthenticated]);
+
+  useEffect(() => {
+    const navigation = navigationRef.current;
+
+    if (isLoading || !navigation?.isReady()) {
+      return;
+    }
+
+    const currentRoute = navigation.getCurrentRoute()?.name;
+    const authOnlyRoutes = new Set(['Login', 'Register', 'ForgotPassword', 'ResetPassword', 'VerifyEmail']);
+
+    if (isAuthenticated && user) {
+      if (currentRoute === 'Login' || currentRoute === 'VerifyEmail') {
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      }
+
+      return;
+    }
+
+    if (currentRoute && !authOnlyRoutes.has(currentRoute)) {
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    }
+  }, [isAuthenticated, user, isLoading]);
+
   if (versionStatus === 'loading') {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
@@ -245,38 +277,6 @@ export const AppNavigator = () => {
       </View>
     );
   }
-
-  // Navigation ref'i DeepLinkingService'e register et
-  useEffect(() => {
-    if (navigationRef.current) {
-      DeepLinkingService.setNavigationRef(navigationRef.current);
-      AuthLinkingService.setNavigationRef(navigationRef.current);
-      console.log('🔗 Navigation ref registered to DeepLinkingService');
-    }
-  }, [isLoading, isAuthenticated]);
-
-  useEffect(() => {
-    const navigation = navigationRef.current;
-
-    if (isLoading || !navigation?.isReady()) {
-      return;
-    }
-
-    const currentRoute = navigation.getCurrentRoute()?.name;
-    const authOnlyRoutes = new Set(['Login', 'Register', 'ForgotPassword', 'ResetPassword', 'VerifyEmail']);
-
-    if (isAuthenticated && user) {
-      if (currentRoute === 'Login' || currentRoute === 'VerifyEmail') {
-        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-      }
-
-      return;
-    }
-
-    if (currentRoute && !authOnlyRoutes.has(currentRoute)) {
-      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-    }
-  }, [isAuthenticated, user, isLoading]);
 
   if (isLoading) {
     return (

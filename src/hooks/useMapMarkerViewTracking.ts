@@ -11,7 +11,7 @@ const TRACKING_SETTLE_MS = Platform.OS === 'android' ? 600 : 400;
 interface UseMapMarkerViewTrackingOptions {
   userId?: string | null;
   imageUrl?: string | null;
-  imagePreviewUrl?: string | null;
+  imageThumbUrl?: string | null;
   /** Görsel yoksa snapshot hemen kapanır. */
   hasVisual?: boolean;
 }
@@ -19,13 +19,13 @@ interface UseMapMarkerViewTrackingOptions {
 export function useMapMarkerViewTracking({
   userId,
   imageUrl,
-  imagePreviewUrl,
+  imageThumbUrl,
   hasVisual = true,
 }: UseMapMarkerViewTrackingOptions) {
-  const imageKey = getMarkerImageKey(userId, imageUrl, imagePreviewUrl);
+  const imageKey = getMarkerImageKey(userId, imageUrl, imageThumbUrl);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tracksViewChanges, setTracksViewChanges] = useState(() => {
-    if (!hasVisual || (!imageUrl && !imagePreviewUrl)) {
+    if (!hasVisual || (!imageUrl && !imageThumbUrl)) {
       return false;
     }
 
@@ -52,7 +52,7 @@ export function useMapMarkerViewTracking({
   useEffect(() => {
     clearSettleTimer();
 
-    if (!hasVisual || (!imageUrl && !imagePreviewUrl)) {
+    if (!hasVisual || (!imageUrl && !imageThumbUrl)) {
       setTracksViewChanges(false);
       return;
     }
@@ -65,7 +65,7 @@ export function useMapMarkerViewTracking({
     setTracksViewChanges(true);
 
     return clearSettleTimer;
-  }, [clearSettleTimer, hasVisual, imageKey, imagePreviewUrl, imageUrl]);
+  }, [clearSettleTimer, hasVisual, imageKey, imageThumbUrl, imageUrl]);
 
   useEffect(() => () => clearSettleTimer(), [clearSettleTimer]);
 

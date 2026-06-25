@@ -24,8 +24,10 @@ export interface RoutePoint {
   title: string;
   description?: string;
   image_url?: string;
-  /** 128×128 center-cropped preview; harita / küçük thumb. */
-  image_preview_url?: string | null;
+  /** Kare thumb; harita pin / bottom sheet. */
+  image_thumb_url?: string | null;
+  /** Orta boy kare görsel; grid / kartlar. */
+  image_medium_url?: string | null;
   image_alignment?: RouteImageAlignment | null;
   image_width?: number | null;
   image_height?: number | null;

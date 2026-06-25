@@ -19,6 +19,9 @@ export interface CreateFlowPhoto {
   uploadStatus: PhotoUploadStatus;
   processedLocalUri?: string;
   storageFileName?: string;
+  storageThumbFileName?: string;
+  storageMediumFileName?: string;
+  /** @deprecated storageThumbFileName */
   storagePreviewFileName?: string;
   uploadError?: string;
 }

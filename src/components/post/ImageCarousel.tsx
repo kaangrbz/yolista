@@ -241,12 +241,14 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               onPress={() => handlePress(index)}
               style={styles.imageTouchable}
             >
-              <SmartImage
-                kind="route"
-                userId={slide.userId ?? ''}
-                imageUrl={slide.imageUrl}
-                imagePreviewUrl={slide.imagePreviewUrl}
-                resolvedUri={slide.uri}
+          <SmartImage
+            kind="route"
+            variant="full"
+            userId={slide.userId ?? ''}
+            imageUrl={slide.imageUrl}
+            imageThumbUrl={slide.imageThumbUrl}
+            imageMediumUrl={slide.imageMediumUrl}
+            resolvedUri={slide.uri}
                 downloadEnabled={downloadEnabled}
                 cacheOnly={!downloadEnabled}
                 width={screenWidth}

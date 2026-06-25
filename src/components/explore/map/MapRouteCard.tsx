@@ -202,10 +202,13 @@ export const MapRouteCard: React.FC<MapRouteCardProps> = ({
     >
       <View style={styles.imageWrapper}>
         <SmartImage
-          kind="routePreview"
+          kind="route"
+          variant="thumb"
           userId={route.user_id || ''}
           imageUrl={route.image_url}
-          imagePreviewUrl={route.image_preview_url}
+          imageThumbUrl={route.image_thumb_url}
+          imageMediumUrl={route.image_medium_url}
+          strictVariant
           width={CARD_WIDTH}
           height={IMAGE_HEIGHT}
           style={styles.imageFill}

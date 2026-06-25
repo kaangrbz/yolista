@@ -75,7 +75,11 @@ const RouteCard: React.FC<RouteCardProps> = ({
   const { imageUri } = usePostImageDownload(
     route.image_url,
     route.user_id || '',
-    route.image_preview_url || undefined,
+    {
+      thumb: route.image_thumb_url ?? undefined,
+      medium: route.image_medium_url ?? undefined,
+      full: route.image_url ?? undefined,
+    },
   );
   const styles = useThemedStyles((t) => ({
     cardContainer: {
@@ -293,9 +297,11 @@ const RouteCard: React.FC<RouteCardProps> = ({
         >
           <SmartImage
             kind="route"
+            variant="medium"
             userId={route.user_id || ''}
             imageUrl={route.image_url}
-            imagePreviewUrl={route.image_preview_url}
+            imageThumbUrl={route.image_thumb_url}
+            imageMediumUrl={route.image_medium_url}
             style={styles.exploreImage}
           />
           <View style={styles.exploreOverlay}>
@@ -342,9 +348,11 @@ const RouteCard: React.FC<RouteCardProps> = ({
         >
           <SmartImage
             kind="route"
+            variant="full"
             userId={route.user_id || ''}
             imageUrl={route.image_url}
-            imagePreviewUrl={route.image_preview_url}
+            imageThumbUrl={route.image_thumb_url}
+            imageMediumUrl={route.image_medium_url}
             style={styles.routeImage}
           />
         </TouchableOpacity>

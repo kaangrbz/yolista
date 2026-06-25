@@ -10,9 +10,10 @@ import {
 import { clearWizardDraft } from './routeWizardDraftStorage';
 import type { RoutePublishDraftRecord, RoutePublishEnqueuePayload } from './routePublishTypes';
 import {
-  prepareRoutePhotoPreview,
+  prepareRoutePhotoMedium,
+  prepareRoutePhotoThumb,
 } from './RoutePhotoUploadService';
-import { uploadRoutePhotoWithPreview } from './routePhotoStorage';
+import { uploadRoutePhotoWithVariants } from './routePhotoStorage';
 import { triggerAchievementChecks } from '../lib/achievements';
 
 function getPublishStoreState() {
@@ -110,7 +111,8 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
     });
 
     const uploadedFileNames: string[] = [];
-    const uploadedPreviewFileNames: string[] = [];
+    const uploadedThumbFileNames: string[] = [];
+    const uploadedMediumFileNames: string[] = [];
 
     for (let index = 0; index < record.photosMeta.length; index++) {
       const photo = record.photosMeta[index];
@@ -137,7 +139,9 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
 
       if (photo.uploadStatus === 'done' && photo.storageFileName) {
         uploadedFileNames[index] = photo.storageFileName;
-        uploadedPreviewFileNames[index] = photo.storagePreviewFileName || '';
+        uploadedThumbFileNames[index] =
+          photo.storageThumbFileName || photo.storagePreviewFileName || '';
+        uploadedMediumFileNames[index] = photo.storageMediumFileName || '';
         completedSteps += 1;
 
         store.workerUploadTick({
@@ -153,18 +157,25 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
       }
 
       const uploadUri = photo.processedLocalUri || photo.uri;
-      const previewLocalUri = await prepareRoutePhotoPreview(
+      const thumbLocalUri = await prepareRoutePhotoThumb(
         record.jobId,
         photo.id,
         photo.uri,
       );
-      const { fileName, previewFileName } = await uploadRoutePhotoWithPreview(
+      const mediumLocalUri = await prepareRoutePhotoMedium(
+        record.jobId,
+        photo.id,
+        photo.uri,
+      );
+      const { fileName, thumbFileName, mediumFileName } = await uploadRoutePhotoWithVariants(
         record.userId,
         uploadUri,
-        previewLocalUri,
+        thumbLocalUri,
+        mediumLocalUri,
       );
       uploadedFileNames[index] = fileName;
-      uploadedPreviewFileNames[index] = previewFileName;
+      uploadedThumbFileNames[index] = thumbFileName;
+      uploadedMediumFileNames[index] = mediumFileName;
       completedSteps += 1;
 
       store.workerUploadTick({
@@ -179,7 +190,8 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
 
     const finalRoutePoints = routePoints.map((point, index) => {
       const uploadedFileName = uploadedFileNames[index];
-      const uploadedPreviewFileName = uploadedPreviewFileNames[index];
+      const uploadedThumbFileName = uploadedThumbFileNames[index];
+      const uploadedMediumFileName = uploadedMediumFileNames[index];
 
       if (!uploadedFileName) {
         throw new Error('Tüm görseller doğrulanamadı');
@@ -188,8 +200,11 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
       return {
         ...point,
         image_url: uploadedFileName,
-        ...(uploadedPreviewFileName
-          ? { image_preview_url: uploadedPreviewFileName }
+        ...(uploadedThumbFileName
+          ? { image_thumb_url: uploadedThumbFileName }
+          : {}),
+        ...(uploadedMediumFileName
+          ? { image_medium_url: uploadedMediumFileName }
           : {}),
       };
     });
@@ -230,14 +245,19 @@ export async function executeRoutePublish(record: RoutePublishDraftRecord): Prom
         stopCount: record.routeStops.length,
         stopTitles: record.routeStops
           .map((stop) => stop.title.trim())
-          .filter((title) => title.length > 0),
+          .filter(Boolean),
       },
     });
 
     triggerAchievementChecks([record.userId]);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Bilinmeyen hata';
+    const message = error instanceof Error ? error.message : 'Rota oluşturulamadı';
+
     await markDraftFailed(record, message);
-    store.workerFailed({ lastError: message, draftSaved: true });
+
+    getPublishStoreState().workerFailed({
+      lastError: message,
+      draftSaved: true,
+    });
   }
 }

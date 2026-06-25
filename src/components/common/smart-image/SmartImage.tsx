@@ -20,14 +20,17 @@ const SmartImage: React.FC<SmartImageProps> = ({
   kind,
   userId,
   imageUrl,
+  imageThumbUrl,
+  imageMediumUrl,
   imagePreviewUrl,
+  variant = 'medium',
   style,
   width,
   height,
   borderRadius,
   resizeMode = 'cover',
   cacheOnly = false,
-  previewOnly = false,
+  strictVariant = false,
   downloadEnabled = true,
   resolvedUri,
   fallbackSource,
@@ -42,9 +45,12 @@ const SmartImage: React.FC<SmartImageProps> = ({
     kind,
     userId,
     imageUrl,
+    imageThumbUrl,
+    imageMediumUrl,
     imagePreviewUrl,
+    variant,
     cacheOnly,
-    previewOnly,
+    strictVariant,
     downloadEnabled,
     resolvedUri,
   });
@@ -61,7 +67,7 @@ const SmartImage: React.FC<SmartImageProps> = ({
       clearTimeout(renderTimeoutRef.current);
       renderTimeoutRef.current = null;
     }
-  }, [imageUri, imageUrl, imagePreviewUrl, resolvedUri]);
+  }, [imageUri, imageUrl, imageThumbUrl, imageMediumUrl, imagePreviewUrl, resolvedUri]);
 
   useEffect(() => {
     if (!imageUri || renderError || renderTimedOut || error) {
@@ -182,10 +188,7 @@ const SmartImage: React.FC<SmartImageProps> = ({
         );
       }
 
-      if (
-        (kind === 'route' || kind === 'routePreview' || kind === 'header') &&
-        fallback
-      ) {
+      if ((kind === 'route' || kind === 'header') && fallback) {
         const fallbackSize =
           typeof resolvedWidth === 'number' && typeof resolvedHeight === 'number'
             ? Math.round(Math.min(resolvedWidth, resolvedHeight) * 0.35)
@@ -205,7 +208,7 @@ const SmartImage: React.FC<SmartImageProps> = ({
         );
       }
 
-      if (kind === 'route' || kind === 'routePreview' || kind === 'header') {
+      if (kind === 'route' || kind === 'header') {
         return (
           <RouteImageSkeleton
             width={resolvedWidth ?? '100%'}

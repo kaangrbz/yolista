@@ -203,12 +203,14 @@ export const MapRouteRow: React.FC<MapRouteRowProps> = ({
 
       <View style={[styles.imageWrapper, selected && styles.imageWrapperSelected]}>
         <SmartImage
-          kind="routePreview"
+          kind="route"
+          variant="thumb"
           userId={route.user_id || ''}
           imageUrl={route.image_url}
-          imagePreviewUrl={route.image_preview_url}
+          imageThumbUrl={route.image_thumb_url}
+          imageMediumUrl={route.image_medium_url}
           cacheOnly
-          previewOnly
+          strictVariant
           width={THUMB_SIZE}
           height={THUMB_SIZE}
           borderRadius={12}

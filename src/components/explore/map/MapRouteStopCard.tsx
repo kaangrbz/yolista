@@ -142,9 +142,11 @@ export const MapRouteStopCard: React.FC<MapRouteStopCardProps> = ({
       <View style={styles.imageWrapper}>
         <SmartImage
           kind="route"
+          variant="medium"
           userId={userId}
           imageUrl={stop.image_url}
-          imagePreviewUrl={stop.image_preview_url}
+          imageThumbUrl={stop.image_thumb_url}
+          imageMediumUrl={stop.image_medium_url}
           width={CARD_WIDTH}
           height={IMAGE_HEIGHT}
           style={styles.image}

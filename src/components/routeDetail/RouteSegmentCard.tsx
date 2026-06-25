@@ -87,12 +87,14 @@ export const RouteSegmentCard: React.FC<RouteSegmentCardProps> = ({
     >
       <View style={styles.row}>
         <SmartImage
-          kind="routePreview"
+          kind="route"
+          variant="thumb"
           userId={stop.user_id || ''}
           imageUrl={stop.image_url}
-          imagePreviewUrl={stop.image_preview_url}
+          imageThumbUrl={stop.image_thumb_url}
+          imageMediumUrl={stop.image_medium_url}
           cacheOnly
-          previewOnly
+          strictVariant
           width={72}
           height={72}
           style={styles.thumb}

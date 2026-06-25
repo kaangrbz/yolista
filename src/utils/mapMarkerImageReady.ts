@@ -3,9 +3,9 @@ const readyKeys = new Set<string>();
 export const getMarkerImageKey = (
   userId: string | null | undefined,
   imageUrl: string | null | undefined,
-  imagePreviewUrl?: string | null | undefined,
+  imageThumbUrl?: string | null | undefined,
 ): string | null => {
-  const storageKey = imagePreviewUrl || imageUrl;
+  const storageKey = imageThumbUrl || imageUrl;
 
   if (!userId || !storageKey) {
     return null;

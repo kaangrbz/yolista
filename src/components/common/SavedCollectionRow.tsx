@@ -74,7 +74,8 @@ const SavedCollectionRow: React.FC<SavedCollectionRowProps> = ({
       <View style={styles.thumbnailWrap}>
         {hasPreview ? (
           <SmartImage
-            kind="routePreview"
+            kind="route"
+            variant="medium"
             userId={collection.id}
             resolvedUri={previewUrl}
             width={48}

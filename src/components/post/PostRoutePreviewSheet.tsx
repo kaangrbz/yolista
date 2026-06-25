@@ -24,7 +24,7 @@ import { requestLocation } from '../../permissions';
 import { getLastKnownLocationSync } from '../../services/lastKnownLocationStorage';
 import { openStopInMaps } from '../../utils/openInMaps';
 import { showToast } from '../../utils/alert';
-import { prefetchMapPreviewImages } from '../../utils/mapPreviewImageCache';
+import { prefetchRouteImages } from '../../utils/routeImageCache';
 import { getMapStopKey } from '../explore/map/MapRouteStopCard';
 import MapRouteTimelinePanel from '../explore/map/MapRouteTimelinePanel';
 import { useThemedStyles } from '../../theme/useThemedStyles';
@@ -190,7 +190,7 @@ export const PostRoutePreviewSheet: React.FC<PostRoutePreviewSheetProps> = ({
     }
 
     if (stops.length > 0) {
-      prefetchMapPreviewImages(stops);
+      prefetchRouteImages('thumb', stops);
     }
   }, [onLoadingChange, stops, visible]);
 

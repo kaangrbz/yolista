@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ImageService } from '../services/ImageService';
 import {
-  getSyncMapPreviewUri,
-  loadMapPreviewImage,
-  subscribeMapPreviewCache,
-  type LoadMapPreviewOptions,
-} from '../utils/mapPreviewImageCache';
+  getSyncRouteImageUri,
+  loadRouteImage,
+  subscribeRouteImageCache,
+  type LoadRouteImageOptions,
+} from '../utils/routeImageCache';
+import type { RouteImageUrls } from '../utils/routeImage';
 
 interface ImageDownloadState {
   imageUri: string | null;
@@ -14,11 +15,10 @@ interface ImageDownloadState {
   retryCount: number;
 }
 
-// Generic image download hook
 export const useImageDownload = (
   imageUrl: string | undefined,
   bucketName: string,
-  userId: string
+  userId: string,
 ) => {
   const [state, setState] = useState<ImageDownloadState>({
     imageUri: null,
@@ -46,7 +46,7 @@ export const useImageDownload = (
     });
 
     const downloadImage = async () => {
-      const result = await ImageService.downloadImage(
+      await ImageService.downloadImage(
         imageUrl,
         bucketName,
         userId,
@@ -57,11 +57,11 @@ export const useImageDownload = (
             error: downloadState.error,
             retryCount: downloadState.retryCount,
           });
-        }
+        },
       );
     };
 
-    downloadImage();
+    void downloadImage();
   }, [imageUrl, bucketName, userId]);
 
   return state;
@@ -72,11 +72,10 @@ const postImageMemoryCache = new Map<string, string>();
 const getPostImageCacheKey = (imageUrl: string, userId: string) =>
   `${userId}:${imageUrl}`;
 
-// Post image download hook — prefers preview when provided; falls back to full image.
 export const usePostImageDownload = (
   imageUrl: string | undefined,
   userId: string,
-  imagePreviewUrl?: string | undefined,
+  urls?: RouteImageUrls,
 ) => {
   const [state, setState] = useState<ImageDownloadState>({
     imageUri: null,
@@ -86,7 +85,10 @@ export const usePostImageDownload = (
   });
 
   useEffect(() => {
-    if (!userId || (!imagePreviewUrl && !imageUrl)) {
+    const storageKey =
+      urls?.full || urls?.medium || urls?.thumb || imageUrl;
+
+    if (!userId || !storageKey) {
       setState({
         imageUri: null,
         loading: false,
@@ -98,8 +100,8 @@ export const usePostImageDownload = (
 
     let cancelled = false;
 
-    const loadFromCacheOrNetwork = async (storageKey: string): Promise<string | null> => {
-      const memoryKey = getPostImageCacheKey(storageKey, userId);
+    const loadFromCacheOrNetwork = async (key: string): Promise<string | null> => {
+      const memoryKey = getPostImageCacheKey(key, userId);
       const cachedUri = postImageMemoryCache.get(memoryKey);
 
       if (cachedUri) {
@@ -107,7 +109,7 @@ export const usePostImageDownload = (
       }
 
       const fileUri = await ImageService.loadImageWithCache(
-        storageKey,
+        key,
         'routes',
         userId,
       );
@@ -127,16 +129,18 @@ export const usePostImageDownload = (
       }));
 
       try {
-        if (imagePreviewUrl) {
-          const previewUri = await loadFromCacheOrNetwork(imagePreviewUrl);
+        const chain = [urls?.full, urls?.medium, urls?.thumb, imageUrl].filter(Boolean) as string[];
+
+        for (const key of chain) {
+          const uri = await loadFromCacheOrNetwork(key);
 
           if (cancelled) {
             return;
           }
 
-          if (previewUri) {
+          if (uri) {
             setState({
-              imageUri: previewUri,
+              imageUri: uri,
               loading: false,
               error: null,
               retryCount: 0,
@@ -145,26 +149,10 @@ export const usePostImageDownload = (
           }
         }
 
-        if (imageUrl) {
-          const fullUri = await loadFromCacheOrNetwork(imageUrl);
-
-          if (cancelled) {
-            return;
-          }
-
-          setState({
-            imageUri: fullUri,
-            loading: false,
-            error: fullUri ? null : 'Failed to load image',
-            retryCount: 0,
-          });
-          return;
-        }
-
         setState({
           imageUri: null,
           loading: false,
-          error: null,
+          error: 'Failed to load image',
           retryCount: 0,
         });
       } catch (err) {
@@ -188,41 +176,43 @@ export const usePostImageDownload = (
     return () => {
       cancelled = true;
     };
-  }, [imageUrl, imagePreviewUrl, userId]);
+  }, [imageUrl, urls?.full, urls?.medium, urls?.thumb, userId]);
 
   return state;
 };
 
-/** Harita 128×128 preview — bellek + disk önbelleği; bottom sheet için cacheOnly/previewOnly. */
-export const useMapPreviewImageDownload = (
-  imageUrl: string | undefined,
+export const useRouteImageDownload = (
   userId: string,
-  imagePreviewUrl?: string | undefined,
-  options: LoadMapPreviewOptions = {},
+  urls: RouteImageUrls,
+  options: LoadRouteImageOptions = {},
 ) => {
-  const { cacheOnly = false, previewOnly = false } = options;
-  const optionsKey = `${cacheOnly}:${previewOnly}`;
+  const { cacheOnly = false, strict = false } = options;
+  const optionsKey = `${cacheOnly}:${strict}`;
+  const variant = strict ? 'thumb' : 'medium';
 
   const [cacheTick, setCacheTick] = useState(0);
 
-  useEffect(() => subscribeMapPreviewCache(() => setCacheTick((value) => value + 1)), []);
+  useEffect(() => subscribeRouteImageCache(() => setCacheTick((value) => value + 1)), []);
 
   const [state, setState] = useState<ImageDownloadState>(() => {
-    const cachedUri =
-      userId && (imagePreviewUrl || imageUrl)
-        ? getSyncMapPreviewUri(userId, imagePreviewUrl, imageUrl)
-        : null;
+    const cachedUri = userId
+      ? getSyncRouteImageUri(userId, variant, urls, { strict })
+      : null;
+
+    const hasAnyUrl = Boolean(urls.thumb || urls.medium || urls.full);
 
     return {
       imageUri: cachedUri,
-      loading: Boolean(userId && (imagePreviewUrl || imageUrl) && !cachedUri),
+      loading: Boolean(userId && hasAnyUrl && !cachedUri),
       error: null,
       retryCount: 0,
     };
   });
 
   useEffect(() => {
-    if (!userId || (!imagePreviewUrl && !imageUrl)) {
+    const hasAnyUrl = Boolean(urls.thumb || urls.medium || urls.full);
+
+    if (!userId || !hasAnyUrl) {
       setState({
         imageUri: null,
         loading: false,
@@ -232,7 +222,7 @@ export const useMapPreviewImageDownload = (
       return;
     }
 
-    const syncUri = getSyncMapPreviewUri(userId, imagePreviewUrl, imageUrl);
+    const syncUri = getSyncRouteImageUri(userId, variant, urls, { strict });
 
     if (syncUri) {
       setState({
@@ -254,12 +244,10 @@ export const useMapPreviewImageDownload = (
       }));
 
       try {
-        const fileUri = await loadMapPreviewImage(
-          userId,
-          imagePreviewUrl,
-          imageUrl,
-          { cacheOnly, previewOnly },
-        );
+        const fileUri = await loadRouteImage(userId, variant, urls, {
+          cacheOnly,
+          strict,
+        });
 
         if (cancelled) {
           return;
@@ -268,7 +256,7 @@ export const useMapPreviewImageDownload = (
         setState({
           imageUri: fileUri,
           loading: false,
-          error: fileUri ? null : 'Failed to load preview',
+          error: fileUri ? null : 'Failed to load image',
           retryCount: 0,
         });
       } catch (err) {
@@ -276,7 +264,7 @@ export const useMapPreviewImageDownload = (
           return;
         }
 
-        const message = err instanceof Error ? err.message : 'Failed to load preview';
+        const message = err instanceof Error ? err.message : 'Failed to load image';
 
         setState({
           imageUri: null,
@@ -292,16 +280,28 @@ export const useMapPreviewImageDownload = (
     return () => {
       cancelled = true;
     };
-  }, [cacheOnly, cacheTick, imagePreviewUrl, imageUrl, optionsKey, previewOnly, userId]);
+  }, [cacheOnly, cacheTick, optionsKey, strict, urls.full, urls.medium, urls.thumb, userId, variant]);
 
   return state;
 };
 
-// Profile image download hook (prefers preview path when provided)
+/** @deprecated useRouteImageDownload kullanın */
+export const useMapPreviewImageDownload = (
+  imageUrl: string | undefined,
+  userId: string,
+  imageThumbUrl?: string | undefined,
+  options: LoadRouteImageOptions = {},
+) =>
+  useRouteImageDownload(
+    userId,
+    { thumb: imageThumbUrl, full: imageUrl },
+    { ...options, strict: options.strict ?? true },
+  );
+
 export const useProfileImageDownload = (
   imageUrl: string | undefined,
   userId: string,
-  imagePreviewUrl?: string | undefined
+  imagePreviewUrl?: string | undefined,
 ) => {
   const [state, setState] = useState<ImageDownloadState>({
     imageUri: null,
@@ -334,21 +334,20 @@ export const useProfileImageDownload = (
             error: downloadState.error,
             retryCount: downloadState.retryCount,
           });
-        }
+        },
       );
     };
 
-    downloadImage();
+    void downloadImage();
   }, [imageUrl, imagePreviewUrl, userId]);
 
   return state;
 };
 
-// Profile background image download hook (prefers preview path when provided)
 export const useProfileBackgroundDownload = (
   imageUrl: string | undefined,
   userId: string,
-  imagePreviewUrl?: string | undefined
+  imagePreviewUrl?: string | undefined,
 ) => {
   const [state, setState] = useState<ImageDownloadState>({
     imageUri: null,
@@ -381,11 +380,11 @@ export const useProfileBackgroundDownload = (
             error: downloadState.error,
             retryCount: downloadState.retryCount,
           });
-        }
+        },
       );
     };
 
-    downloadImage();
+    void downloadImage();
   }, [imageUrl, imagePreviewUrl, userId]);
 
   return state;

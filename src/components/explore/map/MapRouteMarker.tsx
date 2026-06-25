@@ -4,7 +4,8 @@ import MapCardStack, { MapCardStackItem } from './MapCardStack';
 
 interface MapRouteMarkerProps extends Pick<ViewProps, 'collapsable'> {
   imageUrl?: string | null;
-  imagePreviewUrl?: string | null;
+  imageThumbUrl?: string | null;
+  imageMediumUrl?: string | null;
   userId?: string | null;
   iconName?: string;
   selected?: boolean;
@@ -20,7 +21,8 @@ interface MapRouteMarkerProps extends Pick<ViewProps, 'collapsable'> {
 
 export const MapRouteMarker: React.FC<MapRouteMarkerProps> = ({
   imageUrl,
-  imagePreviewUrl,
+  imageThumbUrl,
+  imageMediumUrl,
   userId,
   iconName = 'map-marker',
   selected = false,
@@ -38,7 +40,7 @@ export const MapRouteMarker: React.FC<MapRouteMarkerProps> = ({
   const resolvedItems: MapCardStackItem[] =
     stackItems && stackItems.length > 0
       ? stackItems
-      : [{ imageUrl, imagePreviewUrl, userId, iconName, estimatedLocation }];
+      : [{ imageUrl, imageThumbUrl, imageMediumUrl, userId, iconName, estimatedLocation }];
 
   return (
     <MapCardStack

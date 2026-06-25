@@ -24,7 +24,7 @@ export const MapRouteGroupMarker: React.FC<MapRouteGroupMarkerProps> = ({
   const { tracksViewChanges, handleMarkerReady } = useMapMarkerViewTracking({
     userId: primary?.user_id,
     imageUrl: primary?.image_url,
-    imagePreviewUrl: primary?.image_preview_url,
+    imageThumbUrl: primary?.image_thumb_url,
   });
 
   if (
@@ -57,7 +57,8 @@ export const MapRouteGroupMarker: React.FC<MapRouteGroupMarkerProps> = ({
     >
       <MapRouteMarker
         imageUrl={primary.image_url || null}
-        imagePreviewUrl={primary.image_preview_url || null}
+        imageThumbUrl={primary.image_thumb_url || null}
+        imageMediumUrl={primary.image_medium_url || null}
         userId={primary.user_id || null}
         iconName={primary.categories?.icon_name}
         selected={isSelected}
@@ -65,7 +66,8 @@ export const MapRouteGroupMarker: React.FC<MapRouteGroupMarkerProps> = ({
         stackCount={group.length}
         stackItems={group.slice(0, 5).map((route) => ({
           imageUrl: route.image_url || null,
-          imagePreviewUrl: route.image_preview_url || null,
+          imageThumbUrl: route.image_thumb_url || null,
+          imageMediumUrl: route.image_medium_url || null,
           userId: route.user_id || null,
           iconName: route.categories?.icon_name,
           estimatedLocation: route.location_source === 'city_center',

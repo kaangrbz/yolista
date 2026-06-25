@@ -36,9 +36,11 @@ const ProfileGridItem: React.FC<ProfileGridItemProps> = ({ item, onRoutePress })
     >
       <SmartImage
         kind="route"
+        variant="medium"
         userId={item.user_id || ''}
         imageUrl={item.image_url}
-        imagePreviewUrl={item.image_preview_url}
+        imageThumbUrl={item.image_thumb_url}
+        imageMediumUrl={item.image_medium_url}
         width={itemSize}
         height={itemSize}
         style={styles.gridImage}

@@ -96,6 +96,12 @@ const AppContent = (): React.JSX.Element => {
         // ilk açılışta ağ yoksa sessizce geç; bir sonraki ekran tekrar deneyecek.
       });
 
+      import('./src/services/routeImagePolicy').then(({ refreshRouteImagePolicy }) => {
+        refreshRouteImagePolicy().catch(() => {
+          // Politika okunamazsa kod içi varsayılanlar kullanılır.
+        });
+      });
+
       Promise.resolve(useRoutePublishStore.getState().resumePendingDraftIfAny()).catch(() => {
         // Resume is best-effort
       });

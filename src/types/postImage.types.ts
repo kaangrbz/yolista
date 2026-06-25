@@ -9,7 +9,8 @@ export interface PostImageSlide {
   imageAlignment: RouteImageAlignment | null;
   /** SmartImage / indirme kaynağı */
   imageUrl?: string | null;
-  imagePreviewUrl?: string | null;
+  imageThumbUrl?: string | null;
+  imageMediumUrl?: string | null;
   userId?: string | null;
 }
 

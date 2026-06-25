@@ -130,15 +130,19 @@ export function classifyImageAlignment(
   return 'landscape';
 }
 
-/** Harita pin ve küçük thumb için kare önizleme boyutu. */
-export const ROUTE_IMAGE_PREVIEW_SIZE = 128;
+import { DEFAULT_ROUTE_IMAGE_SIZES } from './routeImage';
+
+export { DEFAULT_ROUTE_IMAGE_SIZES };
+
+/** @deprecated DEFAULT_ROUTE_IMAGE_SIZES.thumb kullanın */
+export const ROUTE_IMAGE_PREVIEW_SIZE = DEFAULT_ROUTE_IMAGE_SIZES.thumb;
 
 /**
  * Kare önizleme — yatay/dikey fark etmez, merkezden cover crop.
  */
 export async function resizeImageCover(
   uri: string,
-  size: number = ROUTE_IMAGE_PREVIEW_SIZE,
+  size: number = DEFAULT_ROUTE_IMAGE_SIZES.thumb,
   format: 'JPEG' | 'PNG' | 'WEBP' = 'JPEG',
   quality: number = 80,
   clientId?: string,

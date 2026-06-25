@@ -10,13 +10,14 @@ import type { PostImageSlide } from '../types/postImage.types';
 import { normalizeImageDimension } from '../utils/imageUtils';
 
 export const ROUTE_IMAGE_SELECT =
-  'id, parent_id, image_url, image_preview_url, order_index, user_id, image_width, image_height, image_alignment, title';
+  'id, parent_id, image_url, image_thumb_url, image_medium_url, order_index, user_id, image_width, image_height, image_alignment, title';
 
 export interface RouteImageRow {
   id: string;
   parent_id?: string | null;
   image_url: string | null;
-  image_preview_url?: string | null;
+  image_thumb_url?: string | null;
+  image_medium_url?: string | null;
   order_index: number;
   user_id: string | null;
   image_width?: number | null;
@@ -37,7 +38,8 @@ function mapRouteRowToSlideMeta(route: RouteImageRow) {
     height: normalizeImageDimension(route.image_height ?? undefined),
     imageAlignment: route.image_alignment ?? null,
     imageUrl: route.image_url,
-    imagePreviewUrl: route.image_preview_url ?? null,
+    imageThumbUrl: route.image_thumb_url ?? null,
+    imageMediumUrl: route.image_medium_url ?? null,
     userId: route.user_id ?? null,
   };
 }
@@ -126,7 +128,7 @@ async function downloadRouteAsSlide(route: RouteImageRow): Promise<PostImageSlid
   }
 
   try {
-    // Gönderi galerisi: tam çözünürlük (image_url). Harita: image_preview_url (ayrı akış).
+    // Gönderi galerisi: tam çözünürlük (image_url). Harita: thumb/medium (ayrı akış).
     const imageUri = await ImageService.downloadPostImage(route.image_url, route.user_id);
 
     return {

@@ -342,7 +342,8 @@ export const RouteDetailMap: React.FC<RouteDetailMapProps> = ({
             >
               <MapRouteMarker
                 imageUrl={stop.image_url}
-                imagePreviewUrl={stop.image_preview_url}
+                imageThumbUrl={stop.image_thumb_url}
+                imageMediumUrl={stop.image_medium_url}
                 userId={stop.user_id}
                 selected={isActive}
                 dimmed={!isActive && stops.length > 1}

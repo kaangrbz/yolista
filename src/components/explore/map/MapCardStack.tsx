@@ -26,7 +26,8 @@ import SmartImage from '../../common/smart-image/SmartImage';
 
 export interface MapCardStackItem {
   imageUrl?: string | null;
-  imagePreviewUrl?: string | null;
+  imageThumbUrl?: string | null;
+  imageMediumUrl?: string | null;
   userId?: string | null;
   iconName?: string;
   estimatedLocation?: boolean;
@@ -66,7 +67,7 @@ const MapCardStackCard: React.FC<MapCardStackCardProps> = ({
   onLoad,
 }) => {
   const theme = useAppTheme();
-  const storageKey = item.imagePreviewUrl || item.imageUrl;
+  const storageKey = item.imageThumbUrl || item.imageUrl;
 
   useEffect(() => {
     if (variant === 'cluster') {
@@ -99,11 +100,13 @@ const MapCardStackCard: React.FC<MapCardStackCardProps> = ({
     >
       {variant === 'route' && storageKey && item.userId ? (
         <SmartImage
-          kind="routePreview"
+          kind="route"
+          variant="thumb"
           userId={item.userId}
           imageUrl={item.imageUrl || undefined}
-          imagePreviewUrl={item.imagePreviewUrl || undefined}
-          previewOnly
+          imageThumbUrl={item.imageThumbUrl || undefined}
+          imageMediumUrl={item.imageMediumUrl || undefined}
+          strictVariant
           width={MAP_MARKER_CARD_SIZE}
           height={MAP_MARKER_CARD_SIZE}
           style={styles.cardImage}

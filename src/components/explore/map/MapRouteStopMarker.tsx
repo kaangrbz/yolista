@@ -22,7 +22,7 @@ export const MapRouteStopMarker: React.FC<MapRouteStopMarkerProps> = ({
   const { tracksViewChanges, handleMarkerReady } = useMapMarkerViewTracking({
     userId: stop.user_id,
     imageUrl: stop.image_url,
-    imagePreviewUrl: stop.image_preview_url,
+    imageThumbUrl: stop.image_thumb_url,
   });
 
   if (
@@ -53,7 +53,8 @@ export const MapRouteStopMarker: React.FC<MapRouteStopMarkerProps> = ({
     >
       <MapRouteMarker
         imageUrl={stop.image_url || null}
-        imagePreviewUrl={stop.image_preview_url || null}
+        imageThumbUrl={stop.image_thumb_url || null}
+        imageMediumUrl={stop.image_medium_url || null}
         userId={stop.user_id || null}
         iconName={stop.categories?.icon_name}
         selected={selected}

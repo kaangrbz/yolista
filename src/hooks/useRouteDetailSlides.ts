@@ -13,7 +13,8 @@ function stopToSlideMeta(stop: RouteWithProfile): Omit<PostImageSlide, 'uri'> {
     height: normalizeImageDimension(stop.image_height ?? undefined),
     imageAlignment: stop.image_alignment ?? null,
     imageUrl: stop.image_url ?? null,
-    imagePreviewUrl: stop.image_preview_url ?? null,
+    imageThumbUrl: stop.image_thumb_url ?? null,
+    imageMediumUrl: stop.image_medium_url ?? null,
     userId: stop.user_id ?? null,
   };
 }

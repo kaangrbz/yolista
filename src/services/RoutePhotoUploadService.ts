@@ -1,8 +1,9 @@
 import RNFS from 'react-native-fs';
 import { supabase } from '../lib/supabase';
-import { resizeImage, resizeImageCover, ROUTE_IMAGE_PREVIEW_SIZE } from '../utils/imageUtils';
+import { resizeImage, resizeImageCover } from '../utils/imageUtils';
 import type { CreateFlowPhoto } from '../types/createRouteFlowTypes';
-import { uploadRoutePhotoWithPreview } from './routePhotoStorage';
+import { uploadRoutePhotoWithVariants } from './routePhotoStorage';
+import { getRouteImagePolicy } from './routeImagePolicy';
 
 const CREATE_DRAFT_ROOT = `${RNFS.DocumentDirectoryPath}/route_create_drafts`;
 const MAX_CONCURRENT_UPLOADS = 2;
@@ -38,8 +39,16 @@ export async function prepareRoutePhotoLocal(
     await RNFS.mkdir(jobDir);
   }
 
+  const policy = await getRouteImagePolicy();
   const destPath = `${jobDir}/${photoId}.jpg`;
-  const resized = await resizeImage(sourceUri, 1920, 1920, 'JPEG', 80, photoId);
+  const resized = await resizeImage(
+    sourceUri,
+    policy.full_max_px,
+    policy.full_max_px,
+    'JPEG',
+    policy.jpeg_quality,
+    photoId,
+  );
 
   if (!resized?.uri) {
     throw new Error('Fotoğraf işlenemedi');
@@ -57,10 +66,36 @@ export async function prepareRoutePhotoLocal(
   return localPathToFileUri(destPath);
 }
 
+export async function prepareRoutePhotoThumb(
+  jobId: string,
+  photoId: string,
+  sourceUri: string,
+): Promise<string> {
+  return prepareRoutePhotoVariant(jobId, photoId, sourceUri, 'thumb');
+}
+
+export async function prepareRoutePhotoMedium(
+  jobId: string,
+  photoId: string,
+  sourceUri: string,
+): Promise<string> {
+  return prepareRoutePhotoVariant(jobId, photoId, sourceUri, 'medium');
+}
+
+/** @deprecated prepareRoutePhotoThumb kullanın */
 export async function prepareRoutePhotoPreview(
   jobId: string,
   photoId: string,
   sourceUri: string,
+): Promise<string> {
+  return prepareRoutePhotoThumb(jobId, photoId, sourceUri);
+}
+
+async function prepareRoutePhotoVariant(
+  jobId: string,
+  photoId: string,
+  sourceUri: string,
+  variant: 'thumb' | 'medium',
 ): Promise<string> {
   await ensureCreateDraftRoot();
   const jobDir = `${CREATE_DRAFT_ROOT}/${jobId}`;
@@ -70,11 +105,19 @@ export async function prepareRoutePhotoPreview(
     await RNFS.mkdir(jobDir);
   }
 
-  const destPath = `${jobDir}/${photoId}_preview.jpg`;
-  const cropped = await resizeImageCover(sourceUri, ROUTE_IMAGE_PREVIEW_SIZE, 'JPEG', 80, photoId);
+  const policy = await getRouteImagePolicy();
+  const size = variant === 'thumb' ? policy.thumb_size_px : policy.medium_size_px;
+  const destPath = `${jobDir}/${photoId}_${variant}.jpg`;
+  const cropped = await resizeImageCover(
+    sourceUri,
+    size,
+    'JPEG',
+    policy.jpeg_quality,
+    photoId,
+  );
 
   if (!cropped?.uri) {
-    throw new Error('Fotoğraf önizlemesi oluşturulamadı');
+    throw new Error('Fotoğraf varyantı oluşturulamadı');
   }
 
   const croppedPath = cropped.uri.replace(/^file:\/\//, '');
@@ -101,7 +144,8 @@ async function runUploadPipeline(
 
   try {
     const processedUri = await prepareRoutePhotoLocal(jobId, photo.id, photo.uri);
-    const previewUri = await prepareRoutePhotoPreview(jobId, photo.id, photo.uri);
+    const thumbUri = await prepareRoutePhotoThumb(jobId, photo.id, photo.uri);
+    const mediumUri = await prepareRoutePhotoMedium(jobId, photo.id, photo.uri);
 
     onPatch({
       id: photo.id,
@@ -109,17 +153,19 @@ async function runUploadPipeline(
       processedLocalUri: processedUri,
     });
 
-    const { fileName, previewFileName } = await uploadRoutePhotoWithPreview(
+    const { fileName, thumbFileName, mediumFileName } = await uploadRoutePhotoWithVariants(
       userId,
       processedUri,
-      previewUri,
+      thumbUri,
+      mediumUri,
     );
 
     onPatch({
       id: photo.id,
       uploadStatus: 'done',
       storageFileName: fileName,
-      storagePreviewFileName: previewFileName,
+      storageThumbFileName: thumbFileName,
+      storageMediumFileName: mediumFileName,
       uploadError: undefined,
     });
   } catch (error) {

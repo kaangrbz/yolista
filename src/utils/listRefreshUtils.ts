@@ -28,6 +28,8 @@ const isSameRoute = (previous: RouteWithProfile, next: RouteWithProfile): boolea
   return (
     previous.updated_at === next.updated_at
     && previous.image_url === next.image_url
+    && previous.image_thumb_url === next.image_thumb_url
+    && previous.image_medium_url === next.image_medium_url
     && previous.title === next.title
   );
 };

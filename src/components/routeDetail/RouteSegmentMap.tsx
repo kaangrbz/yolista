@@ -346,7 +346,8 @@ export const RouteSegmentMap: React.FC<RouteSegmentMapProps> = ({
               >
                 <MapRouteMarker
                   imageUrl={stop.image_url || null}
-                  imagePreviewUrl={stop.image_preview_url || null}
+                  imageThumbUrl={stop.image_thumb_url || null}
+                  imageMediumUrl={stop.image_medium_url || null}
                   userId={stop.user_id || stop.profiles?.id || null}
                   iconName={stop.categories?.icon_name}
                   selected={isActiveStop}

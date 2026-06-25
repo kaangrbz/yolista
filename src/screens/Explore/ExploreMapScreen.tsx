@@ -69,7 +69,7 @@ import MapRoutePreviewSheet, {
 } from '../../components/explore/map/MapRoutePreviewSheet';
 import MapRoutePolylineLayer from '../../components/explore/map/MapRoutePolylineLayer';
 import { showToast } from '../../utils/alert';
-import { prefetchMapPreviewImages } from '../../utils/mapPreviewImageCache';
+import { prefetchRouteImages } from '../../utils/routeImageCache';
 import {
   buildRouteSegments,
   fetchWalkingDirections,
@@ -284,11 +284,11 @@ const ExploreMapScreen: React.FC = () => {
   const visibleMapClusters = isRouteDetailOpen ? [] : mapClusters;
 
   useEffect(() => {
-    prefetchMapPreviewImages(routes);
+    prefetchRouteImages('thumb', routes);
   }, [routes]);
 
   useEffect(() => {
-    prefetchMapPreviewImages(selectedRouteStops);
+    prefetchRouteImages('thumb', selectedRouteStops);
   }, [selectedRouteStops]);
 
   useEffect(() => {
@@ -1388,7 +1388,7 @@ const ExploreMapScreen: React.FC = () => {
           postId={selectedRouteId}
           postTitle={getRouteShareLabel(resolvedSelectedRoute)}
           postImage={
-            resolvedSelectedRoute.image_preview_url ||
+            resolvedSelectedRoute.image_thumb_url ||
             resolvedSelectedRoute.image_url ||
             undefined
           }

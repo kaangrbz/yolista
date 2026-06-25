@@ -150,11 +150,13 @@ export const MapRouteTimelineStopRow: React.FC<MapRouteTimelineStopRowProps> = (
           accessibilityLabel="Durak fotoğrafını önizle"
         >
           <SmartImage
-            kind="routePreview"
+            kind="route"
+            variant="thumb"
             userId={userId}
             imageUrl={stop.image_url}
-            imagePreviewUrl={stop.image_preview_url}
-            previewOnly
+            imageThumbUrl={stop.image_thumb_url}
+            imageMediumUrl={stop.image_medium_url}
+            strictVariant
             width={THUMB_SIZE}
             height={THUMB_SIZE}
             borderRadius={8}
